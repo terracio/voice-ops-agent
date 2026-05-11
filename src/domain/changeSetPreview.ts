@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  createSideEffectAuditEvent,
-  createWriteBlockedAuditEvent
-} from "../audit";
+import { createWriteBlockedAuditEvent } from "../audit";
 import * as db from "./db";
 import type { CustomerState } from "./db";
 import type { ResolveServiceDatesOutput } from "./dateResolver";
@@ -211,46 +208,6 @@ export function applyChangeOperations(
   }
 
   return next;
-}
-
-export function materializePaymentFollowups(
-  changeSet: ChangeSet,
-  run_id: string,
-  now: string
-): string[] {
-  return changeSet.operations.flatMap((operation, index) => {
-    if (operation.type !== "create_payment_followup") {
-      return [];
-    }
-
-    const idempotency_key = `${changeSet.change_set_id}:create_payment_followup:${index}`;
-    const followup = db.savePaymentFollowup({
-      followup_id: `pf_${changeSet.change_set_id}_${index}`,
-      customer_id: changeSet.customer_id,
-      idempotency_key,
-      reason: operation.reason,
-      status: "open",
-      created_at: now,
-      source_change_set_id: changeSet.change_set_id
-    });
-    const audit = db.appendAuditEvent(
-      createSideEffectAuditEvent({
-        run_id,
-        actor: "system",
-        event_type: "side_effect_created",
-        customer_id: changeSet.customer_id,
-        tool_name: "commit_change_set",
-        change_set_id: changeSet.change_set_id,
-        details: {
-          side_effect_type: "payment_followup",
-          side_effect_id: followup.followup_id,
-          idempotency_key
-        }
-      })
-    );
-
-    return [audit.event_id];
-  });
 }
 
 export function confirmationIssue(
