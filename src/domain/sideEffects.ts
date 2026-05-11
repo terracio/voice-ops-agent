@@ -3,100 +3,53 @@ import { createSideEffectAuditEvent, createWriteBlockedAuditEvent } from "../aud
 import * as db from "./db";
 import type { CustomerState } from "./db";
 import { evaluateMealPlanPolicies } from "./policies/mealplan.policy";
-import {
-  PolicyId,
-  type ChangeOperation,
-  type ChangeSet,
-  type PaymentFollowup,
-  type PolicyIdValue
-} from "./schema";
+import { PolicyId, type ChangeOperation, type ChangeSet, type PolicyIdValue } from "./schema";
 
 const SideEffectTypeSchema = z.enum(["payment_followup", "kitchen_delta"]);
-const BlockedSideEffectAttemptSchema = z.object({
-  side_effect_type: SideEffectTypeSchema,
-  idempotency_key: z.string().min(1),
-  reason: z.string().min(1),
-  policy_ids: z.array(z.string().min(1)).min(1)
-});
-
-export const SideEffectMaterializationResultSchema = z.object({
-  audit_event_ids: z.array(z.string().min(1)),
-  created_side_effect_ids: z.array(z.string().min(1)),
-  blocked_attempts: z.array(BlockedSideEffectAttemptSchema)
-});
+const BlockedSideEffectAttemptSchema = z.object({ side_effect_type: SideEffectTypeSchema, idempotency_key: z.string().min(1), reason: z.string().min(1), policy_ids: z.array(z.string().min(1)).min(1) });
+export const SideEffectMaterializationResultSchema = z.object({ audit_event_ids: z.array(z.string().min(1)), created_side_effect_ids: z.array(z.string().min(1)), blocked_attempts: z.array(BlockedSideEffectAttemptSchema) });
 
 export type SideEffectMaterializationResult = z.infer<typeof SideEffectMaterializationResultSchema>;
 
 type SideEffectInput = { changeSet: ChangeSet; run_id: string; now: string };
 type SideEffectType = z.infer<typeof SideEffectTypeSchema>;
 type MealOperation = { operation: ChangeOperation; index: number };
-type PaymentFollowupReason = PaymentFollowup["reason"];
+type ResolvedChangeSet = { ok: true; changeSet: ChangeSet } | { ok: false; result: SideEffectMaterializationResult };
 
-const PAYMENT_FOLLOWUP_REASONS: PaymentFollowupReason[] = [
-  "failed_payment",
-  "past_due",
-  "unknown_status"
-];
-
-export function materializeCommittedSideEffects(
-  input: SideEffectInput
-): SideEffectMaterializationResult {
-  return combineResults([
-    materializeCommittedPaymentFollowups(input),
-    materializeCommittedKitchenDeltas(input)
-  ]);
+export function materializeCommittedSideEffects(input: SideEffectInput): SideEffectMaterializationResult {
+  return combineResults([materializeCommittedPaymentFollowups(input), materializeCommittedKitchenDeltas(input)]);
 }
 
-export function materializeCommittedPaymentFollowups(
-  input: SideEffectInput
-): SideEffectMaterializationResult {
+export function materializeCommittedPaymentFollowups(input: SideEffectInput): SideEffectMaterializationResult {
+  const resolved = resolvePersistedCommittedChangeSet(input, "payment_followup", firstPaymentFollowupIdempotencyKey(input.changeSet));
+  if (!resolved.ok) return resolved.result;
+
+  const changeSet = resolved.changeSet;
   let result = emptyResult();
 
-  input.changeSet.operations.forEach((operation, index) => {
+  changeSet.operations.forEach((operation, index) => {
     if (operation.type !== "create_payment_followup") return;
-    const idempotency_key = paymentFollowupIdempotencyKey(input.changeSet, index);
+    const idempotency_key = paymentFollowupIdempotencyKey(changeSet, index);
 
-    if (input.changeSet.status !== "committed") {
-      result = combineResults([result, blockSideEffect({
-        ...input,
-        side_effect_type: "payment_followup",
-        idempotency_key,
-        policy_ids: [PolicyId.MISSING_CONFIRMATION],
-        reason: "Payment follow-ups require a committed ChangeSet."
-      })]);
-      return;
-    }
-
-    if (!isPaymentFollowupReason(operation.reason)) {
-      result = combineResults([result, blockSideEffect({
-        ...input,
-        side_effect_type: "payment_followup",
-        idempotency_key,
-        policy_ids: [PolicyId.PAYMENT_SETTLEMENT_FORBIDDEN],
-        reason: "Payment follow-up reason is not eligible."
-      })]);
-      return;
-    }
-
-    if (findPaymentFollowup(input.changeSet.customer_id, idempotency_key)) return;
+    if (findPaymentFollowup(changeSet.customer_id, idempotency_key)) return;
 
     const followup = db.savePaymentFollowup({
-      followup_id: `pf_${input.changeSet.change_set_id}_${index}`,
-      customer_id: input.changeSet.customer_id,
+      followup_id: `pf_${changeSet.change_set_id}_${index}`,
+      customer_id: changeSet.customer_id,
       idempotency_key,
       reason: operation.reason,
       status: "open",
       created_at: input.now,
-      source_change_set_id: input.changeSet.change_set_id
+      source_change_set_id: changeSet.change_set_id
     });
     const audit = db.appendAuditEvent(
       createSideEffectAuditEvent({
         run_id: input.run_id,
         actor: "system",
         event_type: "side_effect_created",
-        customer_id: input.changeSet.customer_id,
+        customer_id: changeSet.customer_id,
         tool_name: "materialize_payment_followup",
-        change_set_id: input.changeSet.change_set_id,
+        change_set_id: changeSet.change_set_id,
         details: {
           side_effect_type: "payment_followup",
           side_effect_id: followup.followup_id,
@@ -117,17 +70,25 @@ export function materializeCommittedPaymentFollowups(
   return result;
 }
 
-export function materializeCommittedKitchenDeltas(
-  input: SideEffectInput
-): SideEffectMaterializationResult {
-  const operations = mealAffectingOperations(input.changeSet.operations);
+export function materializeCommittedKitchenDeltas(input: SideEffectInput): SideEffectMaterializationResult {
+  const resolved = resolvePersistedCommittedChangeSet(
+    input,
+    "kitchen_delta",
+    kitchenDeltaIdempotencyKey(input.changeSet, mealAffectingOperations(input.changeSet.operations))
+  );
+  if (!resolved.ok) return resolved.result;
+
+  const changeSet = resolved.changeSet;
+  const operations = mealAffectingOperations(changeSet.operations);
   if (operations.length === 0) return emptyResult();
 
-  const idempotency_key = kitchenDeltaIdempotencyKey(input.changeSet, operations);
-  const policyIds = blockedKitchenPolicyIds(input.changeSet, input.now);
+  const idempotency_key = kitchenDeltaIdempotencyKey(changeSet, operations);
+  const policyIds = blockedKitchenPolicyIds(changeSet, input.now);
   if (policyIds.length > 0) {
     return blockSideEffect({
-      ...input,
+      changeSet,
+      run_id: input.run_id,
+      now: input.now,
       side_effect_type: "kitchen_delta",
       idempotency_key,
       policy_ids: policyIds,
@@ -135,14 +96,16 @@ export function materializeCommittedKitchenDeltas(
     });
   }
 
-  if (findKitchenDelta(input.changeSet.customer_id, idempotency_key)) {
+  if (findKitchenDelta(changeSet.customer_id, idempotency_key)) {
     return emptyResult();
   }
 
-  const state = db.getCustomerState(input.changeSet.customer_id);
+  const state = db.getCustomerState(changeSet.customer_id);
   if (!state) {
     return blockSideEffect({
-      ...input,
+      changeSet,
+      run_id: input.run_id,
+      now: input.now,
       side_effect_type: "kitchen_delta",
       idempotency_key,
       policy_ids: [PolicyId.KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN],
@@ -154,9 +117,9 @@ export function materializeCommittedKitchenDeltas(
   if (affected_dates.length === 0) return emptyResult();
 
   const delta = db.saveKitchenExportDelta({
-    delta_id: `kd_${input.changeSet.change_set_id}_kitchen_delta`,
-    customer_id: input.changeSet.customer_id,
-    change_set_id: input.changeSet.change_set_id,
+    delta_id: `kd_${changeSet.change_set_id}_kitchen_delta`,
+    customer_id: changeSet.customer_id,
+    change_set_id: changeSet.change_set_id,
     idempotency_key,
     affected_dates,
     summary: kitchenDeltaSummary(operations, affected_dates),
@@ -167,9 +130,9 @@ export function materializeCommittedKitchenDeltas(
       run_id: input.run_id,
       actor: "system",
       event_type: "side_effect_created",
-      customer_id: input.changeSet.customer_id,
+      customer_id: changeSet.customer_id,
       tool_name: "materialize_kitchen_delta",
-      change_set_id: input.changeSet.change_set_id,
+      change_set_id: changeSet.change_set_id,
       details: {
         side_effect_type: "kitchen_delta",
         side_effect_id: delta.delta_id,
@@ -187,13 +150,8 @@ export function materializeCommittedKitchenDeltas(
   });
 }
 
-export function isMealAffectingOperation(operation: ChangeOperation): boolean {
-  return (
-    operation.type === "pause_dates" ||
-    operation.type === "resume_dates" ||
-    operation.type === "update_customization"
-  );
-}
+export const isMealAffectingOperation = (operation: ChangeOperation): boolean =>
+  operation.type === "pause_dates" || operation.type === "resume_dates" || operation.type === "update_customization";
 
 function mealAffectingOperations(operations: ChangeOperation[]): MealOperation[] {
   return operations.flatMap((operation, index) =>
@@ -201,10 +159,7 @@ function mealAffectingOperations(operations: ChangeOperation[]): MealOperation[]
   );
 }
 
-function affectedKitchenDates(
-  operations: MealOperation[],
-  state: CustomerState
-): string[] {
+function affectedKitchenDates(operations: MealOperation[], state: CustomerState): string[] {
   const serviceDates = new Map(
     state.service_dates.map((serviceDate) => [serviceDate.service_date, serviceDate])
   );
@@ -246,6 +201,38 @@ function blockedKitchenPolicyIds(changeSet: ChangeSet, now: string): PolicyIdVal
   return evaluation.allowed ? [] : evaluation.blocking_policy_ids;
 }
 
+function resolvePersistedCommittedChangeSet(input: SideEffectInput, side_effect_type: SideEffectType, idempotency_key: string): ResolvedChangeSet {
+  const persisted = db.getChangeSet(input.changeSet.change_set_id);
+  const reason = persistedChangeSetIssue(persisted, input.changeSet);
+  if (!reason && persisted) return { ok: true, changeSet: persisted };
+
+  return {
+    ok: false,
+    result: blockSideEffect({
+      ...input,
+      changeSet: persisted ?? input.changeSet,
+      side_effect_type,
+      idempotency_key,
+      policy_ids: [sideEffectPolicyId(side_effect_type)],
+      reason: reason ?? "Side effects require a persisted committed ChangeSet."
+    })
+  };
+}
+
+function persistedChangeSetIssue(persisted: ChangeSet | undefined, callerChangeSet: ChangeSet): string | undefined {
+  if (!persisted) return "Side effects require a persisted ChangeSet.";
+  if (persisted.status !== "committed" || !persisted.committed_at) {
+    return "Side effects require a persisted committed ChangeSet.";
+  }
+  if (persisted.customer_id !== callerChangeSet.customer_id) {
+    return "Side-effect input customer does not match persisted ChangeSet.";
+  }
+  if (JSON.stringify(persisted.operations) !== JSON.stringify(callerChangeSet.operations)) {
+    return "Side-effect input operations do not match persisted ChangeSet.";
+  }
+  return undefined;
+}
+
 function blockSideEffect(input: SideEffectInput & {
   side_effect_type: SideEffectType;
   idempotency_key: string;
@@ -281,20 +268,21 @@ function blockSideEffect(input: SideEffectInput & {
   });
 }
 
-function paymentFollowupIdempotencyKey(
-  changeSet: ChangeSet,
-  operationIndex: number
-): string {
+function paymentFollowupIdempotencyKey(changeSet: ChangeSet, operationIndex: number): string {
   return `${changeSet.change_set_id}:create_payment_followup:${operationIndex}`;
 }
 
-function kitchenDeltaIdempotencyKey(
-  changeSet: ChangeSet,
-  operations: MealOperation[]
-): string {
-  return `${changeSet.change_set_id}:kitchen_delta:${operations
-    .map(operationIdentity)
-    .join("+")}`;
+function firstPaymentFollowupIdempotencyKey(changeSet: ChangeSet): string {
+  const index = changeSet.operations.findIndex((operation) =>
+    operation.type === "create_payment_followup"
+  );
+  return index >= 0
+    ? paymentFollowupIdempotencyKey(changeSet, index)
+    : `${changeSet.change_set_id}:create_payment_followup:none`;
+}
+
+function kitchenDeltaIdempotencyKey(changeSet: ChangeSet, operations: MealOperation[]): string {
+  return `${changeSet.change_set_id}:kitchen_delta:${operations.map(operationIdentity).join("+")}`;
 }
 
 function operationIdentity({ operation, index }: MealOperation): string {
@@ -323,19 +311,19 @@ function findKitchenDelta(customerId: string, idempotencyKey: string) {
   );
 }
 
-function isPaymentFollowupReason(value: unknown): value is PaymentFollowupReason {
-  return PAYMENT_FOLLOWUP_REASONS.includes(value as PaymentFollowupReason);
-}
-
 function toolName(sideEffectType: SideEffectType): string {
   return sideEffectType === "kitchen_delta"
     ? "materialize_kitchen_delta"
     : "materialize_payment_followup";
 }
 
-function combineResults(
-  results: SideEffectMaterializationResult[]
-): SideEffectMaterializationResult {
+function sideEffectPolicyId(sideEffectType: SideEffectType): PolicyIdValue {
+  return sideEffectType === "kitchen_delta"
+    ? PolicyId.KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN
+    : PolicyId.MISSING_CONFIRMATION;
+}
+
+function combineResults(results: SideEffectMaterializationResult[]): SideEffectMaterializationResult {
   return SideEffectMaterializationResultSchema.parse({
     audit_event_ids: results.flatMap((result) => result.audit_event_ids),
     created_side_effect_ids: results.flatMap((result) => result.created_side_effect_ids),

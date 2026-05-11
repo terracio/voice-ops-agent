@@ -66,10 +66,10 @@ function capture(change_set_id: string) {
 
 describe("internal side-effect services", () => {
   it("creates eligible payment follow-ups from committed ChangeSets once", () => {
-    const changeSet = baseChangeSet({
+    const changeSet = db.saveChangeSet(baseChangeSet({
       change_set_id: "cs_payment_side_effect",
       operations: [{ type: "create_payment_followup", reason: "past_due" }]
-    });
+    }));
 
     const first = materializeCommittedPaymentFollowups({
       changeSet,
@@ -127,14 +127,55 @@ describe("internal side-effect services", () => {
     expect(db.getCustomer(CUSTOMER_ID)?.payment_status).toBe(beforePaymentStatus);
   });
 
+  it("blocks forged committed payment follow-up ChangeSets that were never persisted", () => {
+    const forged = baseChangeSet({
+      change_set_id: "cs_forged_payment",
+      operations: [{ type: "create_payment_followup", reason: "failed_payment" }]
+    });
+
+    const result = materializeCommittedPaymentFollowups({
+      changeSet: forged,
+      run_id: RUN_ID,
+      now: COMMITTED_AT
+    });
+
+    expect(db.getChangeSet("cs_forged_payment")).toBeUndefined();
+    expect(result.blocked_attempts).toEqual([
+      expect.objectContaining({ side_effect_type: "payment_followup" })
+    ]);
+    expect(db.listPaymentFollowups(CUSTOMER_ID)).toHaveLength(0);
+  });
+
+  it("blocks caller operations that do not match the persisted ChangeSet", () => {
+    const persisted = db.saveChangeSet(baseChangeSet({
+      change_set_id: "cs_mismatched_payment",
+      operations: [{ type: "create_payment_followup", reason: "failed_payment" }]
+    }));
+    const forged = {
+      ...persisted,
+      operations: [{ type: "create_payment_followup" as const, reason: "past_due" as const }]
+    };
+
+    const result = materializeCommittedPaymentFollowups({
+      changeSet: forged,
+      run_id: RUN_ID,
+      now: COMMITTED_AT
+    });
+
+    expect(result.blocked_attempts).toEqual([
+      expect.objectContaining({ side_effect_type: "payment_followup" })
+    ]);
+    expect(db.listPaymentFollowups(CUSTOMER_ID)).toHaveLength(0);
+  });
+
   it("creates kitchen deltas from committed meal-affecting operations once", () => {
-    const changeSet = baseChangeSet({
+    const changeSet = db.saveChangeSet(baseChangeSet({
       change_set_id: "cs_kitchen_side_effect",
       operations: [
         { type: "pause_dates", dates: ["2026-05-18"], reason: "travel" },
         { type: "update_customization", field: "spice_level", next_value: "spicy" }
       ]
-    });
+    }));
 
     const first = materializeCommittedKitchenDeltas({
       changeSet,
@@ -164,10 +205,10 @@ describe("internal side-effect services", () => {
   });
 
   it("blocks kitchen deltas before commit and ignores payment-only ChangeSets", () => {
-    const paymentOnly = baseChangeSet({
+    const paymentOnly = db.saveChangeSet(baseChangeSet({
       change_set_id: "cs_payment_only",
       operations: [{ type: "create_payment_followup", reason: "unknown_status" }]
-    });
+    }));
     const previewedMealChange = baseChangeSet({
       change_set_id: "cs_kitchen_previewed",
       status: "previewed",
@@ -196,6 +237,22 @@ describe("internal side-effect services", () => {
     expect(isMealAffectingOperation(paymentOnly.operations[0] as ChangeOperation)).toBe(false);
     expect(isMealAffectingOperation(previewedMealChange.operations[0] as ChangeOperation))
       .toBe(true);
+  });
+
+  it("blocks forged committed kitchen ChangeSets that were never persisted", () => {
+    const forged = baseChangeSet({ change_set_id: "cs_forged_kitchen" });
+
+    const result = materializeCommittedKitchenDeltas({
+      changeSet: forged,
+      run_id: RUN_ID,
+      now: COMMITTED_AT
+    });
+
+    expect(db.getChangeSet("cs_forged_kitchen")).toBeUndefined();
+    expect(result.blocked_attempts).toEqual([
+      expect.objectContaining({ side_effect_type: "kitchen_delta" })
+    ]);
+    expect(db.listKitchenExportDeltas(CUSTOMER_ID)).toHaveLength(0);
   });
 });
 
