@@ -247,12 +247,8 @@ function customizationDeltaPolicy(input: MealPlanPolicyInput) {
     );
 
   const missingDelta = customizationOps.some(({ operation, index }) => {
-    if (!hasKey(operation, "previous_value")) {
+    if (!hasKey(operation, "previous_value") || input.preview?.shown !== true) {
       return true;
-    }
-
-    if (!input.preview) {
-      return false;
     }
 
     return !input.preview.customization_deltas.some(

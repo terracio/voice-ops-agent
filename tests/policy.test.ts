@@ -245,15 +245,8 @@ describe("MealPlan policy engine", () => {
     {
       id: PolicyId.CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA,
       blocked: validInput({
-        changeSet: changeSet({
-          operations: [
-            {
-              type: "update_customization",
-              field: "spice_level",
-              next_value: "spicy"
-            }
-          ]
-        })
+        changeSet: changeSet({ operations: [spiceOperation] }),
+        preview: undefined
       }),
       allowed: validInput({
         changeSet: changeSet({ operations: [spiceOperation] }),
