@@ -39,9 +39,27 @@ export type RunScopedAuditLog = {
   getEventsByChangeSetId: (change_set_id: string) => AuditEvent[];
 };
 
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+
+    for (const nestedValue of Object.values(value)) {
+      deepFreeze(nestedValue);
+    }
+  }
+
+  return value;
+}
+
+function cloneAuditEvent(event: AuditEvent): AuditEvent {
+  return deepFreeze(structuredClone(event));
+}
+
 export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
   let nextSequence = options.initialEvents?.length ?? 0;
-  const events = [...(options.initialEvents ?? [])];
+  const events = (options.initialEvents ?? []).map((event) =>
+    cloneAuditEvent(event)
+  );
   const now = options.now ?? (() => new Date().toISOString());
   const createEventId =
     options.createEventId ?? (() => `audit_${String(++nextSequence)}`);
@@ -52,9 +70,10 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
       event_id: createEventId(),
       timestamp: now()
     });
+    const storedEvent = cloneAuditEvent(event);
 
-    events.push(event);
-    return event;
+    events.push(storedEvent);
+    return cloneAuditEvent(storedEvent);
   };
 
   return {
@@ -65,7 +84,7 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
     },
 
     listEvents() {
-      return [...events];
+      return events.map((event) => cloneAuditEvent(event));
     },
 
     forRun(run_id) {
@@ -73,18 +92,22 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
     },
 
     getEventsByRunId(run_id) {
-      return events.filter((event) => event.run_id === run_id);
+      return events
+        .filter((event) => event.run_id === run_id)
+        .map((event) => cloneAuditEvent(event));
     },
 
     getEventsByChangeSetId(change_set_id) {
-      return events.filter((event) => event.change_set_id === change_set_id);
+      return events
+        .filter((event) => event.change_set_id === change_set_id)
+        .map((event) => cloneAuditEvent(event));
     },
 
     getEventsByRunAndChangeSetId(run_id, change_set_id) {
       return events.filter(
         (event) =>
           event.run_id === run_id && event.change_set_id === change_set_id
-      );
+      ).map((event) => cloneAuditEvent(event));
     }
   };
 }

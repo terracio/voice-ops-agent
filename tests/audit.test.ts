@@ -159,6 +159,54 @@ describe("audit log foundation", () => {
     );
   });
 
+  it("protects canonical audit events from returned object mutations", () => {
+    const log = createDeterministicAuditLog();
+
+    log.append(
+      createReadAuditEvent({
+        run_id: "run_immutable",
+        actor: "agent",
+        event_type: "read",
+        customer_id: "cus_immutable",
+        tool_name: "get_customer",
+        change_set_id: "cs_immutable",
+        details: { resource_type: "customer", resource_id: "cus_immutable" }
+      })
+    );
+
+    const listEvent = log.listEvents()[0];
+    const filteredEvent = log.getEventsByChangeSetId("cs_immutable")[0];
+    const runScopedEvent =
+      log.forRun("run_immutable").getEventsByChangeSetId("cs_immutable")[0];
+
+    if (!listEvent || !filteredEvent || !runScopedEvent) {
+      throw new Error("Expected audit events for immutability regression.");
+    }
+
+    expect(Object.isFrozen(listEvent)).toBe(true);
+    expect(Object.isFrozen(listEvent.details)).toBe(true);
+
+    expect(() => {
+      (listEvent as { event_type: string }).event_type = "write_committed";
+    }).toThrow(TypeError);
+    expect(() => {
+      (listEvent.details as Record<string, unknown>).resource_type = "payment";
+    }).toThrow(TypeError);
+    expect(() => {
+      (filteredEvent as { customer_id: string }).customer_id = "cus_changed";
+    }).toThrow(TypeError);
+    expect(() => {
+      (runScopedEvent.details as Record<string, unknown>).resource_id =
+        "cus_changed";
+    }).toThrow(TypeError);
+
+    expect(log.listEvents()[0]).toMatchObject({
+      event_type: "read",
+      customer_id: "cus_immutable",
+      details: { resource_type: "customer", resource_id: "cus_immutable" }
+    });
+  });
+
   it("records commits, blocks, warnings, and escalations with stable policy IDs", () => {
     const log = createDeterministicAuditLog();
 
