@@ -131,12 +131,10 @@ export function previewChangeSet(input: PreviewChangeSetInput): ToolResult<Chang
   if (!changeSet) {
     return err("CHANGE_SET_NOT_FOUND", `Unknown ChangeSet: ${parsed.change_set_id}`);
   }
-  if (changeSet.status === "committed") return err("CHANGE_SET_ALREADY_COMMITTED", `Committed ChangeSet cannot be previewed: ${changeSet.change_set_id}`);
+  if (changeSet.status === "committed" || changeSet.status === "expired") return err(changeSet.status === "committed" ? "CHANGE_SET_ALREADY_COMMITTED" : "CHANGE_SET_EXPIRED", `${changeSet.status} ChangeSet cannot be previewed: ${changeSet.change_set_id}`);
 
   const state = db.getCustomerState(changeSet.customer_id);
-  if (!state) {
-    return err("CUSTOMER_NOT_FOUND", `Unknown customer: ${changeSet.customer_id}`);
-  }
+  if (!state) return err("CUSTOMER_NOT_FOUND", `Unknown customer: ${changeSet.customer_id}`);
 
   const preview = buildChangeSetPreview(changeSet, state, now);
   const metadata = metadataFor(changeSet.change_set_id);
@@ -247,6 +245,7 @@ export function commitChangeSet(input: CommitChangeSetInput): ToolResult<ChangeS
       ? blockedChangeSet(changeSet, metadata.run_id, [PolicyId.MISSING_CONFIRMATION], issue)
       : ok(changeSet, []);
   }
+  if (changeSet.status === "expired") return blockedChangeSet(changeSet, metadata.run_id, [PolicyId.EXPIRED_CHANGESET], "Expired ChangeSets cannot be committed.");
 
   const state = db.getCustomerState(changeSet.customer_id);
   if (!state) {

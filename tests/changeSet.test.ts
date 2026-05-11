@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { captureServerConfirmation, commitChangeSet, createChangeSet, previewChangeSet } from "../src/domain/changeSet";
+import { captureServerConfirmation, commitChangeSet, createChangeSet, expireChangeSet, previewChangeSet } from "../src/domain/changeSet";
 import * as db from "../src/domain/db";
 import { resolveServiceDates } from "../src/domain/dateResolver";
 import {
@@ -177,21 +177,14 @@ describe("ChangeSet lifecycle", () => {
       error: { policy_id: PolicyId.STALE_STATE_VERSION }
     });
 
-    createPreviewed("cs_expired", [pauseMonday()], {
-      expires_at: "2026-05-11T10:01:30Z"
-    });
-    capture("cs_expired");
-    const expired = commitChangeSet({
-      change_set_id: "cs_expired",
-      confirmation_id: "conf_cs_expired",
-      now: COMMITTED_AT
-    });
-
-    expect(expired).toMatchObject({
-      ok: false,
-      error: { policy_id: PolicyId.EXPIRED_CHANGESET }
-    });
+    const version = db.getCustomer(CUSTOMER_ID)?.state_version;
+    expectData(createChangeSet({ run_id: RUN_ID, customer_id: CUSTOMER_ID, change_set_id: "cs_expired", operations: [pauseMonday()], now: CREATED_AT, expires_at: "2026-05-11T10:01:00Z" }));
+    expectData(expireChangeSet({ change_set_id: "cs_expired", now: "2026-05-11T10:02:00Z" }));
+    expect(previewChangeSet({ change_set_id: "cs_expired", now: "2026-05-11T10:00:30Z" })).toMatchObject({ ok: false, error: { code: "CHANGE_SET_EXPIRED" } });
     expect(db.getChangeSet("cs_expired")?.status).toBe("expired");
+    expect(captureServerConfirmation({ run_id: RUN_ID, customer_id: CUSTOMER_ID, change_set_id: "cs_expired", confirmation_id: "conf_cs_expired", source_user_turn_id: "turn_expired", transcript_excerpt: "Yes.", confirmation_source: "debug_user_turn", confirmation_type: "explicit_yes", now: "2026-05-11T10:00:40Z" }).ok).toBe(false);
+    expect(commitChangeSet({ change_set_id: "cs_expired", confirmation_id: "conf_cs_expired", now: "2026-05-11T10:00:50Z" })).toMatchObject({ ok: false, error: { policy_id: PolicyId.EXPIRED_CHANGESET } });
+    expect(db.getCustomer(CUSTOMER_ID)?.state_version).toBe(version);
   });
 
   it("blocks ambiguous date resolution at commit time", () => {
