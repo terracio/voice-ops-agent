@@ -159,7 +159,6 @@ export const captureConfirmationTool = defineTool({
       run_id: context.run_id,
       customer_id: customerId.data,
       change_set_id: args.change_set_id,
-      confirmation_id: args.confirmation_id,
       source_user_turn_id: context.current_user_turn_id,
       transcript_excerpt: transcript,
       confirmation_source: confirmationSourceForContext(context),

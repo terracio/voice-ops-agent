@@ -105,8 +105,7 @@ describe("changeSetTools", () => {
     const confirmation = expectData<Confirmation>(
       await registry.execute("capture_confirmation", {
         modelArgs: {
-          change_set_id: created.change_set_id,
-          confirmation_id: "conf_tool_happy"
+          change_set_id: created.change_set_id
         },
         context: context({
           current_time: CONFIRMED_AT,
@@ -115,8 +114,8 @@ describe("changeSetTools", () => {
         })
       })
     );
+    expect(confirmation.confirmation_id).toMatch(/^conf_/);
     expect(confirmation).toMatchObject({
-      confirmation_id: "conf_tool_happy",
       run_id: "run_change_set_tools",
       customer_id: "cus_001",
       source_user_turn_id: "turn_confirm",
@@ -245,6 +244,12 @@ describe("changeSetTools", () => {
       ok: false,
       error: { code: "CONFIRMATION_NOT_EXPLICIT" }
     });
+    await expect(
+      registry.execute("capture_confirmation", {
+        modelArgs: { change_set_id: changeSet.change_set_id, confirmation_id: "conf_from_model" },
+        context: context({ current_time: CONFIRMED_AT, last_user_message: "Yes, confirm it." })
+      })
+    ).resolves.toMatchObject({ ok: false, error: { code: "TOOL_INVALID_ARGS" } });
 
     await expect(
       registry.execute("commit_change_set", {
@@ -296,8 +301,7 @@ describe("changeSetTools", () => {
     const confirmation = expectData<Confirmation>(
       await registry.execute("capture_confirmation", {
         modelArgs: {
-          change_set_id: created.change_set_id,
-          confirmation_id: "conf_blocked_paths"
+          change_set_id: created.change_set_id
         },
         context: context({
           current_time: CONFIRMED_AT,

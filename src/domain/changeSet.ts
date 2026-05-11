@@ -176,16 +176,13 @@ export function captureServerConfirmation(input: CaptureConfirmationInput): Tool
   const now = parsed.now ?? new Date().toISOString();
   const changeSet = db.getChangeSet(parsed.change_set_id);
 
-  if (!changeSet?.previewed_at || changeSet.status !== "previewed") {
-    return err("PREVIEW_REQUIRED", "Confirmation can only be captured after preview.");
-  }
+  if (!changeSet?.previewed_at || changeSet.status !== "previewed") return err("PREVIEW_REQUIRED", "Confirmation can only be captured after preview.");
+  if (changeSet.customer_id !== parsed.customer_id) return err("CONFIRMATION_MISMATCH", "Confirmation customer does not match ChangeSet.");
 
-  if (changeSet.customer_id !== parsed.customer_id) {
-    return err("CONFIRMATION_MISMATCH", "Confirmation customer does not match ChangeSet.");
-  }
-
+  const confirmationId = parsed.confirmation_id ?? nextId("conf");
+  if (db.getConfirmation(confirmationId)) return err("CONFIRMATION_ALREADY_EXISTS", `Confirmation already exists: ${confirmationId}`);
   const confirmation = ConfirmationSchema.parse({
-    confirmation_id: parsed.confirmation_id ?? nextId("conf"),
+    confirmation_id: confirmationId,
     run_id: parsed.run_id,
     customer_id: parsed.customer_id,
     change_set_id: parsed.change_set_id,

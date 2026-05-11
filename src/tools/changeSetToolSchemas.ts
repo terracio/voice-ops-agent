@@ -48,8 +48,7 @@ export const PreviewChangeSetToolOutputSchema = ChangeSetPreviewSchema.extend({
 }).strict();
 
 export const CaptureConfirmationToolInputSchema = z.object({
-  change_set_id: z.string().min(1),
-  confirmation_id: z.string().min(1).optional()
+  change_set_id: z.string().min(1)
 }).strict();
 
 export const CommitChangeSetToolInputSchema = z.object({
