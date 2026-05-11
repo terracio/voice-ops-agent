@@ -37,10 +37,11 @@ Do not add empty placeholder folders for future slices. Add a folder only when t
 The project invariant is:
 
 ```text
-ChangeSet -> preview -> explicit user confirmation -> policy validation -> commit -> audit
+ChangeSet -> preview -> server-captured confirmation -> policy validation -> commit -> audit
 ```
 
 The model must never directly mutate operational state. Runtime correctness must live in structured code: Zod schemas, policy checks, ChangeSet services, typed tools, and eval scorers.
+Payment follow-ups are ChangeSet operations. Kitchen export deltas are internal post-commit side effects, not model-facing operations.
 
 ## Implementation Rules
 
@@ -53,9 +54,10 @@ The model must never directly mutate operational state. Runtime correctness must
 
 ## Current Status
 
-Wave 0 is in progress:
+Wave 0 is complete and Wave 1 has started:
 
 - `MVP-001` is complete.
-- `MVP-002` establishes these conventions.
+- `MVP-002` is complete.
+- `MVP-101` is complete.
 
-Next implementation work should start with the Wave 1 domain spine: schemas, deterministic seed scenarios, resettable mock DB, and audit log foundation.
+Next implementation work should continue the Wave 1 domain spine: deterministic seed scenarios, resettable mock DB, and audit log foundation.

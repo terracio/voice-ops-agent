@@ -1,23 +1,26 @@
 # MealPlan VoiceOps Implementation Plan
 
-Status: draft for first demo milestone  
+Status: draft for first demo milestone, checkpointed for handoff
 Source docs: `SPEC.md`, `TASKS.md`, `AGENTS.md`  
 Last updated: 2026-05-11
 
 ## 1. Objective
 
-Build the first demoable version of MealPlan VoiceOps: a realtime voice operations agent that can safely handle the primary meal-plan scenario end to end while proving, through tests and evals, that operational writes are gated by typed tools, policy checks, ChangeSet previews, explicit confirmation, commit-time validation, and audit logs.
+Build the first demoable version of MealPlan VoiceOps: a realtime voice operations agent that can safely handle the primary meal-plan scenario end to end. The first proof is the operational backend, scripted runner, and eval harness; the product demo then adds realtime voice as a thin adapter over the same backend.
 
 The first milestone is not a production system. It is a production-shaped vertical slice with enough real architecture that a reviewer can inspect the safety boundary and run repeatable evidence locally.
 
-## 2. Demo Milestone Outcome
+## 2. Demo Checkpoints
 
-By the end of this milestone:
+The milestone is split into checkpoints so voice integration cannot block evidence that the safety architecture works.
 
-- `pnpm dev` starts a browser demo.
+Checkpoint A: core operations proof
+
+- Waves 0 through 5 complete.
+- `pnpm dev` starts a browser debug console for the core workflow.
 - `pnpm test` passes policy, ChangeSet, tool, DB, date resolver, and scorer tests.
-- `pnpm eval` runs 20 replay cases and reports hard policy violations, final state correctness, required and forbidden tool usage, confirmation boundaries, and audit completeness.
-- The Maya demo scenario works in text mode and voice mode:
+- `pnpm eval` defaults to scripted mode, runs 20 replay cases without OpenAI credentials, and reports hard policy violations, final state correctness, required and forbidden tool usage, confirmation boundaries, and audit completeness.
+- The Maya scenario works through the scripted/debug path:
   - identify customer,
   - read current plan,
   - resolve "next week" into exact dates,
@@ -25,10 +28,21 @@ By the end of this milestone:
   - preview Monday pause and spice update,
   - read failed payment status,
   - preview payment follow-up task creation without marking payment paid,
-  - require explicit confirmation before commit,
-  - create payment follow-up after confirmed commit,
-  - create kitchen delta only after commit,
-  - write audit events for reads, preview, confirmation, commit, and side effects.
+  - require server-captured explicit confirmation before commit,
+  - create payment follow-up as a committed ChangeSet operation,
+  - create kitchen delta internally only after commit,
+  - write audit events for reads, preview, confirmation capture, commit, and side effects.
+
+Checkpoint B: realtime voice proof
+
+- Wave 6 complete.
+- Realtime voice uses the same server-side tool executor, policy layer, ChangeSet service, mock DB, and audit log as Checkpoint A.
+- Browser receives only ephemeral realtime credentials and transcript/timeline payloads.
+- The Maya scenario works by voice with preview and explicit confirmation before commit.
+
+Checkpoint C: portfolio proof
+
+- Wave 7 complete.
 - README and docs explain the architecture, guardrails, evals, run commands, demo script, and limitations.
 
 ## 3. Architecture Position
@@ -46,12 +60,12 @@ Domain schemas
   -> ChangeSet service
   -> typed tools
   -> provider-neutral tool registry
-  -> deterministic text runner and evals
-  -> browser text demo
+  -> deterministic scripted runner and evals
+  -> browser debug console
   -> realtime voice adapter
 ```
 
-The voice layer must be thin. It should not contain domain rules, write logic, policy decisions, or its own tool definitions. Realtime voice, text mode, and eval mode should all call the same tool registry and policy-backed services.
+The voice layer must be thin. It should not contain domain rules, write logic, policy decisions, or its own tool definitions. Realtime voice, scripted/debug mode, model-backed eval mode, and eval replay mode should all call the same server-side tool executor and policy-backed services.
 
 ## 4. Central Safety Invariant
 
@@ -65,17 +79,40 @@ Operational write:
   -> ChangeSet stored with expected_state_version
   -> policy validation
   -> preview with before/after delta
-  -> explicit user confirmation object
+  -> server-created confirmation_id from an explicit user turn
   -> commit-time policy validation
   -> state_version check
   -> commit
-  -> post-commit side effects
+  -> internal post-commit side effects
   -> audit log
 ```
 
 Anything that bypasses this flow is a bug, even if the user-facing answer sounds correct.
 
-## 5. First Demo Scope
+Two derived rules matter for implementation:
+
+- All operational writes go through ChangeSets. Payment follow-up task creation is a ChangeSet operation.
+- Kitchen export deltas are internal side effects derived after commit. They are not model-facing tools or model-facing ChangeSet operations.
+
+The model cannot manufacture a confirmation object. It may request commit with a `confirmation_id`, but the server must create that confirmation record only after a preview and only from the actual next user turn for the same run, customer, and ChangeSet.
+
+## 5. Policy ID Baseline
+
+Policy results must use stable IDs so tests, audit logs, and eval reports are inspectable:
+
+- `P001_IDENTITY_UNCERTAIN`
+- `P002_AMBIGUOUS_DATE`
+- `P003_MISSING_PREVIEW`
+- `P004_MISSING_CONFIRMATION`
+- `P005_STALE_STATE_VERSION`
+- `P006_EXPIRED_CHANGESET`
+- `P007_ALLERGY_MUTATION_FORBIDDEN`
+- `P008_MEDICAL_RISK_ESCALATION_REQUIRED`
+- `P009_PAYMENT_SETTLEMENT_FORBIDDEN`
+- `P010_KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN`
+- `P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA`
+
+## 6. First Demo Scope
 
 In scope:
 
@@ -85,9 +122,10 @@ In scope:
 - A small policy engine with explicit hard policy IDs.
 - ChangeSet preview and commit lifecycle.
 - Typed tool registry independent of model provider.
-- Deterministic text runner for evals.
-- 20 eval cases, starting with mock scripted runs.
-- Minimal browser UI for demo and debugging.
+- Deterministic scripted runner for evals.
+- `scripted`, `model`, and future `voice` eval modes, with `scripted` as the no-credentials default.
+- 20 eval cases, starting with scripted runs.
+- Minimal browser debug console for the core workflow.
 - Realtime voice adapter using server-side API credentials and browser-side ephemeral credentials.
 - Documentation and demo script.
 
@@ -98,44 +136,49 @@ Out of scope:
 - Complex dashboards.
 - A generic agent framework before the first real vertical path works.
 
-## 6. Target Runtime Shape
+## 7. Target Runtime Shape
 
 ```mermaid
 flowchart TD
   User["Customer"]
   UI["Browser UI"]
-  Text["Text Runner"]
+  Scripted["Scripted Runner / Debug Console"]
   Voice["Realtime Voice Adapter"]
-  Registry["Tool Registry"]
-  Schemas["Zod Input/Output Schemas"]
+  API["Server API / Tool Executor"]
+  Registry["Provider-Neutral Tool Registry"]
+  Schemas["Zod Validation"]
+  Services["Domain Services"]
   Policy["Policy Engine"]
-  ChangeSet["ChangeSet Service"]
   Dates["Date Resolver"]
+  ChangeSet["ChangeSet Service"]
   DB["Mock Operational DB"]
-  SideFx["Side-Effect Services"]
+  SideFx["Internal Side-Effect Services"]
   Audit["Audit Log and Tool Trace"]
   Evals["Replay Eval Runner"]
 
   User --> UI
-  UI --> Text
+  UI --> Scripted
   UI --> Voice
-  Text --> Registry
-  Voice --> Registry
+  Scripted --> API
+  Voice --> API
+  API --> Registry
   Registry --> Schemas
-  Schemas --> Policy
-  Policy --> Dates
-  Policy --> ChangeSet
+  Registry --> Services
+  Services --> Policy
+  Services --> Dates
+  Services --> ChangeSet
   ChangeSet --> DB
   ChangeSet --> SideFx
   Registry --> Audit
-  ChangeSet --> Audit
+  Services --> Audit
   SideFx --> Audit
-  Evals --> Text
+  Evals --> Scripted
+  Evals --> API
   Evals --> DB
   Evals --> Audit
 ```
 
-## 7. Implementation Waves
+## 8. Implementation Waves
 
 ### Wave 0: Repository Foundation
 
@@ -286,7 +329,7 @@ Tickets:
 
 Scope:
 
-- Implement `mealplan.policy.ts` with P001 through P010.
+- Implement `mealplan.policy.ts` with `P001_IDENTITY_UNCERTAIN` through `P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA`.
 - Return structured `PolicyResult` values with stable policy IDs.
 
 Acceptance:
@@ -294,7 +337,7 @@ Acceptance:
 - Tests cover every hard policy in allowed and blocked cases.
 - Allergy mutation blocks and escalates.
 - Payment settlement actions are impossible to express or blocked if attempted.
-- Kitchen delta before commit is blocked.
+- Kitchen delta before commit is blocked internally and is not exposed as a model-facing operation.
 
 Review focus:
 
@@ -322,13 +365,15 @@ Review focus:
 
 Scope:
 
-- Implement create, validate, preview, confirm, commit, expire, and idempotent committed read behavior.
+- Implement create, validate, preview, server confirmation capture, commit, expire, and idempotent committed read behavior.
 - Store expected state version and expiry.
 
 Acceptance:
 
 - Preview does not mutate operational state.
-- Commit requires explicit Confirmation object.
+- Commit accepts `confirmation_id`, not raw confirmation text or a model-created confirmation object.
+- Confirmation records are server-created for the same run, customer, and ChangeSet after preview.
+- A model cannot commit by inventing a confirmation object.
 - Commit checks current state version against expected state version.
 - Expired ChangeSet cannot commit.
 - Customization overwrite preview includes before and after values.
@@ -343,14 +388,16 @@ Review focus:
 
 Scope:
 
-- Implement payment follow-up and kitchen export delta services.
-- Enforce side-effect eligibility in code, not UI.
+- Implement internal kitchen export delta creation and idempotent materialization for payment follow-up operations.
+- Enforce side-effect eligibility in code, not UI or model instructions.
 
 Acceptance:
 
-- Agent-initiated payment follow-up can be created for failed, past_due, or unknown status after the related ChangeSet is committed.
+- Payment follow-up can only be created by a committed `create_payment_followup` ChangeSet operation for failed, past_due, or unknown status.
 - Payment status is never changed to paid.
-- Kitchen delta can only be created after committed ChangeSet.
+- Kitchen delta can only be created internally after a committed ChangeSet affects meal operations.
+- Repeated commit does not create duplicate payment follow-ups or kitchen deltas.
+- Side effects use idempotency keys derived from `change_set_id` plus operation identity.
 - Side effects append audit events.
 
 Review focus:
@@ -375,11 +422,13 @@ Scope:
 
 - Define common tool type, risk levels, `ToolResult`, and registry metadata.
 - Add a registry export that is independent of OpenAI-specific formats.
+- Define hidden run context for tool execution: `run_id`, `session_id`, actor, current user turn ID, last user message, and identity status.
 
 Acceptance:
 
 - Tools can be executed directly by tests and eval runner.
 - Provider adapter can map registry tools later without changing domain tools.
+- The model supplies business arguments only; server context is injected by the tool executor.
 
 Review focus:
 
@@ -406,12 +455,13 @@ Review focus:
 
 Scope:
 
-- Implement `create_change_set`, `validate_change_set`, `preview_change_set`, and `commit_change_set`.
+- Implement `create_change_set`, `validate_change_set`, `preview_change_set`, `capture_confirmation`, and `commit_change_set`.
 
 Acceptance:
 
 - Tools call ChangeSet and policy services.
 - No write occurs before explicit confirmation.
+- `commit_change_set` accepts `change_set_id` and `confirmation_id`, not raw confirmation text.
 - Blocked changes return policy IDs.
 - Preview includes non-actionable requested items.
 
@@ -419,16 +469,19 @@ Review focus:
 
 - Tool implementations should be thin adapters over domain services.
 
-#### MVP-304: Side Effect and Escalation Tools
+#### MVP-304: Escalation Tool and Internal Side-Effect Contract
 
 Scope:
 
-- Implement `create_kitchen_export_delta`, `create_payment_followup`, and `escalate_to_human`.
+- Implement `escalate_to_human`.
+- Ensure payment follow-up is expressible only as a ChangeSet operation, not a standalone write tool.
+- Ensure kitchen export delta creation is internal-only after commit and absent from the model-facing registry.
 
 Acceptance:
 
-- Kitchen delta before commit is blocked.
-- Payment follow-up before confirmed commit is blocked unless it is part of an explicit escalation path.
+- Model-facing tools do not include `create_kitchen_export_delta`.
+- Model-facing tools do not include standalone `create_payment_followup`.
+- Kitchen delta before commit is blocked by policy and service checks.
 - Payment follow-up does not change payment status.
 - Allergy and medical risk escalations are audit logged.
 
@@ -452,15 +505,17 @@ Review focus:
 
 - Instructions support safety, but correctness must still live in code.
 
-### Wave 4: Replay Evals and Text Runner
+### Wave 4: Replay Evals and Scripted Runner
 
-Goal: prove the agent workflow before adding voice.
+Goal: prove the operational workflow before adding voice. The scripted runner is an engineering harness and debug surface, not the product experience.
 
 Gate to exit:
 
 - `pnpm eval` runs 20 cases.
 - Report includes state, tools, policy, confirmation, audit, and conversation checks.
 - Hard policy violations are zero for the deterministic runner.
+- `pnpm eval -- --mode scripted` is the default and requires no OpenAI key.
+- `pnpm eval -- --mode model` is planned as a model-backed extension and must require a server-side OpenAI key.
 
 Tickets:
 
@@ -480,16 +535,16 @@ Review focus:
 
 - Eval failures should be actionable, not just pass/fail.
 
-#### MVP-402: Deterministic Text Runner
+#### MVP-402: Deterministic Scripted Runner
 
 Scope:
 
-- Implement a mock text runner that follows case scripts and calls the real tools.
+- Implement a scripted runner that follows case scripts and calls the real tools.
 - Capture transcript, tool calls, audit events, and final state.
 
 Acceptance:
 
-- Runner does not require OpenAI credentials.
+- Scripted mode does not require OpenAI credentials.
 - Runner exercises the actual registry and policies.
 - Transcript supports confirmation and correction turns.
 
@@ -518,12 +573,14 @@ Scope:
 
 - Implement cases 11 through 20.
 - Add `pnpm eval -- --pass-k 3`.
+- Add `--mode scripted` explicitly and leave `--mode model` as a clear extension point.
 
 Acceptance:
 
 - All 20 cases run.
 - Repeated runs aggregate metrics.
 - Mock mode can be deterministic but leaves a clear model-backed extension point.
+- README and eval output state that scripted evals verify the operational safety boundary, while model evals verify agent/tool-calling behavior.
 
 Review focus:
 
@@ -544,15 +601,15 @@ Review focus:
 
 - The eval suite should fail if a write is correct but audit is missing.
 
-### Wave 5: Text-First Browser Demo
+### Wave 5: Core Workflow Debug Console
 
-Goal: make the system demoable without voice and expose operational evidence in the UI.
+Goal: make the core workflow inspectable before voice and expose operational evidence in the UI. This is a debug console for the backend, not the final product demo.
 
 Gate to exit:
 
-- Main demo request works through text input.
+- Main demo request works through the scripted/debug path.
 - UI shows transcript, tool calls, preview/state diff, audit events, and reset controls.
-- Confirmation flow works through text.
+- Confirmation flow captures a server-created confirmation record from the next user turn.
 
 Tickets:
 
@@ -560,7 +617,7 @@ Tickets:
 
 Scope:
 
-- Add API/server actions or local route handlers for resetting demo state and sending text messages through the text runner/session.
+- Add API/server actions or local route handlers for resetting demo state and sending scripted/debug messages through the server-side session.
 - Keep server-side operational state out of browser-only code.
 
 Acceptance:
@@ -568,6 +625,7 @@ Acceptance:
 - Browser can load Maya scenario.
 - Browser can reset state.
 - Browser can submit a user message and receive transcript/tool/audit/diff payloads.
+- Browser code never mutates the mock DB directly.
 
 Review focus:
 
@@ -577,14 +635,14 @@ Review focus:
 
 Scope:
 
-- Build minimal transcript and text input flow.
-- Support explicit confirmation messages.
+- Build minimal transcript and debug input flow.
+- Support explicit confirmation turns that the server converts into confirmation records.
 
 Acceptance:
 
 - User can type the main demo request.
 - Assistant previews changes and asks for confirmation.
-- User can confirm and commit.
+- User can confirm; server captures confirmation and commit uses `confirmation_id`.
 
 Review focus:
 
@@ -630,6 +688,7 @@ Gate to exit:
 - Browser receives only ephemeral realtime credentials.
 - Realtime session uses the same registry and policy-backed tools.
 - Main Maya demo works by voice with preview and explicit confirmation before commit.
+- Realtime tool calls execute through server routes or server-side controls only.
 
 Tickets:
 
@@ -645,6 +704,7 @@ Acceptance:
 
 - Missing API key returns a clear server error.
 - Browser bundle does not include `OPENAI_API_KEY`.
+- Browser receives no domain write capability beyond the realtime session bridge.
 - Route is covered by a focused test where practical.
 
 Review focus:
@@ -671,18 +731,20 @@ Review focus:
 
 Scope:
 
-- Adapt provider-neutral tools into realtime session tool definitions.
+- Adapt provider-neutral tools into realtime session tool definitions through the server-side tool executor.
 - Feed tool call results back into the UI timeline and audit panels.
 
 Acceptance:
 
-- Realtime model can call the same tools as text mode.
+- Realtime model can call the same server-side tools as scripted/debug mode.
 - Tool inputs and outputs validate.
 - Blocked operations return structured tool errors.
+- No mock DB mutation or domain write logic runs in browser code.
 
 Review focus:
 
 - Do not create a second tool registry for voice.
+- Keep Realtime transcript useful for UI/debugging, but do not rely on transcript text for operational correctness.
 
 #### MVP-604: Voice Demo QA
 
@@ -695,7 +757,8 @@ Acceptance:
 
 - Agent previews before commit.
 - Agent commits only after explicit confirmation.
-- Kitchen delta and payment follow-up happen after appropriate gates.
+- Payment follow-up happens through a committed ChangeSet operation.
+- Kitchen delta is created internally only after the committed ChangeSet affects meals.
 - Audit log matches the voice interaction.
 
 Review focus:
@@ -756,13 +819,13 @@ Acceptance:
 - `pnpm eval` passes with zero hard policy violations.
 - Browser code does not expose `OPENAI_API_KEY`.
 - No kitchen delta can be created before commit.
-- No write can commit without explicit confirmation.
+- No write can commit without server-captured explicit confirmation.
 
 Review focus:
 
 - Findings first, fixes minimal and high-confidence.
 
-## 8. Handoff Strategy
+## 9. Handoff Strategy
 
 Use handoffs only after the interface contracts for a wave are clear. Early work should be serialized through the domain spine, then parallelized by disjoint write scope.
 
@@ -781,7 +844,7 @@ Good parallel handoffs after Wave 2:
 Avoid handoffs for:
 
 - The central ChangeSet commit path until the policy model is settled.
-- Realtime voice until text runner and tool registry are stable.
+- Realtime voice until scripted runner and tool registry are stable.
 - Large cross-cutting refactors without a narrow acceptance test.
 
 Each handoff should include:
@@ -793,35 +856,45 @@ Each handoff should include:
 - Safety review focus.
 - Explicit note not to revert unrelated work.
 
-## 9. Recommended Build Order
+## 10. Recommended Build Order
 
 1. Wave 0 establishes commands and project shape.
 2. Wave 1 creates schemas, seeds, DB, and audit.
 3. Wave 2 implements policies, date resolution, ChangeSets, and side effects.
 4. Wave 3 exposes everything through typed tools.
-5. Wave 4 proves behavior through text runner and evals.
-6. Wave 5 makes the text demo usable in browser.
+5. Wave 4 proves behavior through scripted runner and evals.
+6. Wave 5 makes the core workflow inspectable in the browser debug console.
 7. Wave 6 adds realtime voice as an adapter.
 8. Wave 7 hardens and documents.
 
-This order is deliberate: evals and text mode must prove the operational boundary before voice complexity is introduced.
+This order is deliberate: evals and scripted/debug mode must prove the operational boundary before voice complexity is introduced.
 
-## 10. Milestone Definition of Done
+## 11. Milestone Definition of Done
 
-The first demo milestone is done when:
+Checkpoint A is done when:
 
-- Main demo scenario works in text and voice.
 - `pnpm dev`, `pnpm test`, `pnpm eval`, and `pnpm lint` run successfully.
 - All hard policy tests pass.
 - `pnpm eval` runs 20 cases with zero hard policy violations.
-- Write operations require preview and explicit confirmation.
+- Main demo scenario works in scripted/debug mode.
+- Write operations require preview and server-captured explicit confirmation.
 - Stale and expired ChangeSets cannot commit.
 - Allergy and medical-risk requests escalate without mutating allergy state.
 - Payment status is never marked paid and cards are never charged.
-- Kitchen deltas are created only after committed ChangeSets.
+- Payment follow-ups are created only by committed ChangeSet operations.
+- Kitchen deltas are created internally only after committed ChangeSets.
 - Audit logs capture reads, previews, confirmations, commits, blocked writes, escalations, and side effects.
+
+Checkpoint B is done when:
+
+- Main demo scenario works by realtime voice over the same backend.
+- Browser receives only ephemeral realtime credentials.
+- Realtime tools execute server-side and reuse the same registry, policies, ChangeSet service, DB, and audit log.
+
+Checkpoint C is done when:
+
 - README and docs match the implemented behavior.
 
-## 11. Immediate Next Step
+## 12. Immediate Next Step
 
-Start with `MVP-001` and `MVP-002`, then move directly into `MVP-101` through `MVP-104`. Do not start realtime voice or rich UI until the domain, policy, ChangeSet, and eval foundations are working.
+Continue Wave 1 with `MVP-102` and `MVP-104` as parallel handoffs. Start `MVP-103` after `MVP-102` lands, or coordinate it in the same branch if the seed API is already stable. Do not start realtime voice or rich UI until the domain, policy, ChangeSet, and eval foundations are working.

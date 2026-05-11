@@ -9,6 +9,8 @@ import {
   CustomerSchema,
   KitchenExportDeltaSchema,
   PaymentFollowupSchema,
+  PolicyId,
+  PolicyIdSchema,
   PlanSchema,
   ServiceDateSchema,
   ToolErrorSchema
@@ -117,6 +119,20 @@ describe("domain schemas", () => {
         next_value: "volcano"
       })
     ).toThrow();
+
+    expect(() =>
+      ChangeOperationSchema.parse({
+        type: "create_payment_followup",
+        reason: "failed_payment"
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      ChangeOperationSchema.parse({
+        type: "create_kitchen_export_delta",
+        affected_dates: ["2026-05-18"]
+      })
+    ).toThrow();
   });
 
   it("validates ChangeSet, confirmation, side effect, and audit records", () => {
@@ -141,19 +157,59 @@ describe("domain schemas", () => {
     expect(() =>
       ConfirmationSchema.parse({
         confirmation_id: "conf_001",
+        run_id: "run_001",
         customer_id: "cus_001",
         change_set_id: "cs_001",
+        source_user_turn_id: "turn_002",
+        captured_by: "server",
         confirmed_by: "user",
+        previewed_at: "2026-05-11T10:04:00Z",
         confirmed_at: "2026-05-11T10:05:00Z",
         transcript_excerpt: "Yes, confirm.",
+        confirmation_source: "debug_user_turn",
         confirmation_type: "explicit_yes"
       })
     ).not.toThrow();
 
     expect(() =>
+      ConfirmationSchema.parse({
+        confirmation_id: "conf_002",
+        run_id: "run_001",
+        customer_id: "cus_001",
+        change_set_id: "cs_001",
+        source_user_turn_id: "turn_002",
+        captured_by: "agent",
+        confirmed_by: "user",
+        previewed_at: "2026-05-11T10:04:00Z",
+        confirmed_at: "2026-05-11T10:05:00Z",
+        transcript_excerpt: "Yes, confirm.",
+        confirmation_source: "debug_user_turn",
+        confirmation_type: "explicit_yes"
+      })
+    ).toThrow();
+
+    expect(() =>
+      ConfirmationSchema.parse({
+        confirmation_id: "conf_003",
+        run_id: "run_001",
+        customer_id: "cus_001",
+        change_set_id: "cs_001",
+        source_user_turn_id: "turn_002",
+        captured_by: "server",
+        confirmed_by: "user",
+        previewed_at: "2026-05-11T10:05:00Z",
+        confirmed_at: "2026-05-11T10:04:00Z",
+        transcript_excerpt: "Yes, confirm.",
+        confirmation_source: "debug_user_turn",
+        confirmation_type: "explicit_yes"
+      })
+    ).toThrow();
+
+    expect(() =>
       PaymentFollowupSchema.parse({
         followup_id: "pf_001",
         customer_id: "cus_001",
+        idempotency_key: "cs_001:create_payment_followup:0",
         reason: "failed_payment",
         status: "open",
         created_at: "2026-05-11T10:06:00Z",
@@ -166,6 +222,7 @@ describe("domain schemas", () => {
         delta_id: "kd_001",
         customer_id: "cus_001",
         change_set_id: "cs_001",
+        idempotency_key: "cs_001:kitchen_delta",
         affected_dates: ["2026-05-18"],
         summary: "Pause Monday May 18.",
         created_at: "2026-05-11T10:07:00Z"
@@ -182,9 +239,16 @@ describe("domain schemas", () => {
         customer_id: "cus_001",
         tool_name: "commit_change_set",
         change_set_id: "cs_001",
-        details: { policy_id: "P005" }
+        details: { policy_id: PolicyId.STALE_STATE_VERSION }
       })
     ).not.toThrow();
+  });
+
+  it("uses stable policy IDs for policy results and tool errors", () => {
+    expect(PolicyIdSchema.parse(PolicyId.MISSING_CONFIRMATION)).toBe(
+      "P004_MISSING_CONFIRMATION"
+    );
+    expect(() => PolicyIdSchema.parse("P004")).toThrow();
   });
 
   it("builds typed tool result schemas", () => {
@@ -208,7 +272,7 @@ describe("domain schemas", () => {
         error: ToolErrorSchema.parse({
           code: "POLICY_BLOCKED",
           message: "Write requires confirmation.",
-          policy_id: "P005"
+          policy_id: PolicyId.MISSING_CONFIRMATION
         }),
         audit_event_ids: ["audit_002"]
       })

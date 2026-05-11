@@ -30,6 +30,36 @@ export const PaymentStatusSchema = z.enum([
   "unknown"
 ]);
 
+export const POLICY_IDS = [
+  "P001_IDENTITY_UNCERTAIN",
+  "P002_AMBIGUOUS_DATE",
+  "P003_MISSING_PREVIEW",
+  "P004_MISSING_CONFIRMATION",
+  "P005_STALE_STATE_VERSION",
+  "P006_EXPIRED_CHANGESET",
+  "P007_ALLERGY_MUTATION_FORBIDDEN",
+  "P008_MEDICAL_RISK_ESCALATION_REQUIRED",
+  "P009_PAYMENT_SETTLEMENT_FORBIDDEN",
+  "P010_KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN",
+  "P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA"
+] as const;
+
+export const PolicyId = {
+  IDENTITY_UNCERTAIN: POLICY_IDS[0],
+  AMBIGUOUS_DATE: POLICY_IDS[1],
+  MISSING_PREVIEW: POLICY_IDS[2],
+  MISSING_CONFIRMATION: POLICY_IDS[3],
+  STALE_STATE_VERSION: POLICY_IDS[4],
+  EXPIRED_CHANGESET: POLICY_IDS[5],
+  ALLERGY_MUTATION_FORBIDDEN: POLICY_IDS[6],
+  MEDICAL_RISK_ESCALATION_REQUIRED: POLICY_IDS[7],
+  PAYMENT_SETTLEMENT_FORBIDDEN: POLICY_IDS[8],
+  KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN: POLICY_IDS[9],
+  CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA: POLICY_IDS[10]
+} as const;
+
+export const PolicyIdSchema = z.enum(POLICY_IDS);
+
 export const CustomerSchema = z.object({
   customer_id: z.string().min(1),
   name: z.string().min(1),
@@ -68,6 +98,7 @@ export const ServiceDateSchema = z.object({
 export const PaymentFollowupSchema = z.object({
   followup_id: z.string().min(1),
   customer_id: z.string().min(1),
+  idempotency_key: z.string().min(1),
   reason: z.enum(["failed_payment", "past_due", "unknown_status"]),
   status: z.enum(["open", "closed"]),
   created_at: DateTimeStringSchema,
@@ -78,6 +109,7 @@ export const KitchenExportDeltaSchema = z.object({
   delta_id: z.string().min(1),
   customer_id: z.string().min(1),
   change_set_id: z.string().min(1),
+  idempotency_key: z.string().min(1),
   affected_dates: z.array(DateStringSchema),
   summary: z.string().min(1),
   created_at: DateTimeStringSchema
@@ -120,23 +152,17 @@ export const CreatePaymentFollowupOperationSchema = z.object({
   reason: z.enum(["failed_payment", "past_due", "unknown_status"])
 });
 
-export const CreateKitchenExportDeltaOperationSchema = z.object({
-  type: z.literal("create_kitchen_export_delta"),
-  affected_dates: z.array(DateStringSchema).min(1)
-});
-
 export const ChangeOperationSchema = z.union([
   PauseDatesOperationSchema,
   ResumeDatesOperationSchema,
   UpdateSpiceLevelOperationSchema,
   UpdateDislikesOperationSchema,
   UpdateProteinPreferencesOperationSchema,
-  CreatePaymentFollowupOperationSchema,
-  CreateKitchenExportDeltaOperationSchema
+  CreatePaymentFollowupOperationSchema
 ]);
 
 export const PolicyResultSchema = z.object({
-  policy_id: z.string().min(1),
+  policy_id: PolicyIdSchema,
   severity: z.enum(["info", "warning", "block", "escalate"]),
   passed: z.boolean(),
   message: z.string().min(1)
@@ -166,15 +192,36 @@ export const ChangeSetSchema = z.object({
 
 export const ConfirmationSchema = z.object({
   confirmation_id: z.string().min(1),
+  run_id: z.string().min(1),
   customer_id: z.string().min(1),
   change_set_id: z.string().min(1),
+  source_user_turn_id: z.string().min(1),
+  captured_by: z.literal("server"),
   confirmed_by: z.literal("user"),
+  previewed_at: DateTimeStringSchema,
   confirmed_at: DateTimeStringSchema,
   transcript_excerpt: z.string().min(1),
+  confirmation_source: z.enum([
+    "scripted_user_turn",
+    "debug_user_turn",
+    "realtime_user_turn",
+    "model_eval_user_turn"
+  ]),
   confirmation_type: z.enum([
     "explicit_yes",
     "explicit_correction_then_yes"
   ])
+}).superRefine((confirmation, ctx) => {
+  if (
+    Date.parse(confirmation.confirmed_at) <=
+    Date.parse(confirmation.previewed_at)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Confirmation must be captured after preview.",
+      path: ["confirmed_at"]
+    });
+  }
 });
 
 export const AuditEventSchema = z.object({
@@ -211,7 +258,7 @@ export const ToolRiskSchema = z.enum([
 export const ToolErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
-  policy_id: z.string().min(1).optional()
+  policy_id: PolicyIdSchema.optional()
 });
 
 export function createToolResultSchema<TData extends z.ZodType>(
@@ -243,6 +290,7 @@ export type DateTimeString = z.infer<typeof DateTimeStringSchema>;
 export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
 export type SpiceLevel = z.infer<typeof SpiceLevelSchema>;
 export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;
+export type PolicyIdValue = z.infer<typeof PolicyIdSchema>;
 export type Customer = z.infer<typeof CustomerSchema>;
 export type Plan = z.infer<typeof PlanSchema>;
 export type ServiceDate = z.infer<typeof ServiceDateSchema>;
