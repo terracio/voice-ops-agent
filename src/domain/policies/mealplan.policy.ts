@@ -240,11 +240,15 @@ function kitchenDeltaPolicy(input: MealPlanPolicyInput) {
 }
 
 function customizationDeltaPolicy(input: MealPlanPolicyInput) {
-  const customizationOps = operations(input)
-    .map((operation, index) => ({ operation, index }))
-    .filter(
-      ({ operation }) => isCustomizationUpdate(operation) && operation.field !== "allergies"
-    );
+  const customizationOps: {
+    operation: PolicyOperation & { field: string };
+    index: number;
+  }[] = [];
+  operations(input).forEach((operation, index) => {
+    if (isCustomizationUpdate(operation) && operation.field !== "allergies") {
+      customizationOps.push({ operation, index });
+    }
+  });
 
   const missingDelta = customizationOps.some(({ operation, index }) => {
     if (!hasKey(operation, "previous_value") || input.preview?.shown !== true) {
@@ -339,5 +343,5 @@ function hasKey(value: object, key: string): boolean {
 }
 
 function fieldValue(operation: PolicyOperation): unknown {
-  return hasKey(operation, "field") ? operation.field : undefined;
+  return hasKey(operation, "field") ? (operation as { field: unknown }).field : undefined;
 }
