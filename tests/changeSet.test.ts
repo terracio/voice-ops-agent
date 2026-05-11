@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  captureServerConfirmation,
-  commitChangeSet,
-  createChangeSet,
-  previewChangeSet
-} from "../src/domain/changeSet";
+import { captureServerConfirmation, commitChangeSet, createChangeSet, previewChangeSet } from "../src/domain/changeSet";
 import * as db from "../src/domain/db";
 import { resolveServiceDates } from "../src/domain/dateResolver";
 import {
@@ -23,9 +18,7 @@ const COMMITTED_AT = "2026-05-11T10:03:00Z";
 const RUN_ID = "run_change_set";
 const CUSTOMER_ID = "cus_001";
 
-beforeEach(() => {
-  db.resetDb();
-});
+beforeEach(() => db.resetDb());
 
 function expectData<T>(result: ToolResult<T>): T {
   if (!result.ok) {
@@ -247,6 +240,76 @@ describe("ChangeSet lifecycle", () => {
     ]);
     expect(policyPassed(previewed, PolicyId.CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA))
       .toBe(true);
+  });
+
+  it("derives customization before-values from state despite caller previous_value", () => {
+    const created = expectData(
+      createChangeSet({
+        run_id: RUN_ID,
+        customer_id: CUSTOMER_ID,
+        change_set_id: "cs_bad_previous",
+        operations: [
+          {
+            type: "update_customization",
+            field: "spice_level",
+            previous_value: "mild",
+            next_value: "spicy"
+          }
+        ],
+        now: CREATED_AT
+      })
+    );
+    const preview = expectData(
+      previewChangeSet({ change_set_id: "cs_bad_previous", now: PREVIEWED_AT })
+    );
+    const previewed = db.getChangeSet("cs_bad_previous") as ChangeSet;
+
+    expect(created.operations[0]).toMatchObject({ previous_value: "normal" });
+    expect(preview.customization_deltas[0]).toMatchObject({
+      before: "normal",
+      after: "spicy"
+    });
+    expect(policyPassed(previewed, PolicyId.CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA))
+      .toBe(true);
+  });
+
+  it("rejects duplicate ChangeSet IDs without mutating existing records", () => {
+    const draft = expectData(
+      createChangeSet({
+        run_id: RUN_ID,
+        customer_id: CUSTOMER_ID,
+        change_set_id: "cs_duplicate_draft",
+        operations: [pauseMonday()],
+        now: CREATED_AT
+      })
+    );
+
+    expect(createChangeSet({
+      run_id: RUN_ID,
+      customer_id: CUSTOMER_ID,
+      change_set_id: "cs_duplicate_draft",
+      operations: [{ type: "resume_dates", dates: ["2026-05-18"] }],
+      now: CREATED_AT
+    })).toMatchObject({ ok: false, error: { code: "CHANGE_SET_ALREADY_EXISTS" } });
+    expect(db.getChangeSet("cs_duplicate_draft")).toEqual(draft);
+
+    createPreviewed("cs_duplicate_committed", [pauseMonday()]);
+    capture("cs_duplicate_committed");
+    expectData(commitChangeSet({
+      change_set_id: "cs_duplicate_committed",
+      confirmation_id: "conf_cs_duplicate_committed",
+      now: COMMITTED_AT
+    }));
+    const committed = db.getChangeSet("cs_duplicate_committed");
+
+    expect(createChangeSet({
+      run_id: RUN_ID,
+      customer_id: CUSTOMER_ID,
+      change_set_id: "cs_duplicate_committed",
+      operations: [{ type: "create_payment_followup", reason: "failed_payment" }],
+      now: "2026-05-11T10:04:00Z"
+    })).toMatchObject({ ok: false, error: { code: "CHANGE_SET_ALREADY_EXISTS" } });
+    expect(db.getChangeSet("cs_duplicate_committed")).toEqual(committed);
   });
 
   it("commits payment follow-up once and keeps repeated commits idempotent", () => {

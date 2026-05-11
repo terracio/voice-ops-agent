@@ -135,10 +135,7 @@ function customizationDelta(
   return CustomizationPreviewDeltaSchema.parse({
     operation_index,
     field: operation.field,
-    before:
-      "previous_value" in operation
-        ? operation.previous_value
-        : state.customer.customizations[operation.field],
+    before: state.customer.customizations[operation.field],
     after: operation.next_value
   });
 }
@@ -288,7 +285,7 @@ export function withCustomizationPreviousValues(
   customer: Customer
 ): ChangeOperation[] {
   return operations.map((operation) => {
-    if (operation.type !== "update_customization" || "previous_value" in operation) {
+    if (operation.type !== "update_customization") {
       return operation;
     }
 

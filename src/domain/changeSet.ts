@@ -80,9 +80,14 @@ export function createChangeSet(input: CreateChangeSetInput): ToolResult<ChangeS
     return err("CUSTOMER_NOT_FOUND", `Unknown customer: ${parsed.customer_id}`);
   }
 
+  const changeSetId = parsed.change_set_id ?? nextId("cs");
+  if (db.getChangeSet(changeSetId)) {
+    return err("CHANGE_SET_ALREADY_EXISTS", `ChangeSet already exists: ${changeSetId}`);
+  }
+
   const operations = withCustomizationPreviousValues(parsed.operations, state.customer);
   const draft = ChangeSetSchema.parse({
-    change_set_id: parsed.change_set_id ?? nextId("cs"),
+    change_set_id: changeSetId,
     customer_id: parsed.customer_id,
     status: "draft",
     operations,
