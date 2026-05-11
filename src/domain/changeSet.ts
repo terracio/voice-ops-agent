@@ -21,7 +21,6 @@ import {
 import { ChangeSetPreviewSchema, addMinutes, applyChangeOperations, buildChangeSetPreview, blockedChangeSet, confirmationIssue, evaluateChangeSetPolicies, materializePaymentFollowups, metadataFor, rememberChangeSetMetadata, uniquePolicyIds, withCustomizationPreviousValues, type ChangeSetPreview } from "./changeSetPreview";
 
 const DEFAULT_TTL_MINUTES = 15;
-
 const MedicalRiskSignalSchema = z.object({
   kind: z.enum(["allergy", "medical"]),
   source: z.string().min(1)
@@ -132,6 +131,7 @@ export function previewChangeSet(input: PreviewChangeSetInput): ToolResult<Chang
   if (!changeSet) {
     return err("CHANGE_SET_NOT_FOUND", `Unknown ChangeSet: ${parsed.change_set_id}`);
   }
+  if (changeSet.status === "committed") return err("CHANGE_SET_ALREADY_COMMITTED", `Committed ChangeSet cannot be previewed: ${changeSet.change_set_id}`);
 
   const state = db.getCustomerState(changeSet.customer_id);
   if (!state) {

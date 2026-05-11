@@ -326,6 +326,10 @@ describe("ChangeSet lifecycle", () => {
         now: COMMITTED_AT
       })
     );
+    expect(previewChangeSet({ change_set_id: "cs_payment", now: "2026-05-11T10:03:30Z" }))
+      .toMatchObject({ ok: false, error: { code: "CHANGE_SET_ALREADY_COMMITTED" } });
+    expect(db.getChangeSet("cs_payment")).toEqual(committed);
+    expect(captureServerConfirmation({ run_id: RUN_ID, customer_id: CUSTOMER_ID, change_set_id: "cs_payment", confirmation_id: "conf_second", source_user_turn_id: "turn_second", transcript_excerpt: "Yes again.", confirmation_source: "debug_user_turn", confirmation_type: "explicit_yes", now: "2026-05-11T10:03:45Z" }).ok).toBe(false);
     const repeated = expectData(
       commitChangeSet({
         change_set_id: "cs_payment",
