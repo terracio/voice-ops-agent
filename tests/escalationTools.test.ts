@@ -135,4 +135,20 @@ describe("escalation tools", () => {
       error: { code: "TOOL_INVALID_ARGS" }
     });
   });
+
+  it("does not allow the model to provide audit provenance", async () => {
+    await expect(
+      registry().execute("escalate_to_human", {
+        modelArgs: {
+          reason: "operations_risk",
+          summary: "Customer needs manual review.",
+          source_tool_name: "commit_change_set"
+        },
+        context
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "TOOL_INVALID_ARGS" }
+    });
+  });
 });

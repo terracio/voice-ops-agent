@@ -25,8 +25,7 @@ export const EscalationUrgencySchema = z.enum(["routine", "urgent"]);
 export const EscalateToHumanInputSchema = z.object({
   reason: EscalationReasonSchema,
   summary: z.string().min(1),
-  urgency: EscalationUrgencySchema.optional(),
-  source_tool_name: z.string().min(1).optional()
+  urgency: EscalationUrgencySchema.optional()
 }).strict();
 
 export const EscalateToHumanOutputSchema = z.object({
@@ -101,8 +100,7 @@ export const escalateToHumanTool = defineTool({
           urgency,
           session_id: context.session_id,
           source_user_turn_id: context.current_user_turn_id,
-          identity_status: context.identity_status,
-          source_tool_name: args.source_tool_name
+          identity_status: context.identity_status
         }
       })
     );
