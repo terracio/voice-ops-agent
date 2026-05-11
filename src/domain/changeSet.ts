@@ -6,6 +6,7 @@ import {
   createWriteCommittedAuditEvent
 } from "../audit";
 import * as db from "./db";
+import { materializeCommittedSideEffects } from "./sideEffects";
 import { ResolveServiceDatesOutputSchema } from "./dateResolver";
 import {
   ChangeOperationSchema,
@@ -18,7 +19,7 @@ import {
   type Confirmation,
   type ToolResult
 } from "./schema";
-import { ChangeSetPreviewSchema, addMinutes, applyChangeOperations, buildChangeSetPreview, blockedChangeSet, confirmationIssue, evaluateChangeSetPolicies, materializePaymentFollowups, metadataFor, rememberChangeSetMetadata, uniquePolicyIds, withCustomizationPreviousValues, type ChangeSetPreview } from "./changeSetPreview";
+import { ChangeSetPreviewSchema, addMinutes, applyChangeOperations, buildChangeSetPreview, blockedChangeSet, confirmationIssue, evaluateChangeSetPolicies, metadataFor, rememberChangeSetMetadata, uniquePolicyIds, withCustomizationPreviousValues, type ChangeSetPreview } from "./changeSetPreview";
 
 const DEFAULT_TTL_MINUTES = 15;
 const MedicalRiskSignalSchema = z.object({
@@ -292,7 +293,6 @@ export function commitChangeSet(input: CommitChangeSetInput): ToolResult<ChangeS
 
   proposedState.customer.state_version = state.customer.state_version + 1;
   db.updateCustomerState(changeSet.customer_id, proposedState);
-  const sideEffectIds = materializePaymentFollowups(changeSet, metadata.run_id, now);
   const committed = db.saveChangeSet({
     ...changeSet,
     status: "committed",
@@ -315,8 +315,9 @@ export function commitChangeSet(input: CommitChangeSetInput): ToolResult<ChangeS
       }
     })
   );
+  const sideEffects = materializeCommittedSideEffects({ changeSet: committed, run_id: metadata.run_id, now });
 
-  return ok(committed, [...sideEffectIds, audit.event_id]);
+  return ok(committed, [audit.event_id, ...sideEffects.audit_event_ids]);
 }
 
 export function expireChangeSet(input: ExpireChangeSetInput): ToolResult<ChangeSet> {
