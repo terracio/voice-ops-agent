@@ -1,0 +1,42 @@
+{
+  "name": "mealplan-voiceops",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "eval": "tsx src/evals/runEval.ts",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.2",
+    "vite": "4.5.14",
+    "vitest": "0.34.6"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/node": "24.10.1",
+      "vite": "4.5.14",
+      "vite-node@0.34.6>@types/node": "24.10.1",
+      "vite-node@0.34.6>vite": "4.5.14",
+      "vitest@0.34.6>@types/node": "24.10.1",
+      "vitest@0.34.6>vite": "4.5.14"
+    }
+  }
+}
