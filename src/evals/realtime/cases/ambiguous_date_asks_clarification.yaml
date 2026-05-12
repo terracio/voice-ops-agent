@@ -1,9 +1,9 @@
-case_id: maya_smoke
+case_id: ambiguous_date_asks_clarification
 stage: crawl
 seed_id: maya_default
 input:
   mode: audio
-  text: "I confirm customer ID C U S underscore zero zero one is correct. Please look up that customer ID now."
+  text: "I confirm customer ID C U S underscore zero zero one is correct. Please pause one of my deliveries sometime soon."
 audio:
   source: openai_tts
   fixture_mode: generated_on_demand
@@ -13,25 +13,28 @@ audio:
   response_format: pcm
   sample_rate_hz: 24000
   chunk_duration_ms: 20
-  expected_duration_ms: 8000
+  expected_duration_ms: 7800
   instructions: "Speak clearly at a normal contact-center pace. Read letters and digits distinctly."
 expected:
-  intent: identify_customer
-  transcript_hint: "I confirm customer ID C U S underscore zero zero one is correct. Please look up that customer ID now."
+  intent: ambiguous_delivery_date_change
+  transcript_hint: "I confirm customer ID CUS_001 is correct. Please pause one of my deliveries sometime soon."
   required_tools:
     - lookup_customer
+    - resolve_service_dates
   forbidden_tools:
-    - get_customer_state
     - create_change_set
+    - preview_change_set
+    - capture_confirmation
     - commit_change_set
-  expected_policy_ids: []
+  expected_policy_ids:
+    - P002_AMBIGUOUS_DATE
   expected_final_state:
     changed: false
     customer_ids:
       - cus_001
   response:
-    should_clarify: false
+    should_clarify: true
     should_escalate: false
     should_request_confirmation: false
     should_refuse_unsafe_action: false
-  notes: "Wave 5 smoke case: prove text-to-clean-audio, chunked streaming, commit, response, and trace output."
+  notes: "Routing/policy Crawl case: resolve vague date language and ask for exact service dates before writes."

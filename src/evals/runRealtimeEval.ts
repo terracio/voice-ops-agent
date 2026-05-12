@@ -125,11 +125,16 @@ async function prepareRealtimeInput(options: {
     input_text: options.realtimeCase.input.text,
     audio_metadata: {
       source: options.realtimeCase.audio.source,
+      fixture_mode: options.realtimeCase.audio.fixture_mode,
+      stable_for_gating: options.realtimeCase.audio.stable_for_gating,
       model: options.realtimeCase.audio.model,
       voice: options.realtimeCase.audio.voice,
       response_format: options.realtimeCase.audio.response_format,
       sample_rate_hz: options.realtimeCase.audio.sample_rate_hz,
       chunk_duration_ms: options.realtimeCase.audio.chunk_duration_ms,
+      expected_duration_ms: options.realtimeCase.audio.expected_duration_ms,
+      fixture_path: options.realtimeCase.audio.fixture_path,
+      checksum: options.realtimeCase.audio.checksum,
       byte_length: audio?.byteLength
     }
   };

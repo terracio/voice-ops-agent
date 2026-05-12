@@ -724,6 +724,7 @@ Scope:
 - Define the realtime eval case contract for Crawl.
 - Add deterministic clean audio fixtures or a repeatable fixture-generation process.
 - Capture fixture metadata such as transcript, speaker, duration, sample rate, and expected intent.
+- Mark generated-on-demand TTS fixtures as non-gating until cached fixture checksums are available.
 
 Acceptance:
 

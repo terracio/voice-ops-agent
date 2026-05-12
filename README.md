@@ -77,11 +77,11 @@ The current runner is a smoke foundation, not the full realtime eval suite yet.
 - `createSdkRealtimeSession`: the only place that instantiates the OpenAI SDK `RealtimeSession`. It is wrapped behind `RealtimeSessionLike` so tests and future fallback transports can use the same runner boundary.
 - `loadOpenAIServerEnv` and `resolveOpenAIRealtimeCredentials`: load local server credentials and skip cleanly when no key is present.
 - `streamPcm16AudioToRealtimeSession`: splits PCM16 input into fixed chunks, commits once at the end, and requests the model response.
-- `src/evals/realtime/cases/maya_smoke.yaml`: defines the first clean-audio Crawl smoke case. The eval command turns this text into PCM with OpenAI TTS, streams it in 20 ms chunks, and writes the trace report.
+- `src/evals/realtime/cases/*.yaml`: define clean-audio Crawl contracts. Each case includes the caller text, fixture metadata, expected intent, required and forbidden tools, expected policy IDs, final-state expectations, and response expectations.
 - `createPcm16Silence`: creates a fallback tiny synthetic audio fixture for direct runner tests.
 - `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
 
-`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, and final-state evidence. It does not yet grade Crawl pass/fail behavior; that scoring belongs to the next realtime eval tickets.
+`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, final-state, fixture, and expected-behavior evidence. Generated-on-demand OpenAI TTS fixtures are marked `stable_for_gating: false`; stable gating should use cached fixtures with checksum metadata. The runner does not yet grade Crawl pass/fail behavior; that scoring belongs to the next realtime eval tickets.
 
 ## Implementation Rules
 
