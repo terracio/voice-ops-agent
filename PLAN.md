@@ -556,7 +556,7 @@ Review focus:
 
 Scope:
 
-- Implement cases 1 through 10 from `SPEC.md`.
+- Implement cases 1 through 10 from `src/evals/GOLDEN_CASES.md`.
 
 Acceptance:
 
@@ -571,7 +571,7 @@ Review focus:
 
 Scope:
 
-- Implement cases 11 through 20.
+- Implement cases 11 through 20 from `src/evals/GOLDEN_CASES.md`.
 - Add `pnpm eval -- --pass-k 3`.
 - Add `--mode scripted` explicitly and leave `--mode model` as a clear extension point.
 
