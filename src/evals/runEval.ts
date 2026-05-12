@@ -1,13 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resetDb } from "../domain/db";
 import {
-  listAuditEvents,
-  listKitchenExportDeltas,
-  listPaymentFollowups,
-  resetDb
-} from "../domain/db";
-import {
-  EvalCaseResultSchema,
   EvalCaseSchema,
   EvalModeSchema,
   type EvalCase,
@@ -20,6 +14,7 @@ import {
   renderTerminalSummary,
   writeEvalReports
 } from "./report";
+import { runScriptedEvalCase } from "./scriptedRunner";
 
 export type EvalExecutorContext = {
   run_id: string;
@@ -61,6 +56,7 @@ const DEFAULT_EVAL_CASES: EvalCase[] = [
         text: "Validate the eval harness seed reset and report boundary."
       }
     ],
+    script: [],
     tags: ["harness"]
   }
 ];
@@ -79,7 +75,7 @@ export async function runEval(
   const cases = (options.cases ?? DEFAULT_EVAL_CASES).map((evalCase) =>
     EvalCaseSchema.parse(evalCase)
   );
-  const executor = options.executor ?? scriptedHarnessExecutor;
+  const executor = options.executor ?? runScriptedEvalCase;
   const runStartedAt = now();
   const runId = createRunId(runStartedAt);
   const results: EvalCaseResult[] = [];
@@ -112,43 +108,6 @@ export async function runEval(
   const terminalSummary = renderTerminalSummary(report);
 
   return { report, terminalSummary, reportFiles };
-}
-
-function scriptedHarnessExecutor(
-  evalCase: EvalCase,
-  context: EvalExecutorContext
-): EvalCaseResult {
-  const startedAt = context.now();
-  const finishedAt = context.now();
-
-  return EvalCaseResultSchema.parse({
-    case_id: evalCase.case_id,
-    title: evalCase.title,
-    mode: evalCase.mode,
-    seed_id: evalCase.seed_id,
-    evidence_kind: "scripted_operational_safety",
-    status: "passed",
-    transcript: evalCase.transcript,
-    tool_calls: [],
-    audit_ids: listAuditEvents().map((event) => event.event_id),
-    confirmations: [],
-    side_effects: {
-      payment_followups: listPaymentFollowups(),
-      kitchen_deltas: listKitchenExportDeltas()
-    },
-    scores: [
-      {
-        score_id: `${evalCase.case_id}:harness_boundary`,
-        category: "operational_safety",
-        passed: true,
-        message: `Seed ${evalCase.seed_id} loaded at the harness boundary.`
-      }
-    ],
-    diagnostics: [],
-    started_at: startedAt,
-    finished_at: finishedAt,
-    duration_ms: Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt))
-  });
 }
 
 function requireModelModeExecutor(

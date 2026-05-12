@@ -1,8 +1,14 @@
 import { z } from "zod";
 import {
+  ChangeSetSchema,
+  ConfirmationSchema,
+  CustomerSchema,
   DateTimeStringSchema,
   KitchenExportDeltaSchema,
-  PaymentFollowupSchema
+  PaymentFollowupSchema,
+  PlanSchema,
+  PolicyIdSchema,
+  ServiceDateSchema
 } from "../domain/schema";
 import { SEED_SCENARIO_IDS } from "../domain/seed";
 
@@ -30,12 +36,76 @@ export const TranscriptEntrySchema = z.object({
   created_at: DateTimeStringSchema.optional()
 });
 
+export const EvalScriptContextPatchSchema = z
+  .object({
+    identity_status: z.enum(["confirmed", "uncertain", "unknown"]).optional(),
+    resolved_customer_id: z.string().min(1).optional(),
+    reference_time: DateTimeStringSchema.optional(),
+    current_time: DateTimeStringSchema.optional()
+  })
+  .strict();
+
+export const EvalScriptExpectationSchema = z
+  .object({
+    ok: z.boolean().optional(),
+    error_code: z.string().min(1).optional(),
+    policy_id: PolicyIdSchema.optional()
+  })
+  .strict();
+
+const ScriptMessageStepSchema = z.object({
+  type: z.enum(["user", "correction"]),
+  turn_id: z.string().min(1).optional(),
+  text: z.string().min(1),
+  context: EvalScriptContextPatchSchema.optional()
+}).strict();
+
+const ScriptAssistantStepSchema = z.object({
+  type: z.enum(["assistant", "debug"]),
+  turn_id: z.string().min(1).optional(),
+  text: z.string().min(1)
+}).strict();
+
+const ScriptToolCallStepSchema = z.object({
+  type: z.literal("tool_call"),
+  tool_call_id: z.string().min(1).optional(),
+  tool_name: z.string().min(1),
+  args: z.record(z.string(), z.unknown()).default({}),
+  expect: EvalScriptExpectationSchema.optional()
+}).strict();
+
+const ScriptConfirmationStepSchema = z.object({
+  type: z.literal("confirmation"),
+  turn_id: z.string().min(1).optional(),
+  text: z.string().min(1),
+  change_set_id: z.string().min(1),
+  context: EvalScriptContextPatchSchema.optional(),
+  expect: EvalScriptExpectationSchema.optional()
+}).strict();
+
+const ScriptSetupStepSchema = z.object({
+  type: z.literal("setup"),
+  action: z.enum(["set_context", "make_customer_state_stale"]),
+  context: EvalScriptContextPatchSchema.optional(),
+  customer_id: z.string().min(1).optional(),
+  state_version_increment: z.number().int().positive().default(1)
+}).strict();
+
+export const EvalScriptStepSchema = z.discriminatedUnion("type", [
+  ScriptMessageStepSchema,
+  ScriptAssistantStepSchema,
+  ScriptToolCallStepSchema,
+  ScriptConfirmationStepSchema,
+  ScriptSetupStepSchema
+]);
+
 export const EvalCaseSchema = z.object({
   case_id: z.string().min(1),
   title: z.string().min(1),
   mode: EvalModeSchema,
   seed_id: EvalSeedIdSchema,
   transcript: z.array(TranscriptEntrySchema).default([]),
+  script: z.array(EvalScriptStepSchema).default([]),
   tags: z.array(z.string().min(1)).default([])
 });
 
@@ -82,6 +152,19 @@ export const SideEffectSnapshotSchema = z.object({
   kitchen_deltas: z.array(KitchenExportDeltaSchema).default([])
 });
 
+export const FinalCustomerStateSnapshotSchema = z.object({
+  customer_id: z.string().min(1),
+  customer: CustomerSchema,
+  plan: PlanSchema,
+  service_dates: z.array(ServiceDateSchema)
+});
+
+export const EvalFinalStateSnapshotSchema = z.object({
+  customer_states: z.array(FinalCustomerStateSnapshotSchema).default([]),
+  change_sets: z.array(ChangeSetSchema).default([]),
+  confirmations: z.array(ConfirmationSchema).default([])
+});
+
 export const ScoreResultSchema = z.object({
   score_id: z.string().min(1),
   category: z.enum([
@@ -117,8 +200,22 @@ export const EvalCaseResultSchema = z.object({
   audit_ids: z.array(z.string().min(1)),
   confirmations: z.array(EvalConfirmationRecordSchema),
   side_effects: SideEffectSnapshotSchema,
+  final_state: EvalFinalStateSnapshotSchema.default({
+    customer_states: [],
+    change_sets: [],
+    confirmations: []
+  }),
   scores: z.array(ScoreResultSchema),
   diagnostics: z.array(EvalDiagnosticSchema),
+  run_metadata: z
+    .object({
+      run_id: z.string().min(1),
+      session_id: z.string().min(1),
+      started_at: DateTimeStringSchema,
+      finished_at: DateTimeStringSchema,
+      duration_ms: z.number().nonnegative()
+    })
+    .optional(),
   started_at: DateTimeStringSchema,
   finished_at: DateTimeStringSchema,
   duration_ms: z.number().nonnegative()
@@ -156,5 +253,6 @@ export const EvalRunReportSchema = z.object({
 
 export type EvalMode = z.infer<typeof EvalModeSchema>;
 export type EvalCase = z.infer<typeof EvalCaseSchema>;
+export type EvalScriptStep = z.infer<typeof EvalScriptStepSchema>;
 export type EvalCaseResult = z.infer<typeof EvalCaseResultSchema>;
 export type EvalRunReport = z.infer<typeof EvalRunReportSchema>;
