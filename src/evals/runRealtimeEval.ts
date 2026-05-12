@@ -133,8 +133,6 @@ async function prepareRealtimeInput(options: {
       sample_rate_hz: options.realtimeCase.audio.sample_rate_hz,
       chunk_duration_ms: options.realtimeCase.audio.chunk_duration_ms,
       expected_duration_ms: options.realtimeCase.audio.expected_duration_ms,
-      fixture_path: options.realtimeCase.audio.fixture_path,
-      checksum: options.realtimeCase.audio.checksum,
       byte_length: audio?.byteLength
     }
   };

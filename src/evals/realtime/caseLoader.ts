@@ -7,16 +7,14 @@ import { PolicyIdSchema } from "../../domain/schema";
 
 const RealtimeAudioConfigSchema = z.object({
   source: z.literal("openai_tts").default("openai_tts"),
-  fixture_mode: z.enum(["generated_on_demand", "cached_pcm"]).default("generated_on_demand"),
-  stable_for_gating: z.boolean().default(false),
+  fixture_mode: z.literal("generated_on_demand").default("generated_on_demand"),
+  stable_for_gating: z.literal(false).default(false),
   model: z.string().min(1).default("gpt-4o-mini-tts"),
   voice: z.string().min(1).default("alloy"),
   response_format: z.literal("pcm").default("pcm"),
   sample_rate_hz: z.literal(24_000).default(24_000),
   chunk_duration_ms: z.number().int().positive().default(20),
   expected_duration_ms: z.number().int().positive().optional(),
-  fixture_path: z.string().min(1).optional(),
-  checksum: z.string().min(1).optional(),
   instructions: z.string().min(1).optional(),
   speed: z.number().positive().optional()
 }).strict();
