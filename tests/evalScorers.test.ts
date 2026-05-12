@@ -3,6 +3,7 @@ import { PolicyId } from "../src/domain/schema";
 import type { EvalCaseResult } from "../src/evals/caseSchema";
 import { scoreCase } from "../src/evals/scoreCase";
 import {
+  COMMITTED_AT,
   evalCaseFixture,
   passingResult,
   toolCall
@@ -139,7 +140,15 @@ describe("eval scorers", () => {
         })
       ]
     });
+    const sameMillisecondPostCommit = passingResult({
+      audit_events: passingResult().audit_events.map((event) =>
+        event.event_id === "audit_kitchen"
+          ? { ...event, timestamp: COMMITTED_AT }
+          : event
+      )
+    });
 
+    expect(scoreCase(evalCaseFixture(), sameMillisecondPostCommit).status).toBe("passed");
     expectFailedScore(scoreCase(evalCaseFixture(), beforeCommit), "side_effect_idempotency");
     expectFailedScore(scoreCase(evalCaseFixture(), modelKitchenTool), "side_effect_idempotency");
   });
