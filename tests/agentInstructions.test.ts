@@ -1,10 +1,22 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   MEALPLAN_AGENT_INSTRUCTIONS,
+  MEALPLAN_AGENT_INSTRUCTIONS_SOURCE_PATH,
   MEALPLAN_MODEL_TOOL_NAMES
 } from "../src/agent/instructions";
 
 describe("MealPlan agent instructions", () => {
+  it("loads the prompt from a Markdown source file", () => {
+    expect(MEALPLAN_AGENT_INSTRUCTIONS_SOURCE_PATH).toMatch(
+      /src\/agent\/instructions\.md$/
+    );
+    expect(readFileSync(MEALPLAN_AGENT_INSTRUCTIONS_SOURCE_PATH, "utf8")).toMatch(
+      /# MealPlan VoiceOps Agent Instructions/
+    );
+    expect(MEALPLAN_AGENT_INSTRUCTIONS).not.toContain("{{MODEL_TOOL_LIST}}");
+  });
+
   it("references the actual model-facing tool registry", () => {
     expect(MEALPLAN_MODEL_TOOL_NAMES).toEqual([
       "lookup_customer",
