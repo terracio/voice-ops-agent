@@ -4,6 +4,7 @@ import { resolveServiceDatesForState } from "../domain/dateResolver";
 import { EVAL_REFERENCE_DATE } from "../domain/seed";
 import { PolicyId, type AuditEvent, type Customer, type DateString, type PaymentStatus, type ToolError, type ToolResult } from "../domain/schema";
 import type { ToolExecutionContext } from "./context";
+import { normalizeCustomerId, normalizeLookupInput } from "./customerId";
 import { AuthorizedCustomerInputSchema, CustomerStateOutputSchema, LookupCustomerInputSchema, LookupCustomerOutputSchema, PaymentStatusInputSchema, PaymentStatusOutputSchema, ResolveServiceDatesToolInputSchema, ResolveServiceDatesToolOutputSchema, ToolReferenceDateSchema, type AuthorizedCustomerInput, type CustomerStateOutput, type LookupCustomerInput, type LookupCustomerOutput, type PaymentStatusOutput, type ResolveServiceDatesToolInput, type ResolveServiceDatesToolOutput } from "./readToolSchemas";
 import { defineTool, failedToolResult, type ToolDefinition } from "./types";
 
@@ -70,6 +71,8 @@ function authorizeCustomer(
   context: ToolExecutionContext,
   toolName: string
 ): AuthorizedCustomerResult {
+  const requestedCustomerId = normalizeCustomerId(args.customer_id);
+
   if (context.identity_status !== "confirmed" || !context.resolved_customer_id) {
     const event = appendIdentityBlockEvent(
       toolName,
@@ -83,12 +86,12 @@ function authorizeCustomer(
     );
   }
 
-  if (args.customer_id && args.customer_id !== context.resolved_customer_id) {
+  if (requestedCustomerId && requestedCustomerId !== context.resolved_customer_id) {
     const event = appendIdentityBlockEvent(
       toolName,
       context,
       "Requested customer does not match the hidden resolved identity.",
-      args.customer_id
+      requestedCustomerId
     );
     return authorizationFailure(
       "CUSTOMER_NOT_AUTHORIZED",
@@ -172,7 +175,8 @@ export const lookupCustomerTool = defineTool({
   outputSchema: LookupCustomerOutputSchema,
   metadata: metadata("Lookup customer", "Customer lookup", ["read", "identity"]),
   execute(args, context): ToolResult<LookupCustomerOutput> {
-    const customers = findCustomers(args);
+    const lookupArgs = normalizeLookupInput(args);
+    const customers = findCustomers(lookupArgs);
     const singleConfirmed =
       customers.length === 1 && customers[0]?.identity_confidence === "confirmed";
     const event = appendReadEvent(
@@ -181,7 +185,7 @@ export const lookupCustomerTool = defineTool({
       {
         resource_type: "customers",
         resource_id: singleConfirmed ? customers[0]?.customer_id : undefined,
-        query_fields: queryFields(args),
+        query_fields: queryFields(lookupArgs),
         result_count: customers.length
       },
       singleConfirmed ? customers[0]?.customer_id : undefined

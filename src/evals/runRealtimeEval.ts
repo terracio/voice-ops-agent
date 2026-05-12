@@ -286,6 +286,7 @@ async function main(): Promise<void> {
     audio: preparedInput.audio,
     audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,
     inputText: preparedInput.inputText,
+    settleMs: 750,
     timeoutMs: 20_000
   });
   const scoring = scoreRealtimeCrawlCase(realtimeCase, result);

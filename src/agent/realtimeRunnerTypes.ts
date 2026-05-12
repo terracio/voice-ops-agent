@@ -132,6 +132,7 @@ export type RunRealtimeAgentSmokeOptions = {
   runId?: string;
   sessionFactory?: RealtimeSessionFactory;
   sessionId?: string;
+  settleMs?: number;
   timeoutMs?: number;
   userTurnId?: string;
 };

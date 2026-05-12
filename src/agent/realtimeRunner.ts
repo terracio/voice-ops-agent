@@ -15,6 +15,7 @@ import {
   resolveOpenAIRealtimeModel
 } from "./realtimeInstructions";
 import { streamPcm16AudioToRealtimeSession } from "./realtimeAudioStream";
+import { waitForRealtimeEventSettle } from "./realtimeRunnerTiming";
 import {
   createPcm16Silence,
   resolveOpenAIRealtimeCredentials,
@@ -314,6 +315,7 @@ export async function runRealtimeAgentSmoke(
     }
 
     const status = await terminalEvent;
+    await waitForRealtimeEventSettle(status, options.settleMs);
     return {
       status,
       reason:

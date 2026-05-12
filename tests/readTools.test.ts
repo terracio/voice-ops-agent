@@ -72,6 +72,29 @@ describe("read tools", () => {
     });
   });
 
+  it("normalizes spoken customer ID casing before lookup", async () => {
+    const result = await registry().execute("lookup_customer", {
+      modelArgs: { customer_id: " CUS_001 " },
+      context: unresolvedContext
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        identity_status: "confirmed",
+        candidate_count: 1,
+        candidates: [{ customer_id: "cus_001" }]
+      }
+    });
+    expect(listAuditEvents()[0]).toMatchObject({
+      customer_id: "cus_001",
+      details: {
+        query_fields: ["customer_id"],
+        result_count: 1
+      }
+    });
+  });
+
   it("keeps ambiguous lookup output privacy-preserving and write-blocked", async () => {
     resetDb("identity_uncertain");
 
@@ -174,6 +197,20 @@ describe("read tools", () => {
     expect(data.service_dates[0]).toMatchObject({
       service_date: "2026-05-18",
       status: "active"
+    });
+  });
+
+  it("normalizes authorized customer ID casing before protected reads", async () => {
+    const result = await registry().execute("get_customer_state", {
+      modelArgs: { customer_id: " CUS_001 " },
+      context: confirmedContext
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        customer: { customer_id: "cus_001" }
+      }
     });
   });
 

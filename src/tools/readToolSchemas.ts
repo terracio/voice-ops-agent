@@ -43,7 +43,7 @@ export const LookupCustomerOutputSchema = z.object({
 }).strict();
 
 export const AuthorizedCustomerInputSchema = z.object({
-  customer_id: z.string().min(1).optional()
+  customer_id: SearchStringSchema.optional()
 }).strict();
 
 export const CustomerStateCustomerSchema = z.object({
