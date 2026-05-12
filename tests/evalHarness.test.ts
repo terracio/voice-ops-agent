@@ -45,6 +45,7 @@ function fixtureCase(caseId: string, seedId: EvalCase["seed_id"]): EvalCase {
         text: "Run the fixture case."
       }
     ],
+    script: [],
     tags: ["fixture"]
   };
 }
