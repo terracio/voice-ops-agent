@@ -11,7 +11,10 @@ import {
   savePaymentFollowup
 } from "../src/domain/db";
 import type { EvalCase, EvalCaseResult } from "../src/evals/caseSchema";
-import { EvalCaseResultSchema } from "../src/evals/caseSchema";
+import {
+  DEFAULT_EVAL_SCORING_EXPECTATIONS,
+  EvalCaseResultSchema
+} from "../src/evals/caseSchema";
 import { buildEvalReport, renderMarkdownReport } from "../src/evals/report";
 import { runEval } from "../src/evals/runEval";
 
@@ -46,7 +49,8 @@ function fixtureCase(caseId: string, seedId: EvalCase["seed_id"]): EvalCase {
       }
     ],
     script: [],
-    tags: ["fixture"]
+    tags: ["fixture"],
+    expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
   };
 }
 

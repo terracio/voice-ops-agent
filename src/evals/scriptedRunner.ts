@@ -72,6 +72,7 @@ export async function runScriptedEvalCase(
     transcript: state.transcript,
     tool_calls: state.toolCalls,
     audit_ids: [...state.auditIds],
+    audit_events: db.listAuditEvents(),
     confirmations: confirmationRecords(state),
     side_effects: { payment_followups: db.listPaymentFollowups(), kitchen_deltas: db.listKitchenExportDeltas() },
     final_state: finalState(state),
@@ -250,20 +251,20 @@ function collectAuditState(state: RunnerState): void {
     if (confirmationId) state.confirmationIds.add(confirmationId);
   }
 }
-
 function confirmationRecords(state: RunnerState): EvalCaseResult["confirmations"] {
   return [...state.confirmationIds].flatMap((id) => {
     const confirmation = db.getConfirmation(id);
     return confirmation ? [toConfirmationRecord(confirmation)] : [];
   });
 }
-
 function finalState(state: RunnerState): EvalCaseResult["final_state"] {
+  const customer_states = [...state.customerIds].flatMap((customerId) => {
+    const customerState = db.getCustomerState(customerId);
+    return customerState ? [{ customer_id: customerId, ...customerState }] : [];
+  });
+  const firstCustomerState = customer_states[0];
   return {
-    customer_states: [...state.customerIds].flatMap((customerId) => {
-      const customerState = db.getCustomerState(customerId);
-      return customerState ? [{ customer_id: customerId, ...customerState }] : [];
-    }),
+    customer_states,
     change_sets: [...state.changeSetIds].flatMap((id) => {
       const changeSet = db.getChangeSet(id);
       return changeSet ? [changeSet] : [];
@@ -271,10 +272,14 @@ function finalState(state: RunnerState): EvalCaseResult["final_state"] {
     confirmations: [...state.confirmationIds].flatMap((id) => {
       const confirmation = db.getConfirmation(id);
       return confirmation ? [confirmation] : [];
-    })
+    }),
+    customer: firstCustomerState?.customer,
+    plan: firstCustomerState?.plan,
+    service_dates: firstCustomerState?.service_dates ?? [],
+    payment_followups: db.listPaymentFollowups(),
+    kitchen_deltas: db.listKitchenExportDeltas()
   };
 }
-
 function toConfirmationRecord(confirmation: Confirmation): EvalCaseResult["confirmations"][number] {
   return {
     confirmation_id: confirmation.confirmation_id,

@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resetDb } from "../domain/db";
 import {
+  DEFAULT_EVAL_SCORING_EXPECTATIONS,
   EvalCaseSchema,
   EvalModeSchema,
   type EvalCase,
@@ -14,6 +15,7 @@ import {
   renderTerminalSummary,
   writeEvalReports
 } from "./report";
+import { scoreCase } from "./scoreCase";
 import { runScriptedEvalCase } from "./scriptedRunner";
 
 export type EvalExecutorContext = {
@@ -57,7 +59,8 @@ const DEFAULT_EVAL_CASES: EvalCase[] = [
       }
     ],
     script: [],
-    tags: ["harness"]
+    tags: ["harness"],
+    expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
   }
 ];
 
@@ -88,12 +91,14 @@ export async function runEval(
     }
 
     resetDb(evalCase.seed_id);
-    results.push(await executor(evalCase, {
+    const result = await executor(evalCase, {
       run_id: runId,
       mode,
       run_started_at: runStartedAt,
       now
-    }));
+    });
+
+    results.push(scoreCase(evalCase, result));
   }
 
   const runFinishedAt = now();

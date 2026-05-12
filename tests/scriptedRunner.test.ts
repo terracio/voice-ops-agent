@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import * as db from "../src/domain/db";
-import type { EvalCase } from "../src/evals/caseSchema";
+import {
+  DEFAULT_EVAL_SCORING_EXPECTATIONS,
+  type EvalCase
+} from "../src/evals/caseSchema";
 import { runEval } from "../src/evals/runEval";
 import { runScriptedEvalCase } from "../src/evals/scriptedRunner";
 
@@ -66,7 +69,8 @@ const scriptedCase: EvalCase = {
       }
     }
   ],
-  tags: ["scripted"]
+  tags: ["scripted"],
+  expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
 };
 
 describe("scripted eval runner", () => {
@@ -178,7 +182,8 @@ describe("scripted eval runner", () => {
             }
           }
         ],
-        tags: ["scripted"]
+        tags: ["scripted"],
+        expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
       },
       {
         run_id: "run_scripted_stale",
