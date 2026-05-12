@@ -17,6 +17,11 @@ import {
   loadRealtimeEvalCase,
   type RealtimeEvalCase
 } from "./realtime/caseLoader";
+import {
+  renderRealtimeCrawlScores,
+  scoreRealtimeCrawlCase
+} from "./realtime/scorer";
+import type { RealtimeCrawlScoring } from "./realtime/scorerTypes";
 import { synthesizeOpenAiSpeechPcm } from "./realtime/tts";
 
 type RealtimeEvalArgs = {
@@ -144,6 +149,7 @@ function writeRealtimeReports(options: {
   preparedInput: PreparedRealtimeInput;
   realtimeCase: RealtimeEvalCase;
   result: RealtimeRunnerResult;
+  scoring: RealtimeCrawlScoring;
 }): { json_path: string; markdown_path: string } {
   const reportDir = join(
     "reports",
@@ -186,6 +192,7 @@ function writeRealtimeReports(options: {
         input_text: options.preparedInput.input_text,
         audio_metadata: options.preparedInput.audio_metadata,
         expected: options.realtimeCase.expected,
+        scoring: options.scoring,
         env_file_status: options.env_file_status,
         ...options.result
       },
@@ -210,6 +217,8 @@ function writeRealtimeReports(options: {
       `Tool calls: ${options.result.tool_calls.length}`,
       `Audit events: ${options.result.audit_events.length}`,
       `Transcript fragments: ${options.result.transcript_fragments.length}`,
+      `Scoring status: ${options.scoring.status}`,
+      `Score failures: ${options.scoring.score_failures}`,
       "",
       "## Fixture",
       "",
@@ -223,6 +232,10 @@ function writeRealtimeReports(options: {
       transcriptLines || "No transcript fragments captured.",
       "",
       `Raw transcript fragments: ${options.result.transcript_fragments.length}`,
+      "",
+      "## Scoring",
+      "",
+      renderRealtimeCrawlScores(options.scoring),
       "",
       "## Tool Calls",
       "",
@@ -275,11 +288,14 @@ async function main(): Promise<void> {
     inputText: preparedInput.inputText,
     timeoutMs: 20_000
   });
+  const scoring = scoreRealtimeCrawlCase(realtimeCase, result);
 
   const summary = {
     case_id: args.caseId,
     stage: args.stage,
     status: result.status,
+    scoring_status: scoring.status,
+    score_failures: scoring.score_failures,
     reason: result.reason,
     model: result.model,
     transport: result.transport,
@@ -294,12 +310,17 @@ async function main(): Promise<void> {
       env_file_status,
       preparedInput,
       realtimeCase,
-      result
+      result,
+      scoring
     })
   };
 
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-  if (result.status === "failed") {
+  if (
+    result.status === "failed" ||
+    result.status === "timed_out" ||
+    (result.status === "completed" && scoring.status === "failed")
+  ) {
     process.exitCode = 1;
   }
 }

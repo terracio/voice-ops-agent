@@ -81,7 +81,7 @@ The current runner is a smoke foundation, not the full realtime eval suite yet.
 - `createPcm16Silence`: creates a fallback tiny synthetic audio fixture for direct runner tests.
 - `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
 
-`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, final-state, fixture, and expected-behavior evidence. Current audio fixtures are generated on demand with OpenAI TTS and marked `stable_for_gating: false`; cached PCM fixtures and checksums are future work. The runner does not yet grade Crawl pass/fail behavior; that scoring belongs to the next realtime eval tickets.
+`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, final-state, fixture, expected-behavior, and deterministic Crawl scoring evidence. Current audio fixtures are generated on demand with OpenAI TTS and marked `stable_for_gating: false`; cached PCM fixtures and checksums are future work.
 
 ## Implementation Rules
 
