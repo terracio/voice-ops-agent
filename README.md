@@ -2,7 +2,7 @@
 
 MealPlan VoiceOps is a production-shaped realtime voice operations agent for a fictional meal-plan subscription business.
 
-This repo is intentionally small, but the core safety spine is implemented: deterministic seed data, a resettable mock DB, typed tools, ChangeSets, hard policy checks, audit logs, and a replay eval harness. Voice and model-backed eval behavior build on the same operational boundary rather than bypassing it.
+This repo is intentionally small, but the core safety spine is implemented: deterministic seed data, a resettable mock DB, typed tools, ChangeSets, hard policy checks, audit logs, and a replay eval harness. The product path is a realtime contact-center voice agent; realtime and model-backed behavior must build on the same operational boundary rather than bypassing it.
 
 ## Start Here
 
@@ -50,6 +50,20 @@ Payment follow-ups are ChangeSet operations. Kitchen export deltas are internal 
 `pnpm eval` runs the deterministic scripted harness mode without OpenAI credentials. `pnpm eval -- --mode scripted` selects it explicitly, and `pnpm eval -- --pass-k 3` repeats the scripted suite three times with aggregate pass-k reporting. Each run resets the mock DB by case seed ID at the harness boundary, executes the configured case executor, prints a terminal summary, and writes reports to `reports/eval-report.json` and `reports/eval-report.md`.
 
 Scripted eval reports are labeled as operational-safety evidence. They prove the structured ChangeSet, policy, confirmation, side-effect, and audit boundaries. Future model-mode evals must provide separate model-behavior evidence; `--mode model` requires a server-side `OPENAI_API_KEY` and an explicit model executor, and it does not fall back to scripted behavior.
+
+## Realtime Roadmap
+
+The next milestone is Realtime-first:
+
+```text
+server-side Realtime runner
+  -> clean-audio Crawl evals
+  -> browser Realtime demo
+  -> noisy Walk evals
+  -> multi-turn Run evals
+```
+
+The browser UI comes after the server-side Realtime runner can start a session, send audio, receive events and tool calls, execute tools through the existing registry, and produce eval-compatible traces. `pnpm eval:realtime` is the planned credential-gated command for this path; `pnpm eval` remains the no-credentials scripted safety baseline.
 
 ## Implementation Rules
 

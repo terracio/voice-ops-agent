@@ -2,25 +2,24 @@
 
 Status: draft for first demo milestone, checkpointed for handoff
 Source docs: `SPEC.md`, `TASKS.md`, `AGENTS.md`  
-Last updated: 2026-05-11
+Last updated: 2026-05-12
 
 ## 1. Objective
 
-Build the first demoable version of MealPlan VoiceOps: a realtime voice operations agent that can safely handle the primary meal-plan scenario end to end. The first proof is the operational backend, scripted runner, and eval harness; the product demo then adds realtime voice as a thin adapter over the same backend.
+Build the first demoable version of MealPlan VoiceOps: a realtime contact-center voice agent that can safely handle the primary meal-plan scenario end to end. The product runtime is OpenAI Realtime with tool calling. The scripted runner remains an engineering safety harness for the operational backend, not the product experience.
 
 The first milestone is not a production system. It is a production-shaped vertical slice with enough real architecture that a reviewer can inspect the safety boundary and run repeatable evidence locally.
 
 ## 2. Demo Checkpoints
 
-The milestone is split into checkpoints so voice integration cannot block evidence that the safety architecture works.
+The milestone is split into checkpoints so the safety architecture remains inspectable while the realtime agent becomes the product path.
 
-Checkpoint A: core operations proof
+Checkpoint A: scripted safety baseline
 
-- Waves 0 through 5 complete.
-- `pnpm dev` starts a browser debug console for the core workflow.
+- Waves 0 through 4 complete.
 - `pnpm test` passes policy, ChangeSet, tool, DB, date resolver, and scorer tests.
 - `pnpm eval` defaults to scripted mode, runs 20 replay cases without OpenAI credentials, and reports hard policy violations, final state correctness, required and forbidden tool usage, confirmation boundaries, and audit completeness.
-- The Maya scenario works through the scripted/debug path:
+- The Maya scenario works through the scripted safety harness:
   - identify customer,
   - read current plan,
   - resolve "next week" into exact dates,
@@ -33,21 +32,31 @@ Checkpoint A: core operations proof
   - create kitchen delta internally only after commit,
   - write audit events for reads, preview, confirmation capture, commit, and side effects.
 
-Checkpoint B: realtime voice proof
+Checkpoint B: realtime runner and Crawl proof
 
-- Wave 6 complete.
-- Realtime voice uses the same server-side tool executor, policy layer, ChangeSet service, mock DB, and audit log as Checkpoint A.
-- Browser receives only ephemeral realtime credentials and transcript/timeline payloads.
-- The Maya scenario works by voice with preview and explicit confirmation before commit.
+- Waves 5 and 6 complete.
+- A server-side Realtime runner can start a `gpt-realtime-2` session over WebSocket, send clean audio fixtures, receive events and tool calls, execute those tool calls through the existing server-side tool executor, and produce eval-compatible run output.
+- Crawl evals cover 5-10 clean-audio routing and policy cases.
+- The realtime agent prompt, tool definitions, event trace, audit capture, and final state capture are inspectable.
+- No browser UI is required for this checkpoint.
 
-Checkpoint C: portfolio proof
+Checkpoint C: browser realtime demo
 
 - Wave 7 complete.
-- README and docs explain the architecture, guardrails, evals, run commands, demo script, and limitations.
+- Browser voice uses WebRTC with ephemeral credentials only.
+- Realtime tool execution remains server-side.
+- The visible demo shows transcript, tool timeline, audit events, preview/diff, and explicit confirmation.
+
+Checkpoint D: Walk/Run portfolio proof
+
+- Wave 8 complete.
+- Walk evals exercise noisy or phone-like single-turn audio.
+- Run evals exercise multi-turn contact-center behavior such as clarification, correction, interruption, tool failures, policy blocks, and escalation.
+- README and docs explain the architecture, guardrails, realtime eval stages, run commands, demo script, and limitations.
 
 ## 3. Architecture Position
 
-The core system is a deterministic operations backend. The model is a client of that backend.
+The core system is the operations backend and server-side tool executor. The realtime model is allowed to converse and request tools, but it is still only a client of that backend.
 
 The implementation should be layered in this order:
 
@@ -61,11 +70,14 @@ Domain schemas
   -> typed tools
   -> provider-neutral tool registry
   -> deterministic scripted runner and evals
-  -> browser debug console
-  -> realtime voice adapter
+  -> realtime agent prompt and tool definition adapter
+  -> minimal server-side realtime runner
+  -> realtime Crawl evals
+  -> browser realtime demo
+  -> Walk/Run realtime evals
 ```
 
-The voice layer must be thin. It should not contain domain rules, write logic, policy decisions, or its own tool definitions. Realtime voice, scripted/debug mode, model-backed eval mode, and eval replay mode should all call the same server-side tool executor and policy-backed services.
+The realtime layer must not contain domain rules, write logic, policy decisions, or its own tool registry. Realtime sessions, scripted mode, model-backed mode, browser demo mode, and eval replay mode should all call the same server-side tool executor and policy-backed services.
 
 ## 4. Central Safety Invariant
 
@@ -122,11 +134,13 @@ In scope:
 - A small policy engine with explicit hard policy IDs.
 - ChangeSet preview and commit lifecycle.
 - Typed tool registry independent of model provider.
-- Deterministic scripted runner for evals.
-- `scripted`, `model`, and future `voice` eval modes, with `scripted` as the no-credentials default.
+- Deterministic scripted runner for backend safety evals.
+- `scripted`, `model`, and `realtime` eval modes, with `scripted` as the no-credentials default.
 - 20 eval cases, starting with scripted runs.
-- Minimal browser debug console for the core workflow.
-- Realtime voice adapter using server-side API credentials and browser-side ephemeral credentials.
+- Minimal server-side Realtime runner for automated evals.
+- Realtime Crawl evals using clean deterministic audio fixtures.
+- Browser realtime demo using server-side API credentials and browser-side ephemeral credentials.
+- Walk/Run realtime eval stages for noisy audio and multi-turn contact-center workflows.
 - Documentation and demo script.
 
 Out of scope:
@@ -142,8 +156,9 @@ Out of scope:
 flowchart TD
   User["Customer"]
   UI["Browser UI"]
-  Scripted["Scripted Runner / Debug Console"]
-  Voice["Realtime Voice Adapter"]
+  Scripted["Scripted Safety Runner"]
+  RTRunner["Realtime Eval Runner"]
+  Voice["Browser Realtime Session"]
   API["Server API / Tool Executor"]
   Registry["Provider-Neutral Tool Registry"]
   Schemas["Zod Validation"]
@@ -154,12 +169,14 @@ flowchart TD
   DB["Mock Operational DB"]
   SideFx["Internal Side-Effect Services"]
   Audit["Audit Log and Tool Trace"]
-  Evals["Replay Eval Runner"]
+  RealtimeTrace["Realtime Event Trace"]
+  Evals["Eval Scorers and Reports"]
 
   User --> UI
-  UI --> Scripted
   UI --> Voice
   Scripted --> API
+  RTRunner --> Voice
+  Voice --> RealtimeTrace
   Voice --> API
   API --> Registry
   Registry --> Schemas
@@ -172,7 +189,9 @@ flowchart TD
   Registry --> Audit
   Services --> Audit
   SideFx --> Audit
+  RealtimeTrace --> Evals
   Evals --> Scripted
+  Evals --> RTRunner
   Evals --> API
   Evals --> DB
   Evals --> Audit
@@ -601,152 +620,220 @@ Review focus:
 
 - The eval suite should fail if a write is correct but audit is missing.
 
-### Wave 5: Core Workflow Debug Console
+### Wave 5: Realtime Runner Foundation
 
-Goal: make the core workflow inspectable before voice and expose operational evidence in the UI. This is a debug console for the backend, not the final product demo.
-
-Gate to exit:
-
-- Main demo request works through the scripted/debug path.
-- UI shows transcript, tool calls, preview/state diff, audit events, and reset controls.
-- Confirmation flow captures a server-created confirmation record from the next user turn.
-
-Tickets:
-
-#### MVP-501: Demo API and App State
-
-Scope:
-
-- Add API/server actions or local route handlers for resetting demo state and sending scripted/debug messages through the server-side session.
-- Keep server-side operational state out of browser-only code.
-
-Acceptance:
-
-- Browser can load Maya scenario.
-- Browser can reset state.
-- Browser can submit a user message and receive transcript/tool/audit/diff payloads.
-- Browser code never mutates the mock DB directly.
-
-Review focus:
-
-- Avoid duplicating domain logic in UI handlers.
-
-#### MVP-502: Transcript and Confirmation UI
-
-Scope:
-
-- Build minimal transcript and debug input flow.
-- Support explicit confirmation turns that the server converts into confirmation records.
-
-Acceptance:
-
-- User can type the main demo request.
-- Assistant previews changes and asks for confirmation.
-- User can confirm; server captures confirmation and commit uses `confirmation_id`.
-
-Review focus:
-
-- The UI should not imply a write happened before commit result exists.
-
-#### MVP-503: Tool Timeline, Audit, and Diff Panels
-
-Scope:
-
-- Display tool calls, risk levels, policy results, audit events, and before/after diff.
-
-Acceptance:
-
-- Preview shows actionable and non-actionable items.
-- Audit events are displayed in order.
-- Tool timeline links blocked actions to policy IDs where available.
-
-Review focus:
-
-- These panels should reflect real records, not separate UI summaries.
-
-#### MVP-504: Eval Summary in UI
-
-Scope:
-
-- Add a small link or panel for latest eval status, without building a dashboard.
-
-Acceptance:
-
-- UI can show last eval report summary if available.
-- Missing report is handled plainly.
-
-Review focus:
-
-- Keep this small. Eval value lives in `pnpm eval`.
-
-### Wave 6: Realtime Voice Adapter
-
-Goal: add voice without weakening the already-tested operational boundary.
+Goal: create the first server-side Realtime agent runtime before any browser UI. This runner is for evals and debugging the agent/tool boundary.
 
 Gate to exit:
 
-- Browser receives only ephemeral realtime credentials.
-- Realtime session uses the same registry and policy-backed tools.
-- Main Maya demo works by voice with preview and explicit confirmation before commit.
-- Realtime tool calls execute through server routes or server-side controls only.
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` can run one smoke scenario when `OPENAI_API_KEY` is present.
+- The runner starts a `gpt-realtime-2` session over WebSocket, sends clean audio, receives model events, receives tool calls, executes tools through the existing server-side registry, returns tool results, and captures a trace.
+- The realtime agent prompt and tool definitions are source-controlled and reviewable.
+- Missing `OPENAI_API_KEY` fails clearly without affecting `pnpm eval`.
 
 Tickets:
 
-#### MVP-601: Server-Side Realtime Session Route
+#### MVP-501: Realtime Agent Prompt and Tool Definition Adapter
 
 Scope:
 
-- Add `POST /api/realtime/session`.
-- Keep `OPENAI_API_KEY` server-side only.
-- Return only ephemeral browser credentials and model/session metadata.
+- Add a markdown prompt file for the realtime contact-center agent.
+- Convert the existing provider-neutral tool registry into Realtime-compatible tool definitions without creating a second source of truth.
+- Keep `OPENAI_REALTIME_MODEL` configurable and default to `gpt-realtime-2`.
 
 Acceptance:
 
-- Missing API key returns a clear server error.
-- Browser bundle does not include `OPENAI_API_KEY`.
-- Browser receives no domain write capability beyond the realtime session bridge.
-- Route is covered by a focused test where practical.
+- Prompt states the meal-plan role, identity rules, policy boundaries, confirmation boundary, and escalation behavior.
+- Tool definitions are derived from existing schemas where practical.
+- No domain write logic appears in prompt or model-facing adapter code.
+
+Review focus:
+
+- Prompt quality matters, but operational correctness must still live in schemas, policies, ChangeSets, and audited tool execution.
+
+#### MVP-502: Server-Side Realtime Runner
+
+Scope:
+
+- Add a server-side Realtime WebSocket client for automated eval runs.
+- Send clean audio fixtures and collect raw Realtime events.
+- Keep the OpenAI API key server-side only.
+
+Acceptance:
+
+- Runner can connect, send one fixture, and end the session.
+- Missing credentials produce a clear skipped/blocked result.
+- Browser code is not introduced in this ticket.
 
 Review focus:
 
 - Verify current official OpenAI Realtime docs during implementation before final API wiring.
 
-#### MVP-602: Realtime Client Controls
+#### MVP-503: Realtime Tool Bridge and Event Trace
+
+Scope:
+
+- Execute Realtime tool calls through the existing server-side tool executor.
+- Validate tool inputs and outputs.
+- Capture event timeline, transcript fragments, tool calls/results, audit events, and final DB state.
+
+Acceptance:
+
+- At least one Realtime-requested tool call executes through the registry.
+- Blocked operations return structured tool errors.
+- Trace output is suitable for eval scoring and debugging.
+
+Review focus:
+
+- Do not create a second tool registry or let Realtime transport code mutate the DB.
+
+#### MVP-504: Realtime Smoke Eval Command
+
+Scope:
+
+- Add `pnpm eval:realtime`.
+- Add one `maya_smoke` clean-audio Crawl case.
+- Persist eval-compatible run output under `reports/`.
+
+Acceptance:
+
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` runs with credentials.
+- `pnpm eval` remains no-credentials and scripted by default.
+- The smoke report includes events, tools, audit, and final state.
+
+Review focus:
+
+- Keep the command narrow; this is a runner foundation, not the full Crawl suite.
+
+### Wave 6: Realtime Crawl Evals
+
+Goal: use clean deterministic audio to iterate on routing, prompt behavior, and tool schemas before browser work.
+
+Gate to exit:
+
+- `pnpm eval:realtime -- --stage crawl` runs 5-10 clean-audio cases.
+- Cases focus on intent routing, missing information, unsafe action avoidance, exact entity capture, and confirmation boundaries.
+- Reports make it clear whether a failure is audio perception, tool selection, argument construction, policy enforcement, confirmation handling, or final state.
+
+Tickets:
+
+#### MVP-601: Crawl Case Contract and Clean Audio Fixtures
+
+Scope:
+
+- Define the realtime eval case contract for Crawl.
+- Add deterministic clean audio fixtures or a repeatable fixture-generation process.
+- Capture fixture metadata such as transcript, speaker, duration, sample rate, and expected intent.
+
+Acceptance:
+
+- Crawl cases can declare expected tool calls, forbidden tool calls, expected policy outcomes, and expected final state.
+- Audio fixture handling is deterministic enough for review and repeat runs.
+
+Review focus:
+
+- Avoid relying on live text-to-speech generation inside every eval run unless explicitly marked as non-deterministic.
+
+#### MVP-602: Crawl Scoring and Failure Taxonomy
+
+Scope:
+
+- Extend eval scoring for Realtime traces.
+- Score tool use, policy blocks, confirmation boundary, audit completeness, final state, and lightweight conversation behavior.
+- Add failure categories for perception, turn-taking, tool selection, arguments, policy, confirmation, and state.
+
+Acceptance:
+
+- Crawl reports explain why a case failed.
+- Existing scripted eval reports remain unchanged except where shared types are intentionally extended.
+
+Review focus:
+
+- Do not hide model/audio uncertainty behind generic pass/fail output.
+
+#### MVP-603: First Crawl Suite
+
+Scope:
+
+- Implement 5-10 clean-audio Crawl cases.
+- Include happy path, identity uncertainty, ambiguous date, forbidden allergy mutation, forbidden payment settlement, payment follow-up, kitchen cutoff, and confirmation boundary coverage where practical.
+
+Acceptance:
+
+- `pnpm eval:realtime -- --stage crawl` runs the suite.
+- Cases can be run individually with `--case`.
+- Reports capture the raw event trace path for each case.
+
+Review focus:
+
+- Crawl cases should be small and diagnostic, not full demo scripts.
+
+### Wave 7: Browser Realtime Demo
+
+Goal: build the visible voice demo only after the Realtime runner and Crawl eval loop are working.
+
+Gate to exit:
+
+- Browser voice uses WebRTC with ephemeral credentials only.
+- Realtime tool calls still execute through server routes or server-side controls.
+- The Maya demo works by voice with preview and explicit confirmation before commit.
+- UI shows transcript, tool timeline, audit events, preview/diff, reset controls, and clear connection state.
+
+Tickets:
+
+#### MVP-701: Realtime Session Route and Server Controls
+
+Scope:
+
+- Add the browser Realtime session endpoint.
+- Keep `OPENAI_API_KEY` server-side only.
+- Return only ephemeral browser credentials and session metadata.
+- Support server-side monitoring/tool execution for the session.
+
+Acceptance:
+
+- Missing API key returns a clear server error.
+- Browser bundle does not include `OPENAI_API_KEY`.
+- Browser receives no direct domain write capability.
+
+Review focus:
+
+- Browser transport must not own business state.
+
+#### MVP-702: Browser Voice Controls
 
 Scope:
 
 - Add start, stop, mute, reset, and status controls.
-- Show live and final transcript where available.
+- Show disconnected, connecting, listening, thinking, speaking, tool-running, waiting-for-confirmation, and ended states.
 
 Acceptance:
 
-- User can start and stop a session.
-- UI states distinguish disconnected, connecting, listening, thinking, speaking, tool running, and waiting for confirmation.
+- User can start and stop a Realtime session.
+- Reset clears demo state through server-owned code.
 
 Review focus:
 
-- Voice transport should not own business state.
+- UI state should reflect runtime events, not optimistic assumptions.
 
-#### MVP-603: Realtime Tool Bridge
+#### MVP-703: Transcript, Tool Timeline, Audit, and Diff UI
 
 Scope:
 
-- Adapt provider-neutral tools into realtime session tool definitions through the server-side tool executor.
-- Feed tool call results back into the UI timeline and audit panels.
+- Display live/final transcript where available.
+- Display tool calls, policy results, audit events, and before/after diff.
 
 Acceptance:
 
-- Realtime model can call the same server-side tools as scripted/debug mode.
-- Tool inputs and outputs validate.
-- Blocked operations return structured tool errors.
-- No mock DB mutation or domain write logic runs in browser code.
+- Preview shows actionable and non-actionable items.
+- Tool timeline links blocked actions to policy IDs where available.
+- The UI never claims a write happened before a committed ChangeSet exists.
 
 Review focus:
 
-- Do not create a second tool registry for voice.
-- Keep Realtime transcript useful for UI/debugging, but do not rely on transcript text for operational correctness.
+- Panels should reflect real records and traces, not separate UI summaries.
 
-#### MVP-604: Voice Demo QA
+#### MVP-704: Voice Demo QA
 
 Scope:
 
@@ -756,70 +843,90 @@ Scope:
 Acceptance:
 
 - Agent previews before commit.
-- Agent commits only after explicit confirmation.
+- Agent commits only after explicit server-captured confirmation.
 - Payment follow-up happens through a committed ChangeSet operation.
 - Kitchen delta is created internally only after the committed ChangeSet affects meals.
 - Audit log matches the voice interaction.
 
 Review focus:
 
-- Any voice transcript limitations should be documented honestly.
+- Transcript limitations should be documented honestly; tool calls and DB state remain the source of truth.
 
-### Wave 7: Documentation, Hardening, and Final Review
+### Wave 8: Walk/Run Evals and Portfolio Hardening
 
-Goal: make the demo understandable, inspectable, and credible.
+Goal: make the demo credible under more realistic contact-center conditions and document the evidence.
 
 Gate to exit:
 
-- README explains the project in under 60 seconds.
-- Docs match implementation.
-- Final review finds no known unsafe write path.
+- Walk evals run noisy or phone-like single-turn cases.
+- Run evals run multi-turn contact-center simulations.
+- README and docs explain the realtime architecture, guardrails, eval stages, run commands, demo script, and limitations.
+- Final safety review finds no known unsafe write path.
 
 Tickets:
 
-#### MVP-701: README
+#### MVP-801: Walk Audio Evals
 
 Scope:
 
-- Explain what this is, why it matters, architecture, safety boundary, evals, local run commands, demo scenario, tool list, policy list, limitations, and future hardening.
+- Add phone-bandwidth/noisy audio fixtures or deterministic audio transforms.
+- Cover names, order numbers, addresses, hesitations, and minor self-corrections.
 
 Acceptance:
 
-- A reviewer can run the project from README alone.
-- README leads with evidence: eval report and safety boundary.
+- `pnpm eval:realtime -- --stage walk` runs.
+- Expected behavior may be a correct tool call or a clarification question.
 
 Review focus:
 
-- Avoid claims that are not backed by implemented behavior.
+- The agent should clarify instead of guessing when capture quality is insufficient.
 
-#### MVP-702: Supporting Docs
+#### MVP-802: Run Multi-Turn Simulations
 
 Scope:
 
-- Add `docs/architecture.md`, `docs/guardrails.md`, `docs/eval-design.md`, `docs/demo-script.md`, and `docs/known-limitations.md`.
+- Add synthetic multi-turn user simulations for contact-center workflows.
+- Cover clarification, correction, confirmation, interruption, tool failure, stale state, policy block, and handoff/escalation.
 
 Acceptance:
 
-- Docs explain ChangeSets, guardrails, eval scoring, and demo flow.
-- Known limitations are explicit.
+- `pnpm eval:realtime -- --stage run` runs.
+- Simulated users cannot directly mutate operational state.
 
 Review focus:
 
-- Keep docs synchronized with code names and commands.
+- Keep tool mocks and user simulation separate from the production-shaped domain services.
 
-#### MVP-703: Final Safety Review
+#### MVP-803: OOB Transcription Debugging Hooks
 
 Scope:
 
+- Add optional out-of-band transcription capture for difficult realtime failures.
+- Compare built-in transcript, OOB transcript, tool args, and final state in reports.
+
+Acceptance:
+
+- OOB transcription is optional and disabled unless configured.
+- Reports can help distinguish perception failures from reasoning/tool failures.
+
+Review focus:
+
+- OOB transcript is debug evidence, not an operational source of truth.
+
+#### MVP-804: Documentation and Final Safety Review
+
+Scope:
+
+- Update README and supporting docs.
 - Review unsafe writes, missing policy checks, incomplete audit logs, state version bugs, unvalidated tool inputs, UI secret exposure, eval false positives, and poor error messages.
 
 Acceptance:
 
-- `pnpm test` passes.
-- `pnpm eval` passes with zero hard policy violations.
+- `pnpm test`, `pnpm lint`, `pnpm eval`, and applicable realtime eval commands pass or are clearly documented as credential-gated.
 - Browser code does not expose `OPENAI_API_KEY`.
 - No kitchen delta can be created before commit.
 - No write can commit without server-captured explicit confirmation.
+- Docs match implemented behavior.
 
 Review focus:
 
@@ -839,12 +946,17 @@ Good parallel handoffs after Wave 2:
 
 - Individual tool groups.
 - Eval scorer groups.
-- UI panels that consume already-defined records.
+
+Good parallel handoffs after Wave 5:
+
+- Crawl fixture/case authoring.
+- Realtime trace scoring.
+- Browser UI pieces that consume already-defined realtime traces and records.
 
 Avoid handoffs for:
 
 - The central ChangeSet commit path until the policy model is settled.
-- Realtime voice until scripted runner and tool registry are stable.
+- Realtime browser UI until the server-side Realtime runner and Crawl loop are stable.
 - Large cross-cutting refactors without a narrow acceptance test.
 
 Each handoff should include:
@@ -863,11 +975,12 @@ Each handoff should include:
 3. Wave 2 implements policies, date resolution, ChangeSets, and side effects.
 4. Wave 3 exposes everything through typed tools.
 5. Wave 4 proves behavior through scripted runner and evals.
-6. Wave 5 makes the core workflow inspectable in the browser debug console.
-7. Wave 6 adds realtime voice as an adapter.
-8. Wave 7 hardens and documents.
+6. Wave 5 creates the minimal server-side Realtime runner and tool bridge.
+7. Wave 6 adds clean-audio Crawl evals for prompt/tool iteration.
+8. Wave 7 adds the browser Realtime demo.
+9. Wave 8 adds Walk/Run evals, docs, and final hardening.
 
-This order is deliberate: evals and scripted/debug mode must prove the operational boundary before voice complexity is introduced.
+This order is deliberate: scripted evals prove the operational boundary, then the Realtime runner proves the actual product runtime before browser UI work starts.
 
 ## 11. Milestone Definition of Done
 
@@ -876,7 +989,6 @@ Checkpoint A is done when:
 - `pnpm dev`, `pnpm test`, `pnpm eval`, and `pnpm lint` run successfully.
 - All hard policy tests pass.
 - `pnpm eval` runs 20 cases with zero hard policy violations.
-- Main demo scenario works in scripted/debug mode.
 - Write operations require preview and server-captured explicit confirmation.
 - Stale and expired ChangeSets cannot commit.
 - Allergy and medical-risk requests escalate without mutating allergy state.
@@ -887,14 +999,22 @@ Checkpoint A is done when:
 
 Checkpoint B is done when:
 
-- Main demo scenario works by realtime voice over the same backend.
-- Browser receives only ephemeral realtime credentials.
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` runs with credentials.
+- `pnpm eval:realtime -- --stage crawl` runs the clean-audio Crawl suite.
 - Realtime tools execute server-side and reuse the same registry, policies, ChangeSet service, DB, and audit log.
+- Realtime reports include events, transcript fragments, tool calls/results, audit events, and final DB state.
 
 Checkpoint C is done when:
 
+- Main demo scenario works by browser realtime voice over the same backend.
+- Browser receives only ephemeral realtime credentials.
+- UI shows transcript, tool timeline, audit events, preview/diff, and confirmation state.
+
+Checkpoint D is done when:
+
+- Walk and Run realtime evals are implemented or explicitly documented as future work with clear gaps.
 - README and docs match the implemented behavior.
 
 ## 12. Immediate Next Step
 
-Continue Wave 1 with `MVP-102` and `MVP-104` as parallel handoffs. Start `MVP-103` after `MVP-102` lands, or coordinate it in the same branch if the seed API is already stable. Do not start realtime voice or rich UI until the domain, policy, ChangeSet, and eval foundations are working.
+Start Wave 5 with `MVP-501` through `MVP-504`. Keep the first handoff narrow: implement the server-side Realtime runner, prompt/tool adapter, event trace, and one smoke Crawl case before starting browser UI.

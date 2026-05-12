@@ -256,105 +256,126 @@ Acceptance criteria:
 
 ---
 
-## Task 7 — Basic UI without voice
+## Task 7 — Realtime runner foundation
 
 ### Prompt for Codex
 
 ```text
-Build a minimal browser UI for MealPlan VoiceOps without realtime voice yet.
-
-UI panels:
-- Text input for customer message
-- Transcript panel
-- Tool timeline
-- Change preview / state diff panel
-- Audit log panel
-- Reset demo state button
-
-Wire the UI to the same tool registry/domain services.
-
-Acceptance criteria:
-- User can type the main demo request.
-- UI shows transcript, tool calls, preview, audit log.
-- Confirmation flow works through text input.
-```
-
----
-
-## Task 8 — OpenAI Realtime voice session
-
-### Prompt for Codex
-
-```text
-Add the OpenAI Realtime voice layer.
+Implement the minimal server-side Realtime runner for MealPlan VoiceOps.
 
 Create:
-- src/app/api/realtime/session/route.ts
-- src/agent/realtime.ts
-- src/ui/VoiceControls.tsx
+- realtime agent prompt in markdown
+- Realtime-compatible tool definition adapter from the existing registry
+- server-side Realtime WebSocket runner
+- event trace capture
+- one clean-audio maya_smoke Crawl case
+- pnpm eval:realtime command
 
 Requirements:
 - Use OPENAI_API_KEY server-side only.
-- Browser must receive only ephemeral realtime session credentials.
-- Use gpt-realtime-2 by default via OPENAI_REALTIME_MODEL.
-- Attach the same tools/guardrails/tool registry used by the text agent.
-- Keep voice transport concerns separate from domain business logic.
-- Show live transcript where available.
-- Show tool calls and audit events in the UI.
+- Use OPENAI_REALTIME_MODEL with gpt-realtime-2 as the default.
+- Send clean test audio to the Realtime session.
+- Receive model events and tool calls.
+- Execute tool calls through the existing server-side tool executor.
+- Capture transcript fragments, tool calls/results, audit events, and final DB state.
+- Do not build browser UI in this task.
 
 Acceptance criteria:
-- User can start a voice session.
-- User can speak the main demo scenario.
-- Agent can call tools.
-- Agent previews changes before commit.
-- Agent commits only after explicit confirmation.
+- pnpm eval remains no-credentials and scripted by default.
+- pnpm eval:realtime -- --case maya_smoke --stage crawl runs when credentials are present.
+- Missing credentials produce a clear skipped/blocked result.
+- No second tool registry is created.
 ```
 
 ---
 
-## Task 9 — Portfolio docs and polish
+## Task 8 — Realtime Crawl evals
 
 ### Prompt for Codex
 
 ```text
-Create portfolio documentation.
+Implement the clean-audio Realtime Crawl eval suite.
 
-Add docs:
+Create:
+- realtime eval case contract
+- deterministic clean audio fixtures or repeatable fixture generation
+- Crawl scoring for Realtime traces
+- 5-10 Crawl cases
+
+Requirements:
+- Focus on routing, policy, exact entity capture, missing information, and unsafe action avoidance.
+- Score tool usage, forbidden tool usage, policy blocks, confirmation boundary, audit completeness, final state, and lightweight conversation behavior.
+- Include failure categories for perception, turn-taking, tool selection, arguments, policy, confirmation, and state.
+
+Acceptance criteria:
+- pnpm eval:realtime -- --stage crawl runs the suite.
+- Cases can run individually with --case.
+- Reports include raw event trace paths and actionable diagnostics.
+```
+
+---
+
+## Task 9 — Browser Realtime demo
+
+### Prompt for Codex
+
+```text
+Build the browser Realtime voice demo on top of the already-working Realtime runner and tool bridge.
+
+Create:
+- Realtime session route for browser sessions
+- ephemeral credential flow
+- browser voice controls
+- transcript panel
+- tool timeline
+- audit panel
+- preview / state diff panel
+- reset controls
+
+Requirements:
+- Browser must receive only ephemeral realtime credentials.
+- OPENAI_API_KEY must remain server-side.
+- Tool calls must execute through server routes or server-side controls.
+- Browser code must not mutate the mock DB or own domain write logic.
+- UI must not imply a write happened before commit succeeds.
+
+Acceptance criteria:
+- User can start/stop a voice session.
+- User can speak the main demo scenario.
+- Agent previews before writes.
+- Agent commits only after explicit server-captured confirmation.
+- UI shows transcript, tool calls, audit events, and state diff.
+```
+
+---
+
+## Task 10 — Walk/Run evals, docs, and final hardening
+
+### Prompt for Codex
+
+```text
+Add realistic Realtime eval stages and finish portfolio documentation.
+
+Create:
+- Walk evals with noisy or phone-like single-turn audio
+- Run evals with synthetic multi-turn contact-center simulations
+- optional OOB transcription debugging hooks
 - docs/architecture.md
 - docs/guardrails.md
 - docs/eval-design.md
 - docs/demo-script.md
 - docs/known-limitations.md
-
-Update README.md with:
-- What this is
-- Why it matters
-- Architecture diagram
-- Eval report snapshot
-- How to run
-- How safety boundary works
-- Demo scenario
-- Tool list
-- Policy rules
-- Known limitations
-- Future production hardening
-
-Acceptance criteria:
-- README explains the project in under 60 seconds.
-- Technical reviewer can run locally.
-- Docs clearly explain ChangeSet, policy, confirmation, audit, and evals.
-```
-
----
-
-## Task 10 — Final review and hardening
-
-### Prompt for Codex
-
-```text
-Review the MealPlan VoiceOps codebase for production-shaped correctness.
+- README updates
 
 Focus on:
+- noisy audio capture
+- clarifying instead of guessing
+- corrections and partial information
+- interruptions
+- tool failures
+- stale state
+- policy blocks
+- handoff/escalation
 - Unsafe writes
 - Missing policy checks
 - Incomplete audit logs
@@ -368,10 +389,11 @@ Make minimal, high-confidence fixes.
 
 Acceptance criteria:
 - pnpm test passes.
+- pnpm lint passes.
 - pnpm eval passes with 0 hard policy violations.
+- applicable realtime eval commands pass or are clearly documented as credential-gated.
 - No browser code exposes OPENAI_API_KEY.
 - README and docs match implementation.
 ```
 
 ---
-

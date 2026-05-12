@@ -169,9 +169,9 @@ read state
 → audit log
 ```
 
-### 6.3 The text agent is the core; voice is the interface
+### 6.3 The operations backend is the core; realtime voice is the product runtime
 
-The system must work in text replay before realtime voice is added. The voice UI should reuse the same tools, policies, domain model, and eval cases.
+The product goal is a realtime contact-center voice agent. The system still needs a deterministic scripted runner, but that runner is an engineering safety harness for schemas, tools, policies, ChangeSets, audit logs, and eval scoring. Realtime sessions, scripted runs, model-backed runs, and browser demo flows must reuse the same server-side tool executor and domain services.
 
 ### 6.4 Evals are a product feature
 
@@ -188,12 +188,9 @@ The eval report is not an afterthought. It is the main evidence that the system 
 
 ```text
 Browser UI
-  ├── Voice mode
-  └── Text replay mode
+  └── Realtime voice session
         ↓
-Agent Runtime
-  ├── Realtime voice session
-  └── Text agent runner
+Server-side Realtime controls / tool executor
         ↓
 Tool Registry
         ↓
@@ -211,7 +208,7 @@ Side-Effect Services
         ↓
 Audit Log + Tool Trace
         ↓
-Replay Eval Runner
+Scripted + Realtime Eval Runners
 ```
 
 ---
@@ -2133,18 +2130,15 @@ Acceptance criteria:
 
 ---
 
-### M2 — Text agent + replay evals
+### M2 — Scripted safety evals
 
 Goal:
 
-Prove behavior before voice.
+Prove the operational safety boundary before Realtime complexity.
 
 Deliverables:
 
-- Text-mode agent runner.
-- Agent instructions.
-- Tool calling loop.
-- Simulated user runner.
+- Scripted runner.
 - 20 eval cases.
 - Scorers.
 - Eval report.
@@ -2159,35 +2153,63 @@ Acceptance criteria:
 
 ---
 
-### M3 — Realtime voice layer
+### M3 — Realtime runner + Crawl evals
 
 Goal:
 
-Add live browser voice interface.
+Implement the minimal realtime agent runtime and clean-audio eval loop.
 
 Deliverables:
 
-- Realtime session API route.
-- Browser microphone input.
-- Speech-to-speech agent response.
-- Tool calls from realtime session.
-- Live transcript panel.
-- Tool timeline.
-- Audit panel.
-- Change preview panel.
+- Realtime agent prompt.
+- Realtime tool definition adapter.
+- Server-side Realtime WebSocket runner.
+- Tool-call bridge through the existing server-side executor.
+- Event trace capture.
+- Clean audio fixtures.
+- 5-10 Crawl eval cases.
 
 Acceptance criteria:
 
-- User can speak the demo request.
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` works with credentials.
+- `pnpm eval:realtime -- --stage crawl` runs clean-audio cases.
+- Realtime tool calls use the same registry, policy layer, ChangeSet service, mock DB, and audit log.
 - Agent can ask clarification.
 - Agent can call tools.
 - Agent previews before writes.
 - Agent commits only after explicit confirmation.
-- UI shows audit log and state diff.
+- Reports include event timeline, transcript fragments, tool calls/results, audit events, and final DB state.
 
 ---
 
-### M4 — Portfolio polish
+### M4 — Browser realtime demo
+
+Goal:
+
+Add the live browser voice interface after the Realtime runner and Crawl loop work.
+
+Deliverables:
+
+- Realtime session API route for browser sessions.
+- Browser microphone input.
+- Speech-to-speech agent response.
+- Live transcript panel.
+- Tool timeline.
+- Audit panel.
+- Change preview panel.
+- Reset and connection-state controls.
+
+Acceptance criteria:
+
+- Browser receives only ephemeral realtime credentials.
+- User can speak the demo request.
+- Tool calls execute server-side.
+- UI shows audit log and state diff.
+- Browser code does not own domain write logic.
+
+---
+
+### M5 — Walk/Run evals and portfolio polish
 
 Goal:
 
@@ -2195,6 +2217,9 @@ Make the project easy to understand and review.
 
 Deliverables:
 
+- Walk evals with noisy or phone-like single-turn audio.
+- Run evals with multi-turn contact-center simulations.
+- Optional OOB transcription debugging hooks.
 - README.
 - Architecture doc.
 - Guardrails doc.
@@ -2209,7 +2234,7 @@ Acceptance criteria:
 - Reviewer understands project in 60 seconds.
 - Technical reviewer can run locally.
 - README explains what is production-shaped.
-- Demo shows voice + tools + policy + audit + evals.
+- Demo shows realtime voice + tools + policy + audit + evals.
 
 ---
 
@@ -2268,24 +2293,24 @@ When implementing:
 7. Add tests for every policy rule.
 8. Do not expose `OPENAI_API_KEY` to the browser.
 9. Do not rely on model natural-language output for correctness.
-10. The eval runner must work without voice.
+10. The scripted eval runner must work without voice or OpenAI credentials.
+11. Realtime evals are credential-gated and must keep tool execution server-side.
 
 ---
 
-## 31. First Codex task recommendation
+## 31. Current Codex task recommendation
 
 Do not ask Codex to build the whole project in one task.
 
-Start with:
+After the scripted safety baseline is complete, continue with:
 
 ```text
-Implement M0 and M1 only.
+Implement M3 only: Realtime runner + Crawl foundation.
 
-Create a Next.js + TypeScript + Vitest project for MealPlan VoiceOps.
-Implement the domain schemas, seed data, mock DB, policy engine, ChangeSet service, typed tool registry, and unit tests.
-Do not implement OpenAI Realtime yet.
-Do not implement the voice UI yet.
-Make pnpm dev, pnpm test, and pnpm eval work.
+Create the server-side Realtime runner, realtime prompt, tool definition adapter, event trace, and one clean-audio maya_smoke Crawl case.
+Do not implement the browser UI yet.
+Keep pnpm test, pnpm lint, and pnpm eval working.
+Add pnpm eval:realtime as a credential-gated command.
 ```
 
 Then continue milestone-by-milestone.
@@ -2298,12 +2323,12 @@ The project is complete when:
 
 1. A user can run `pnpm dev` and test the voice demo.
 2. A user can run `pnpm eval` and see a 20-case eval report.
-3. Risky writes require preview + confirmation.
-4. Hard policy violations are blocked.
-5. Audit logs show reads, previews, writes, blocks, and side effects.
-6. The demo scenario works end-to-end.
-7. README clearly explains the architecture and eval strategy.
-8. Known limitations are explicit and honest.
+3. A credentialed user can run realtime Crawl evals.
+4. Risky writes require preview + confirmation.
+5. Hard policy violations are blocked.
+6. Audit logs show reads, previews, writes, blocks, and side effects.
+7. The realtime demo scenario works end-to-end.
+8. README clearly explains the architecture and eval strategy.
+9. Known limitations are explicit and honest.
 
 ---
-
