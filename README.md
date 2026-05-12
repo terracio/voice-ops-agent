@@ -47,7 +47,7 @@ Payment follow-ups are ChangeSet operations. Kitchen export deltas are internal 
 
 ## Eval Harness
 
-`pnpm eval` runs the scripted harness mode without OpenAI credentials. It resets the mock DB by each case's seed ID at the harness boundary, executes the configured case executor, prints a terminal summary, and writes machine-readable reports to `reports/eval-report.json` and `reports/eval-report.md`.
+`pnpm eval` runs the deterministic scripted harness mode without OpenAI credentials. `pnpm eval -- --mode scripted` selects it explicitly, and `pnpm eval -- --pass-k 3` repeats the scripted suite three times with aggregate pass-k reporting. Each run resets the mock DB by case seed ID at the harness boundary, executes the configured case executor, prints a terminal summary, and writes reports to `reports/eval-report.json` and `reports/eval-report.md`.
 
 Scripted eval reports are labeled as operational-safety evidence. They prove the structured ChangeSet, policy, confirmation, side-effect, and audit boundaries. Future model-mode evals must provide separate model-behavior evidence; `--mode model` requires a server-side `OPENAI_API_KEY` and an explicit model executor, and it does not fall back to scripted behavior.
 
