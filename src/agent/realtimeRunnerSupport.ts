@@ -90,7 +90,17 @@ export function skippedRealtimeRunnerResult(options: {
     transport: REALTIME_RUNNER_TRANSPORT,
     run_id: options.runId,
     session_id: options.sessionId,
-    trace: options.trace
+    trace: options.trace,
+    transcript_fragments: [],
+    tool_calls: [],
+    audit_ids: [],
+    audit_events: [],
+    final_state: {
+      customer_states: [],
+      payment_followups: [],
+      kitchen_deltas: []
+    },
+    event_counts: {}
   };
 }
 

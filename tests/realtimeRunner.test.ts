@@ -4,6 +4,7 @@ import {
   createPcm16Silence,
   createRealtimeAgentSdkTools,
   createRealtimeSessionFactoryOptions,
+  createRealtimeTraceCollector,
   REALTIME_RUNNER_TRANSPORT,
   resolveOpenAIRealtimeCredentials,
   runRealtimeAgentSmoke,
@@ -79,9 +80,13 @@ describe("Realtime runner", () => {
 
   it("creates SDK Realtime tools that execute through the server registry", async () => {
     const registry = createMealPlanToolRegistry();
+    const traceCollector = createRealtimeTraceCollector({
+      now: () => new Date("2026-05-11T10:00:00Z")
+    });
     const sdkTools = createRealtimeAgentSdkTools({
       registry,
-      getToolContext: () => toolContext
+      getToolContext: () => toolContext,
+      traceCollector
     });
     const lookupCustomer = sdkTools.find((sdkTool) => sdkTool.name === "lookup_customer");
 
@@ -98,6 +103,69 @@ describe("Realtime runner", () => {
         candidate_count: 1
       }
     });
+    const summary = traceCollector.summarize(toolContext.run_id);
+    expect(summary.audit_ids).toHaveLength(1);
+    expect(summary.tool_calls[0]?.audit_event_ids).toHaveLength(1);
+    expect(
+      traceCollector.trace.find((event) => event.type === "tool_call_started")
+        ?.payload
+    ).toMatchObject({ status: "started" });
+    expect(summary).toMatchObject({
+      tool_calls: [
+        {
+          tool_name: "lookup_customer",
+          status: "completed",
+          audit_event_ids: expect.any(Array)
+        }
+      ],
+      audit_ids: expect.any(Array),
+      final_state: {
+        customer_states: [
+          {
+            customer: {
+              customer_id: "cus_001"
+            }
+          }
+        ]
+      }
+    });
+  });
+
+  it("returns structured blocked tool results in Realtime traces", async () => {
+    const traceCollector = createRealtimeTraceCollector({
+      now: () => new Date("2026-05-11T10:00:00Z")
+    });
+    const sdkTools = createRealtimeAgentSdkTools({
+      registry: createMealPlanToolRegistry(),
+      getToolContext: () => toolContext,
+      traceCollector
+    });
+    const getCustomerState = sdkTools.find((sdkTool) => sdkTool.name === "get_customer_state");
+
+    expect(getCustomerState).toBeDefined();
+    const result = await getCustomerState?.invoke(
+      {} as never,
+      JSON.stringify({ customer_id: "cus_001" })
+    );
+
+    expect(JSON.parse(String(result))).toMatchObject({
+      ok: false,
+      error: {
+        code: "IDENTITY_NOT_RESOLVED",
+        policy_id: "P001_IDENTITY_UNCERTAIN"
+      }
+    });
+    const summary = traceCollector.summarize(toolContext.run_id);
+    expect(summary.audit_ids).toHaveLength(1);
+    expect(summary.tool_calls[0]?.audit_event_ids).toHaveLength(1);
+    expect(summary.tool_calls).toMatchObject([
+      {
+        tool_name: "get_customer_state",
+        status: "blocked",
+        policy_id: "P001_IDENTITY_UNCERTAIN",
+        audit_event_ids: expect.any(Array)
+      }
+    ]);
   });
 
   it("keeps the SDK session configured for server-side websocket runner use", async () => {

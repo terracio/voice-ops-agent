@@ -69,16 +69,17 @@ The browser UI comes after the server-side Realtime runner can start a session, 
 
 The current runner is a smoke foundation, not the full realtime eval suite yet.
 
-- `runRealtimeAgentSmoke`: credential-gated entrypoint. It resolves the model/key, builds a realtime agent, connects a server-side SDK WebSocket session, sends one audio or text fixture, waits for a terminal event, closes the session, and returns a sanitized trace.
+- `runRealtimeAgentSmoke`: credential-gated entrypoint. It resolves the model/key, builds a realtime agent, connects a server-side SDK WebSocket session, sends one audio or text fixture, waits for a terminal event, closes the session, and returns raw events plus eval-friendly summaries.
 - `createMealPlanRealtimeAgent`: builds the `RealtimeAgent` from the source-controlled realtime prompt and SDK-compatible tools.
 - `createRealtimeAgentSdkTools`: adapts the provider-neutral MealPlan tools into SDK function tools. Tool execution still goes through the existing registry, schemas, policies, ChangeSets, and audit layer.
+- `createRealtimeTraceCollector`: captures sanitized transport events, transcript fragments, SDK tool calls/results, audit IDs, and final DB state snapshots for later scoring.
 - `createRealtimeSessionFactoryOptions`: defines the server-side session configuration: `gpt-realtime-2`, WebSocket transport, low reasoning, PCM input, transcription, and no automatic turn detection for deterministic fixtures.
 - `createSdkRealtimeSession`: the only place that instantiates the OpenAI SDK `RealtimeSession`. It is wrapped behind `RealtimeSessionLike` so tests and future fallback transports can use the same runner boundary.
 - `loadOpenAIServerEnv` and `resolveOpenAIRealtimeCredentials`: load local server credentials and skip cleanly when no key is present.
 - `createPcm16Silence`: creates the tiny synthetic audio fixture used by the first smoke check.
 - `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
 
-`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and reports connection/event success. It does not yet score final DB state, policy outcomes, or Crawl case pass/fail behavior; that scoring belongs to the next realtime eval tickets.
+`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, and final-state evidence. It does not yet grade Crawl pass/fail behavior; that scoring belongs to the next realtime eval tickets.
 
 ## Implementation Rules
 

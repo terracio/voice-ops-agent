@@ -1,4 +1,10 @@
 import type { RealtimeAgent } from "@openai/agents/realtime";
+import type { CustomerState } from "../domain/db";
+import type {
+  AuditEvent,
+  KitchenExportDelta,
+  PaymentFollowup
+} from "../domain/schema";
 import type { ToolExecutionContext } from "../tools/context";
 import type { ToolRegistry } from "../tools/registry";
 import type { RealtimeModelEnv } from "./realtimeInstructions";
@@ -16,6 +22,48 @@ export type RealtimeTraceEvent = {
   payload?: unknown;
 };
 
+export type RealtimeTranscriptFragment = {
+  at: string;
+  role: "assistant" | "user";
+  text: string;
+  source_event_type: string;
+  item_id?: string;
+  response_id?: string;
+};
+
+export type RealtimeToolCallStatus =
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "started";
+
+export type RealtimeToolCallTrace = {
+  tool_call_id: string;
+  tool_name: string;
+  status: RealtimeToolCallStatus;
+  input: unknown;
+  audit_event_ids: string[];
+  started_at: string;
+  finished_at?: string;
+  output?: unknown;
+  policy_id?: string;
+};
+
+export type RealtimeFinalStateSnapshot = {
+  customer_states: CustomerState[];
+  payment_followups: PaymentFollowup[];
+  kitchen_deltas: KitchenExportDelta[];
+};
+
+export type RealtimeTraceSummary = {
+  transcript_fragments: RealtimeTranscriptFragment[];
+  tool_calls: RealtimeToolCallTrace[];
+  audit_ids: string[];
+  audit_events: AuditEvent[];
+  final_state: RealtimeFinalStateSnapshot;
+  event_counts: Record<string, number>;
+};
+
 export type RealtimeRunnerStatus =
   | "completed"
   | "failed"
@@ -30,7 +78,7 @@ export type RealtimeRunnerResult = {
   run_id: string;
   session_id: string;
   trace: RealtimeTraceEvent[];
-};
+} & RealtimeTraceSummary;
 
 export type RealtimeSessionLike = {
   on: (eventName: string, handler: (...args: unknown[]) => void) => unknown;

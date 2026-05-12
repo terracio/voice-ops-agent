@@ -16,12 +16,15 @@ import {
 } from "./realtimeInstructions";
 import {
   createPcm16Silence,
-  pushTrace,
   resolveOpenAIRealtimeCredentials,
   sanitizeRealtimePayload,
   skippedRealtimeRunnerResult,
   timestamp
 } from "./realtimeRunnerSupport";
+import {
+  createRealtimeTraceCollector,
+  type RealtimeTraceCollector
+} from "./realtimeTrace";
 import {
   REALTIME_RUNNER_TRANSPORT,
   type RealtimeRunnerEnv,
@@ -30,7 +33,6 @@ import {
   type RealtimeSessionFactoryOptions,
   type RealtimeSessionLike,
   type RealtimeToolContext,
-  type RealtimeTraceEvent,
   type RunRealtimeAgentSmokeOptions
 } from "./realtimeRunnerTypes";
 import { mealPlanRealtimeTools } from "./realtimeTools";
@@ -66,6 +68,7 @@ function buildToolContext(options: {
 export function createRealtimeAgentSdkTools(options: {
   getToolContext: () => ToolExecutionContext;
   registry?: ToolRegistry;
+  traceCollector?: RealtimeTraceCollector;
 }): FunctionTool<RealtimeToolContext>[] {
   const registry = options.registry ?? createMealPlanToolRegistry();
 
@@ -83,11 +86,32 @@ export function createRealtimeAgentSdkTools(options: {
       needsApproval: async () => false,
       isEnabled: async () => true,
       invoke: async (_runContext, input) => {
-        const result = await registry.execute(realtimeTool.name, {
-          modelArgs: normalizeToolInput(input),
-          context: options.getToolContext()
+        const modelArgs = normalizeToolInput(input);
+        const toolCall = options.traceCollector?.recordToolStart({
+          toolName: realtimeTool.name,
+          input: modelArgs
         });
-        return JSON.stringify(result);
+        try {
+          const result = await registry.execute(realtimeTool.name, {
+            modelArgs,
+            context: options.getToolContext()
+          });
+          if (toolCall) {
+            options.traceCollector?.recordToolResult(
+              toolCall.tool_call_id,
+              result
+            );
+          }
+          return JSON.stringify(result);
+        } catch (error) {
+          if (toolCall) {
+            options.traceCollector?.recordToolException(
+              toolCall.tool_call_id,
+              error
+            );
+          }
+          throw error;
+        }
       }
     };
   });
@@ -96,6 +120,7 @@ export function createRealtimeAgentSdkTools(options: {
 export function createMealPlanRealtimeAgent(options: {
   getToolContext: () => ToolExecutionContext;
   registry?: ToolRegistry;
+  traceCollector?: RealtimeTraceCollector;
 }): RealtimeAgent<RealtimeToolContext> {
   return new RealtimeAgent<RealtimeToolContext>({
     name: "MealPlan VoiceOps",
@@ -147,36 +172,27 @@ export function createSdkRealtimeSession(
 
 function attachTraceListeners(
   session: RealtimeSessionLike,
-  trace: RealtimeTraceEvent[],
-  now: () => Date
+  collector: RealtimeTraceCollector
 ): void {
   session.on("transport_event", (event) => {
-    const eventType =
-      typeof event === "object" && event !== null && "type" in event
-        ? String(event.type)
-        : "unknown";
-    pushTrace(trace, now, {
-      source: "transport",
-      type: eventType,
-      payload: sanitizeRealtimePayload(event)
-    });
+    collector.recordTransportEvent(event);
   });
   session.on("agent_tool_start", (_context, _agent, sdkTool, details) => {
-    pushTrace(trace, now, {
+    collector.recordEvent({
       source: "tool",
       type: "agent_tool_start",
       payload: sanitizeRealtimePayload({ sdkTool, details })
     });
   });
   session.on("agent_tool_end", (_context, _agent, sdkTool, result, details) => {
-    pushTrace(trace, now, {
+    collector.recordEvent({
       source: "tool",
       type: "agent_tool_end",
       payload: sanitizeRealtimePayload({ sdkTool, result, details })
     });
   });
   session.on("error", (error) => {
-    pushTrace(trace, now, {
+    collector.recordEvent({
       source: "session",
       type: "error",
       payload: sanitizeRealtimePayload(error)
@@ -217,7 +233,8 @@ export async function runRealtimeAgentSmoke(
   options: RunRealtimeAgentSmokeOptions = {}
 ): Promise<RealtimeRunnerResult> {
   const now = options.now ?? (() => new Date());
-  const trace: RealtimeTraceEvent[] = [];
+  const collector = createRealtimeTraceCollector({ now });
+  const trace = collector.trace;
   const env: RealtimeRunnerEnv = options.env ?? {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL
@@ -252,7 +269,8 @@ export async function runRealtimeAgentSmoke(
   });
   const agent = createMealPlanRealtimeAgent({
     registry: options.registry,
-    getToolContext: () => toolContext
+    getToolContext: () => toolContext,
+    traceCollector: collector
   });
   const sessionOptions = createRealtimeSessionFactoryOptions({
     model,
@@ -263,8 +281,8 @@ export async function runRealtimeAgentSmoke(
     sessionOptions
   );
 
-  attachTraceListeners(session, trace, now);
-  pushTrace(trace, now, {
+  attachTraceListeners(session, collector);
+  collector.recordEvent({
     source: "runner",
     type: "connect_start",
     payload: {
@@ -276,7 +294,7 @@ export async function runRealtimeAgentSmoke(
 
   try {
     await session.connect({ apiKey: credentials.apiKey });
-    pushTrace(trace, now, { source: "runner", type: "connect_done" });
+    collector.recordEvent({ source: "runner", type: "connect_done" });
 
     const terminalEvent = waitForTerminalEvent(
       session,
@@ -300,10 +318,11 @@ export async function runRealtimeAgentSmoke(
       transport: REALTIME_RUNNER_TRANSPORT,
       run_id: runId,
       session_id: sessionId,
-      trace
+      trace,
+      ...collector.summarize(runId)
     };
   } catch (error) {
-    pushTrace(trace, now, {
+    collector.recordEvent({
       source: "runner",
       type: "run_failed",
       payload: sanitizeRealtimePayload(error)
@@ -315,7 +334,8 @@ export async function runRealtimeAgentSmoke(
       transport: REALTIME_RUNNER_TRANSPORT,
       run_id: runId,
       session_id: sessionId,
-      trace
+      trace,
+      ...collector.summarize(runId)
     };
   } finally {
     session.close();
