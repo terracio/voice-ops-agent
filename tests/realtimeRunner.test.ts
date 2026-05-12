@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createMealPlanRealtimeAgent,
-  createPcm16Silence,
   createRealtimeAgentSdkTools,
   createRealtimeSessionFactoryOptions,
   createRealtimeTraceCollector,
@@ -11,6 +10,7 @@ import {
   type RealtimeSessionLike
 } from "../src/agent";
 import { resetDb } from "../src/domain/db";
+import { loadRealtimeEvalCase } from "../src/evals/realtime/caseLoader";
 import { createMealPlanToolRegistry } from "../src/tools";
 import type { ToolExecutionContext } from "../src/tools/context";
 
@@ -199,12 +199,34 @@ describe("Realtime runner", () => {
     expect(sessionFactory).not.toHaveBeenCalled();
   });
 
-  it("sends an audio fixture through an injected SDK session boundary", async () => {
+  it("loads the maya smoke case as a clean-audio crawl fixture", () => {
+    expect(loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }))
+      .toMatchObject({
+        case_id: "maya_smoke",
+        stage: "crawl",
+        seed_id: "maya_default",
+        input: {
+          mode: "audio"
+        },
+        audio: {
+          source: "openai_tts",
+          response_format: "pcm",
+          sample_rate_hz: 24_000,
+          chunk_duration_ms: 20
+        },
+        expected: {
+          required_tools: ["lookup_customer"]
+        }
+      });
+  });
+
+  it("streams an audio fixture in chunks through an injected SDK session boundary", async () => {
     const fakeSession = new FakeRealtimeSession();
-    const audio = createPcm16Silence({ durationMs: 100 });
+    const audio = new ArrayBuffer(2_000);
     const result = await runRealtimeAgentSmoke({
       apiKey: "sk-test",
       audio,
+      audioChunkDurationMs: 20,
       runId: "run_audio",
       sessionId: "session_audio",
       sessionFactory: () => fakeSession
@@ -212,9 +234,28 @@ describe("Realtime runner", () => {
 
     expect(result.status).toBe("completed");
     expect(fakeSession.connect).toHaveBeenCalledWith({ apiKey: "sk-test" });
-    expect(fakeSession.sendAudio).toHaveBeenCalledWith(audio, { commit: true });
+    expect(fakeSession.sendAudio).toHaveBeenCalledTimes(3);
+    expect(fakeSession.sendAudio).toHaveBeenNthCalledWith(
+      1,
+      expect.any(ArrayBuffer),
+      { commit: false }
+    );
+    expect(fakeSession.sendAudio).toHaveBeenNthCalledWith(
+      3,
+      expect.any(ArrayBuffer),
+      { commit: true }
+    );
     expect(fakeSession.transport.requestResponse).toHaveBeenCalledOnce();
     expect(fakeSession.close).toHaveBeenCalledOnce();
+    expect(result.trace).toContainEqual(
+      expect.objectContaining({
+        type: "audio_stream_sent",
+        payload: expect.objectContaining({
+          chunk_count: 3,
+          chunk_duration_ms: 20
+        })
+      })
+    );
     expect(result.trace.map((event) => event.type)).toContain("response.done");
   });
 });

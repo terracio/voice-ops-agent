@@ -7,13 +7,31 @@ import type {
   RealtimeRunnerResult,
   RealtimeTranscriptFragment
 } from "../agent/realtimeRunnerTypes";
-import { loadOpenAIServerEnv } from "../agent/realtimeRunnerSupport";
+import {
+  loadOpenAIServerEnv,
+  resolveOpenAIRealtimeCredentials
+} from "../agent/realtimeRunnerSupport";
+import { resetDb } from "../domain/db";
+import {
+  createTextRealtimeEvalCase,
+  loadRealtimeEvalCase,
+  type RealtimeEvalCase
+} from "./realtime/caseLoader";
+import { synthesizeOpenAiSpeechPcm } from "./realtime/tts";
 
 type RealtimeEvalArgs = {
   caseId: string;
   inputText?: string;
   noEnv: boolean;
   stage: string;
+};
+
+type PreparedRealtimeInput = {
+  audio?: ArrayBuffer;
+  audio_metadata?: Record<string, unknown>;
+  input_mode: "audio" | "text";
+  input_text: string;
+  inputText?: string;
 };
 
 function readArgValue(args: string[], name: string): string | undefined {
@@ -78,9 +96,50 @@ function readableTranscriptFragments(
     : collapseTranscriptDeltas(fragments);
 }
 
+async function prepareRealtimeInput(options: {
+  apiKey?: string;
+  realtimeCase: RealtimeEvalCase;
+}): Promise<PreparedRealtimeInput> {
+  if (options.realtimeCase.input.mode === "text") {
+    return {
+      input_mode: "text",
+      input_text: options.realtimeCase.input.text,
+      inputText: options.realtimeCase.input.text
+    };
+  }
+
+  const audio = options.apiKey
+    ? await synthesizeOpenAiSpeechPcm({
+      apiKey: options.apiKey,
+      input: options.realtimeCase.input.text,
+      model: options.realtimeCase.audio.model,
+      voice: options.realtimeCase.audio.voice,
+      instructions: options.realtimeCase.audio.instructions,
+      speed: options.realtimeCase.audio.speed
+    })
+    : undefined;
+
+  return {
+    audio,
+    input_mode: "audio",
+    input_text: options.realtimeCase.input.text,
+    audio_metadata: {
+      source: options.realtimeCase.audio.source,
+      model: options.realtimeCase.audio.model,
+      voice: options.realtimeCase.audio.voice,
+      response_format: options.realtimeCase.audio.response_format,
+      sample_rate_hz: options.realtimeCase.audio.sample_rate_hz,
+      chunk_duration_ms: options.realtimeCase.audio.chunk_duration_ms,
+      byte_length: audio?.byteLength
+    }
+  };
+}
+
 function writeRealtimeReports(options: {
   args: RealtimeEvalArgs;
   env_file_status: string;
+  preparedInput: PreparedRealtimeInput;
+  realtimeCase: RealtimeEvalCase;
   result: RealtimeRunnerResult;
 }): { json_path: string; markdown_path: string } {
   const reportDir = join(
@@ -119,6 +178,11 @@ function writeRealtimeReports(options: {
       {
         case_id: options.args.caseId,
         stage: options.args.stage,
+        seed_id: options.realtimeCase.seed_id,
+        input_mode: options.preparedInput.input_mode,
+        input_text: options.preparedInput.input_text,
+        audio_metadata: options.preparedInput.audio_metadata,
+        expected: options.realtimeCase.expected,
         env_file_status: options.env_file_status,
         ...options.result
       },
@@ -134,6 +198,8 @@ function writeRealtimeReports(options: {
       `Case: ${options.args.caseId}`,
       `Stage: ${options.args.stage}`,
       `Run: ${options.result.run_id}`,
+      `Seed: ${options.realtimeCase.seed_id}`,
+      `Input mode: ${options.preparedInput.input_mode}`,
       `Status: ${options.result.status}`,
       `Model: ${options.result.model}`,
       `Transport: ${options.result.transport}`,
@@ -141,6 +207,13 @@ function writeRealtimeReports(options: {
       `Tool calls: ${options.result.tool_calls.length}`,
       `Audit events: ${options.result.audit_events.length}`,
       `Transcript fragments: ${options.result.transcript_fragments.length}`,
+      "",
+      "## Fixture",
+      "",
+      `Input text: ${options.preparedInput.input_text}`,
+      options.preparedInput.audio_metadata
+        ? `Audio: ${JSON.stringify(options.preparedInput.audio_metadata)}`
+        : "Audio: not used",
       "",
       "## Transcript",
       "",
@@ -164,6 +237,25 @@ function writeRealtimeReports(options: {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const env_file_status = args.noEnv ? "skipped" : loadOpenAIServerEnv();
+  const realtimeCase = args.inputText
+    ? createTextRealtimeEvalCase({
+      caseId: args.caseId,
+      stage: args.stage,
+      text: args.inputText
+    })
+    : loadRealtimeEvalCase({ caseId: args.caseId, stage: args.stage });
+  resetDb(realtimeCase.seed_id);
+
+  const credentials = resolveOpenAIRealtimeCredentials({
+    env: {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL
+    }
+  });
+  const preparedInput = await prepareRealtimeInput({
+    apiKey: credentials.ok ? credentials.apiKey : undefined,
+    realtimeCase
+  });
   const runStamp = createRunStamp();
   const runId = [
     "realtime",
@@ -174,8 +266,10 @@ async function main(): Promise<void> {
   const result = await runRealtimeAgentSmoke({
     runId,
     sessionId: `${runId}_session`,
-    lastUserMessage: "Realtime smoke audio fixture.",
-    inputText: args.inputText,
+    lastUserMessage: realtimeCase.input.text,
+    audio: preparedInput.audio,
+    audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,
+    inputText: preparedInput.inputText,
     timeoutMs: 20_000
   });
 
@@ -186,12 +280,19 @@ async function main(): Promise<void> {
     reason: result.reason,
     model: result.model,
     transport: result.transport,
+    input_mode: preparedInput.input_mode,
     env_file_status,
     trace_event_count: result.trace.length,
     transcript_fragment_count: result.transcript_fragments.length,
     tool_call_count: result.tool_calls.length,
     audit_event_count: result.audit_events.length,
-    ...writeRealtimeReports({ args, env_file_status, result })
+    ...writeRealtimeReports({
+      args,
+      env_file_status,
+      preparedInput,
+      realtimeCase,
+      result
+    })
   };
 
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);

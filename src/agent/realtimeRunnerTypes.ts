@@ -120,6 +120,7 @@ export type RealtimeToolContext = {
 
 export type RunRealtimeAgentSmokeOptions = {
   audio?: ArrayBuffer;
+  audioChunkDurationMs?: number;
   apiKey?: string;
   env?: RealtimeRunnerEnv;
   inputText?: string;

@@ -1,4 +1,5 @@
 export * from "./realtimeInstructions";
+export * from "./realtimeAudioStream";
 export * from "./realtimeRunner";
 export * from "./realtimeRunnerSupport";
 export * from "./realtimeTrace";

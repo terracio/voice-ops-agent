@@ -14,6 +14,7 @@ import {
   MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
   resolveOpenAIRealtimeModel
 } from "./realtimeInstructions";
+import { streamPcm16AudioToRealtimeSession } from "./realtimeAudioStream";
 import {
   createPcm16Silence,
   resolveOpenAIRealtimeCredentials,
@@ -21,10 +22,7 @@ import {
   skippedRealtimeRunnerResult,
   timestamp
 } from "./realtimeRunnerSupport";
-import {
-  createRealtimeTraceCollector,
-  type RealtimeTraceCollector
-} from "./realtimeTrace";
+import { createRealtimeTraceCollector, type RealtimeTraceCollector } from "./realtimeTrace";
 import {
   REALTIME_RUNNER_TRANSPORT,
   type RealtimeRunnerEnv,
@@ -303,10 +301,16 @@ export async function runRealtimeAgentSmoke(
     if (options.inputText) {
       session.sendMessage(options.inputText);
     } else {
-      session.sendAudio(options.audio ?? createPcm16Silence(), {
-        commit: true
+      const audioStream = streamPcm16AudioToRealtimeSession(
+        session,
+        options.audio ?? createPcm16Silence(),
+        { chunkDurationMs: options.audioChunkDurationMs }
+      );
+      collector.recordEvent({
+        source: "runner",
+        type: "audio_stream_sent",
+        payload: audioStream
       });
-      session.transport?.requestResponse?.();
     }
 
     const status = await terminalEvent;

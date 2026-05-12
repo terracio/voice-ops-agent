@@ -1,0 +1,19 @@
+case_id: maya_smoke
+stage: crawl
+seed_id: maya_default
+input:
+  mode: audio
+  text: "I confirm customer ID C U S underscore zero zero one is correct. Please look up that customer ID now."
+audio:
+  source: openai_tts
+  model: gpt-4o-mini-tts
+  voice: alloy
+  response_format: pcm
+  sample_rate_hz: 24000
+  chunk_duration_ms: 20
+  instructions: "Speak clearly at a normal contact-center pace. Read letters and digits distinctly."
+expected:
+  transcript_hint: "I confirm customer ID C U S underscore zero zero one is correct. Please look up that customer ID now."
+  required_tools:
+    - lookup_customer
+  notes: "Wave 5 smoke case: prove text-to-clean-audio, chunked streaming, commit, response, and trace output."

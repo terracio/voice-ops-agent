@@ -76,7 +76,9 @@ The current runner is a smoke foundation, not the full realtime eval suite yet.
 - `createRealtimeSessionFactoryOptions`: defines the server-side session configuration: `gpt-realtime-2`, WebSocket transport, low reasoning, PCM input, transcription, and no automatic turn detection for deterministic fixtures.
 - `createSdkRealtimeSession`: the only place that instantiates the OpenAI SDK `RealtimeSession`. It is wrapped behind `RealtimeSessionLike` so tests and future fallback transports can use the same runner boundary.
 - `loadOpenAIServerEnv` and `resolveOpenAIRealtimeCredentials`: load local server credentials and skip cleanly when no key is present.
-- `createPcm16Silence`: creates the tiny synthetic audio fixture used by the first smoke check.
+- `streamPcm16AudioToRealtimeSession`: splits PCM16 input into fixed chunks, commits once at the end, and requests the model response.
+- `src/evals/realtime/cases/maya_smoke.yaml`: defines the first clean-audio Crawl smoke case. The eval command turns this text into PCM with OpenAI TTS, streams it in 20 ms chunks, and writes the trace report.
+- `createPcm16Silence`: creates a fallback tiny synthetic audio fixture for direct runner tests.
 - `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
 
 `pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and writes timestamped JSON/Markdown reports under `reports/realtime/<stage>/<case>/<run>/` with trace, transcript, tool-call, audit, and final-state evidence. It does not yet grade Crawl pass/fail behavior; that scoring belongs to the next realtime eval tickets.
