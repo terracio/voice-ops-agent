@@ -388,11 +388,10 @@ mealplan-voiceops/
 │   │           └── session/
 │   │               └── route.ts
 │   ├── agent/
-│   │   ├── instructions.ts
-│   │   ├── textAgent.ts
-│   │   ├── realtime.ts
-│   │   ├── toolRegistry.ts
-│   │   └── types.ts
+│   │   ├── realtimeInstructions.md
+│   │   ├── realtimeInstructions.ts
+│   │   ├── realtimeTools.ts
+│   │   └── realtimeRunner.ts
 │   ├── audit/
 │   │   ├── auditLog.ts
 │   │   └── auditTypes.ts
@@ -1334,7 +1333,8 @@ If the user corrects the agent, acknowledge the correction and update the propos
 Create:
 
 ```text
-src/agent/instructions.ts
+src/agent/realtimeInstructions.md
+src/agent/realtimeInstructions.ts
 ```
 
 ### 18.1 Agent role
