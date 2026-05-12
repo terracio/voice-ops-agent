@@ -329,9 +329,17 @@ Language: TypeScript
 Schemas: Zod
 Testing: Vitest
 Mock DB: local JSON files or in-memory repository with reset support
-Voice: OpenAI Realtime via @openai/agents/realtime or direct Realtime API
+Voice: OpenAI Realtime via @openai/agents/realtime, with direct Realtime WebSocket as an observability fallback
 Styling: Tailwind or minimal CSS
 ```
+
+Realtime runner decision:
+
+- Prefer the OpenAI Realtime Agents SDK for the server-side runner.
+- Keep the runner behind a thin transport boundary so evals do not depend on SDK internals.
+- Keep using the live-audio `gpt-realtime-2` path, not the Responses WebSocket text-agent transport.
+- Use direct Realtime WebSocket only if the SDK cannot expose enough event, transcript, audio, or tool-call detail for deterministic eval traces.
+- Tool calls still execute through the existing server-side registry, policy layer, ChangeSet service, and audit log.
 
 Required commands:
 
@@ -2163,11 +2171,18 @@ Deliverables:
 
 - Realtime agent prompt.
 - Realtime tool definition adapter.
-- Server-side Realtime WebSocket runner.
+- Server-side Realtime runner using the Realtime Agents SDK first.
 - Tool-call bridge through the existing server-side executor.
 - Event trace capture.
 - Clean audio fixtures.
 - 5-10 Crawl eval cases.
+
+Technical decision:
+
+- Implement the runner as SDK-first, with a thin adapter boundary.
+- If the SDK exposes enough hooks for deterministic audio fixtures, event capture, transcript capture, tool calls, tool outputs, and run shutdown, keep it as the runtime path.
+- If the SDK hides data needed for eval observability, document the gap and use direct Realtime WebSocket behind the same adapter boundary.
+- Do not use the Responses WebSocket text-agent transport for this voice runner.
 
 Acceptance criteria:
 

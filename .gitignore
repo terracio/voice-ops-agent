@@ -1,4 +1,5 @@
 .next/
+.env
 coverage/
 node_modules/
 reports/

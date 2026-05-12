@@ -65,6 +65,21 @@ server-side Realtime runner
 
 The browser UI comes after the server-side Realtime runner can start a session, send audio, receive events and tool calls, execute tools through the existing registry, and produce eval-compatible traces. `pnpm eval:realtime` is the planned credential-gated command for this path; `pnpm eval` remains the no-credentials scripted safety baseline.
 
+### Realtime Runner Function Map
+
+The current runner is a smoke foundation, not the full realtime eval suite yet.
+
+- `runRealtimeAgentSmoke`: credential-gated entrypoint. It resolves the model/key, builds a realtime agent, connects a server-side SDK WebSocket session, sends one audio or text fixture, waits for a terminal event, closes the session, and returns a sanitized trace.
+- `createMealPlanRealtimeAgent`: builds the `RealtimeAgent` from the source-controlled realtime prompt and SDK-compatible tools.
+- `createRealtimeAgentSdkTools`: adapts the provider-neutral MealPlan tools into SDK function tools. Tool execution still goes through the existing registry, schemas, policies, ChangeSets, and audit layer.
+- `createRealtimeSessionFactoryOptions`: defines the server-side session configuration: `gpt-realtime-2`, WebSocket transport, low reasoning, PCM input, transcription, and no automatic turn detection for deterministic fixtures.
+- `createSdkRealtimeSession`: the only place that instantiates the OpenAI SDK `RealtimeSession`. It is wrapped behind `RealtimeSessionLike` so tests and future fallback transports can use the same runner boundary.
+- `loadOpenAIServerEnv` and `resolveOpenAIRealtimeCredentials`: load local server credentials and skip cleanly when no key is present.
+- `createPcm16Silence`: creates the tiny synthetic audio fixture used by the first smoke check.
+- `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
+
+`pnpm eval:realtime -- --case maya_smoke --stage crawl` currently calls the real realtime agent when `OPENAI_API_KEY` is present and reports connection/event success. It does not yet score final DB state, policy outcomes, or Crawl case pass/fail behavior; that scoring belongs to the next realtime eval tickets.
+
 ## Implementation Rules
 
 - Keep source files under 350 lines.
