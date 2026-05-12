@@ -21,6 +21,16 @@ export type WrittenEvalReport = {
   markdownPath: string;
 };
 
+export type PassKAggregate = {
+  pass_k: number;
+  runs_total: number;
+  runs_passed: number;
+  runs_failed: number;
+  case_executions: number;
+  score_failures: number;
+  hard_policy_violations: number;
+};
+
 export function buildEvalReport(input: BuildEvalReportInput): EvalRunReport {
   const results = input.results.map((result) =>
     EvalCaseResultSchema.parse(result)
@@ -66,13 +76,46 @@ export function buildEvalReport(input: BuildEvalReportInput): EvalRunReport {
   });
 }
 
-export function renderTerminalSummary(report: EvalRunReport): string {
+export function buildPassKAggregate(
+  reports: EvalRunReport[],
+  passK: number
+): PassKAggregate {
+  return {
+    pass_k: passK,
+    runs_total: reports.length,
+    runs_passed: reports.filter((report) => report.summary.cases_failed === 0 &&
+      report.summary.cases_blocked === 0 &&
+      report.summary.cases_errored === 0 &&
+      report.summary.score_failures === 0).length,
+    runs_failed: reports.filter((report) => report.summary.cases_failed > 0 ||
+      report.summary.cases_blocked > 0 ||
+      report.summary.cases_errored > 0 ||
+      report.summary.score_failures > 0).length,
+    case_executions: reports.reduce((total, report) => total + report.summary.cases_total, 0),
+    score_failures: reports.reduce((total, report) => total + report.summary.score_failures, 0),
+    hard_policy_violations: reports.reduce((total, report) => total + report.summary.hard_policy_violations, 0)
+  };
+}
+
+export function renderTerminalSummary(
+  report: EvalRunReport,
+  aggregate?: PassKAggregate
+): string {
   const summary = report.summary;
+  const aggregateLines = aggregate
+    ? [
+        `Pass-k: ${aggregate.runs_passed}/${aggregate.runs_total} runs passed (k=${aggregate.pass_k})`,
+        `Case executions: ${aggregate.case_executions}`,
+        `Aggregate score failures: ${aggregate.score_failures}`,
+        `Aggregate hard policy violations: ${aggregate.hard_policy_violations}`
+      ]
+    : [];
 
   return [
     "MealPlan VoiceOps Eval Report",
     `Run: ${report.metadata.run_id}`,
     `Mode: ${report.metadata.mode}`,
+    ...aggregateLines,
     `Cases: ${summary.cases_passed} passed, ${summary.cases_failed} failed, ` +
       `${summary.cases_blocked} blocked, ${summary.cases_errored} errored, ` +
       `${summary.cases_skipped} skipped`,
@@ -83,7 +126,10 @@ export function renderTerminalSummary(report: EvalRunReport): string {
   ].join("\n");
 }
 
-export function renderMarkdownReport(report: EvalRunReport): string {
+export function renderMarkdownReport(
+  report: EvalRunReport,
+  aggregate?: PassKAggregate
+): string {
   const lines = [
     "# MealPlan VoiceOps Eval Report",
     "",
@@ -94,6 +140,10 @@ export function renderMarkdownReport(report: EvalRunReport): string {
       `${report.summary.cases_errored} errored, ${report.summary.cases_skipped} skipped`,
     `- Score failures: ${report.summary.score_failures}`,
     `- Hard policy violations: ${report.summary.hard_policy_violations}`,
+    ...(aggregate ? [
+      `- Pass-k: ${aggregate.runs_passed}/${aggregate.runs_total} runs passed (k=${aggregate.pass_k})`,
+      `- Case executions: ${aggregate.case_executions}`
+    ] : []),
     "",
     "This report distinguishes scripted operational-safety evidence from future " +
       "model-behavior evidence. Scripted mode validates the operational safety " +
@@ -119,14 +169,15 @@ export function renderMarkdownReport(report: EvalRunReport): string {
 
 export async function writeEvalReports(
   report: EvalRunReport,
-  reportDir = "reports"
+  reportDir = "reports",
+  aggregate?: PassKAggregate
 ): Promise<WrittenEvalReport> {
   const jsonPath = join(reportDir, "eval-report.json");
   const markdownPath = join(reportDir, "eval-report.md");
 
   await mkdir(reportDir, { recursive: true });
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-  await writeFile(markdownPath, renderMarkdownReport(report));
+  await writeFile(markdownPath, renderMarkdownReport(report, aggregate));
 
   return { jsonPath, markdownPath };
 }
