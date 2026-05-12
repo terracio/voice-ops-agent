@@ -176,7 +176,10 @@ function scoreSideEffectIdempotency(context: Context): Outcome {
     const sideEffect = latestKitchenSideEffect(context.result.audit_events, delta);
     if (!commit || !sideEffect) {
       issues.push(`Kitchen delta ${delta.delta_id} lacked commit/side-effect audit evidence.`);
-    } else if (Date.parse(sideEffect.timestamp) <= Date.parse(commit.timestamp)) {
+    } else if (
+      Date.parse(sideEffect.timestamp) < Date.parse(commit.timestamp) ||
+      context.result.audit_events.indexOf(sideEffect) <= context.result.audit_events.indexOf(commit)
+    ) {
       issues.push(`Kitchen delta ${delta.delta_id} was created before commit audit.`);
     }
   }

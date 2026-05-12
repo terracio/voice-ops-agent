@@ -9,12 +9,6 @@ const REF = "2026-05-11T10:00:00+04:00";
 const MAYA = "cus_001";
 const OMAR = "cus_002";
 const LINA = "cus_003";
-// Audit ordering is millisecond-granular; repeated idempotent entries keep
-// post-commit kitchen materialization observably after the commit event.
-const MONDAY_PAUSE_DATES = [
-  "2026-05-18",
-  ...Array.from({ length: 3000 }, () => "2026-05-18")
-];
 
 const mayaNextWeek = {
   customer_id: MAYA,
@@ -250,7 +244,7 @@ function unchangedMayaDates(): ExpectedServiceDate[] {
   ];
 }
 function pauseMonday() {
-  return { type: "pause_dates", dates: MONDAY_PAUSE_DATES, reason: "travel" };
+  return { type: "pause_dates", dates: ["2026-05-18"], reason: "travel" };
 }
 function followup(source_change_set_id: string) {
   return { customer_id: MAYA, reason: "failed_payment" as const, status: "open" as const, source_change_set_id };
