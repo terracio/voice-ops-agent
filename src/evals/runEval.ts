@@ -7,6 +7,7 @@ import {
   resetDb
 } from "../domain/db";
 import {
+  DEFAULT_EVAL_SCORING_EXPECTATIONS,
   EvalCaseResultSchema,
   EvalCaseSchema,
   EvalModeSchema,
@@ -20,6 +21,7 @@ import {
   renderTerminalSummary,
   writeEvalReports
 } from "./report";
+import { scoreCase } from "./scoreCase";
 
 export type EvalExecutorContext = {
   run_id: string;
@@ -61,7 +63,8 @@ const DEFAULT_EVAL_CASES: EvalCase[] = [
         text: "Validate the eval harness seed reset and report boundary."
       }
     ],
-    tags: ["harness"]
+    tags: ["harness"],
+    expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
   }
 ];
 
@@ -92,12 +95,14 @@ export async function runEval(
     }
 
     resetDb(evalCase.seed_id);
-    results.push(await executor(evalCase, {
+    const result = await executor(evalCase, {
       run_id: runId,
       mode,
       run_started_at: runStartedAt,
       now
-    }));
+    });
+
+    results.push(scoreCase(evalCase, result));
   }
 
   const runFinishedAt = now();
