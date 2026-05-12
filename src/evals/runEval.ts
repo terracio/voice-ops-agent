@@ -17,6 +17,7 @@ import {
 } from "./report";
 import { scoreCase } from "./scoreCase";
 import { runScriptedEvalCase } from "./scriptedRunner";
+import { firstTenCases } from "./cases";
 
 export type EvalExecutorContext = {
   run_id: string;
@@ -61,7 +62,8 @@ const DEFAULT_EVAL_CASES: EvalCase[] = [
     script: [],
     tags: ["harness"],
     expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
-  }
+  },
+  ...firstTenCases
 ];
 
 export async function runEval(
