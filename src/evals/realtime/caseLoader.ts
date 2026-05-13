@@ -4,6 +4,12 @@ import { dirname, join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import { PolicyIdSchema } from "../../domain/schema";
+import { WALK_AUDIO_PROFILE_NAMES } from "./walkAudioProfiles";
+
+const WalkAudioProfileSchema = z.object({
+  name: z.enum(WALK_AUDIO_PROFILE_NAMES),
+  seed: z.number().int().nonnegative().optional()
+}).strict();
 
 const RealtimeAudioConfigSchema = z.object({
   source: z.literal("openai_tts").default("openai_tts"),
@@ -16,7 +22,8 @@ const RealtimeAudioConfigSchema = z.object({
   chunk_duration_ms: z.number().int().positive().default(20),
   expected_duration_ms: z.number().int().positive().optional(),
   instructions: z.string().min(1).optional(),
-  speed: z.number().positive().optional()
+  speed: z.number().positive().optional(),
+  walk_profile: WalkAudioProfileSchema.optional()
 }).strict();
 
 const RealtimeCaseInputSchema = z.object({

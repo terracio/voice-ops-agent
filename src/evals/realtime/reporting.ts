@@ -5,7 +5,7 @@ import type {
   RealtimeTranscriptFragment
 } from "../../agent/realtimeRunnerTypes";
 import {
-  writeCleanInputAudioArtifacts,
+  writeRealtimeAudioArtifacts,
   type RealtimeAudioArtifacts
 } from "./audioArtifacts";
 import type { RealtimeEvalCase } from "./caseLoader";
@@ -88,8 +88,14 @@ export function writeRealtimeReports(options: {
   const jsonPath = join(reportDir, "report.json");
   const markdownPath = join(reportDir, "report.md");
   const tracePath = join(reportDir, "trace.json");
-  const audioArtifacts = writeCleanInputAudioArtifacts({
-    audio: options.preparedInput.audio,
+  const cleanAudio = options.preparedInput.walk_profile
+    ? options.preparedInput.clean_audio
+    : options.preparedInput.clean_audio ?? options.preparedInput.audio;
+  const audioArtifacts = writeRealtimeAudioArtifacts({
+    cleanAudio,
+    profileAudio: options.preparedInput.walk_profile
+      ? options.preparedInput.audio
+      : undefined,
     reportDir,
     sampleRateHz: options.realtimeCase.audio.sample_rate_hz
   });
@@ -110,14 +116,7 @@ export function writeRealtimeReports(options: {
     .map((fragment, index) => `${index + 1}. ${fragment.role}: ${fragment.text}`)
     .join("\n");
   const audioArtifactLines = audioArtifacts
-    ? [
-      `Clean PCM: ${audioArtifacts.clean_input.pcm_path}`,
-      `Clean WAV: ${audioArtifacts.clean_input.wav_path}`,
-      `Checksum: ${audioArtifacts.clean_input.checksum_sha256}`,
-      `Sample rate: ${audioArtifacts.clean_input.sample_rate_hz} Hz`,
-      `Duration: ${audioArtifacts.clean_input.duration_ms} ms`,
-      `Byte length: ${audioArtifacts.clean_input.byte_length}`
-    ].join("\n")
+    ? renderAudioArtifactLines(audioArtifacts)
     : "Audio artifacts: not written";
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
@@ -132,6 +131,7 @@ export function writeRealtimeReports(options: {
         input_text: options.preparedInput.input_text,
         audio_metadata: options.preparedInput.audio_metadata,
         audio_artifacts: audioArtifacts,
+        audio_profile: options.preparedInput.walk_profile,
         expected: options.realtimeCase.expected,
         scoring: options.scoring,
         env_file_status: options.env_file_status,
@@ -177,6 +177,9 @@ export function writeRealtimeReports(options: {
       "## Audio Artifacts",
       "",
       audioArtifactLines,
+      options.preparedInput.walk_profile
+        ? `Profile metadata: ${JSON.stringify(options.preparedInput.walk_profile)}`
+        : undefined,
       "",
       "## Transcript",
       "",
@@ -204,4 +207,29 @@ export function writeRealtimeReports(options: {
     markdown_path: markdownPath,
     trace_path: tracePath
   };
+}
+
+function renderAudioArtifactLines(artifacts: RealtimeAudioArtifacts): string {
+  const lines: string[] = [];
+  if (artifacts.clean_input) {
+    lines.push(
+      `Clean PCM: ${artifacts.clean_input.pcm_path}`,
+      `Clean WAV: ${artifacts.clean_input.wav_path}`,
+      `Clean checksum: ${artifacts.clean_input.checksum_sha256}`,
+      `Clean sample rate: ${artifacts.clean_input.sample_rate_hz} Hz`,
+      `Clean duration: ${artifacts.clean_input.duration_ms} ms`,
+      `Clean byte length: ${artifacts.clean_input.byte_length}`
+    );
+  }
+  if (artifacts.profile_input) {
+    lines.push(
+      `Profile PCM: ${artifacts.profile_input.pcm_path}`,
+      `Profile WAV: ${artifacts.profile_input.wav_path}`,
+      `Profile checksum: ${artifacts.profile_input.checksum_sha256}`,
+      `Profile sample rate: ${artifacts.profile_input.sample_rate_hz} Hz`,
+      `Profile duration: ${artifacts.profile_input.duration_ms} ms`,
+      `Profile byte length: ${artifacts.profile_input.byte_length}`
+    );
+  }
+  return lines.join("\n");
 }

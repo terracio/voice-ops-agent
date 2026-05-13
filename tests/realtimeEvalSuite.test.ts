@@ -5,6 +5,7 @@ import { REALTIME_RUNNER_TRANSPORT, type RealtimeRunnerResult } from "../src/age
 import { loadRealtimeEvalCase } from "../src/evals/realtime/caseLoader";
 import { writeRealtimeReports } from "../src/evals/realtime/reporting";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
+import { applyWalkAudioProfile } from "../src/evals/realtime/walkAudioProfiles";
 import {
   resolveRealtimeCaseIds,
   shouldFailRealtimeEval,
@@ -124,7 +125,7 @@ describe("realtime eval suite", () => {
     expect(cleanInput.checksum_sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(cleanInput.pcm_path).toBe(join(reportDir, "audio", "clean_input.pcm"));
     expect(cleanInput.wav_path).toBe(join(reportDir, "audio", "clean_input.wav"));
-    expect(paths.audio_artifacts?.clean_input.wav_path).toBe(cleanInput.wav_path);
+    expect(paths.audio_artifacts?.clean_input?.wav_path).toBe(cleanInput.wav_path);
     expect(readFileSync(cleanInput.pcm_path)).toEqual(
       Buffer.from([0, 0, 255, 127, 0, 128, 1, 0])
     );
@@ -140,7 +141,127 @@ describe("realtime eval suite", () => {
 
     const markdown = readFileSync(paths.markdown_path, "utf8");
     expect(markdown).toContain(`Clean WAV: ${cleanInput.wav_path}`);
-    expect(markdown).toContain(`Checksum: ${cleanInput.checksum_sha256}`);
+    expect(markdown).toContain(`Clean checksum: ${cleanInput.checksum_sha256}`);
+
+    rmSync(reportDir, { force: true, recursive: true });
+  });
+
+  it("writes transformed Walk profile audio artifacts without replacing clean input", () => {
+    const reportDir = join(
+      "reports",
+      "realtime",
+      "walk",
+      "maya_smoke",
+      "unit_report_trace"
+    );
+    rmSync(reportDir, { force: true, recursive: true });
+
+    const cleanAudio = new Uint8Array([
+      0, 0, 255, 31, 1, 224, 0, 0, 255, 63, 1, 192
+    ]).buffer;
+    const profile = applyWalkAudioProfile({
+      audio: cleanAudio,
+      profile: { name: "walk_phone_noise_v1", seed: 1701 },
+      sampleRateHz: 24_000
+    });
+    const paths = writeRealtimeReports({
+      caseId: "maya_smoke",
+      env_file_status: "loaded",
+      preparedInput: {
+        audio: profile.audio,
+        clean_audio: cleanAudio,
+        input_mode: "audio",
+        input_text: "Please look up Maya.",
+        walk_profile: profile.metadata,
+        audio_metadata: {
+          source: "test",
+          sample_rate_hz: 24_000,
+          walk_profile: profile.metadata
+        }
+      },
+      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      result: createResult(),
+      scoring: createScoring(),
+      stage: "walk"
+    });
+
+    const report = JSON.parse(readFileSync(paths.json_path, "utf8"));
+    expect(report.audio_profile).toMatchObject({
+      profile_name: "walk_phone_noise_v1",
+      config: { seed: 1701 }
+    });
+    expect(report.audio_artifacts.clean_input.checksum_sha256).toBe(
+      profile.metadata.input_checksum_sha256
+    );
+    expect(report.audio_artifacts.profile_input.checksum_sha256).toBe(
+      profile.metadata.output_checksum_sha256
+    );
+    expect(report.audio_artifacts.profile_input.wav_path).toBe(
+      join(reportDir, "audio", "profile_input.wav")
+    );
+    expect(readFileSync(report.audio_artifacts.clean_input.pcm_path)).toEqual(
+      Buffer.from(cleanAudio)
+    );
+    expect(readFileSync(report.audio_artifacts.profile_input.pcm_path)).toEqual(
+      Buffer.from(profile.audio)
+    );
+
+    const markdown = readFileSync(paths.markdown_path, "utf8");
+    expect(markdown).toContain(`Profile WAV: ${report.audio_artifacts.profile_input.wav_path}`);
+    expect(markdown).toContain("Profile metadata:");
+
+    rmSync(reportDir, { force: true, recursive: true });
+  });
+
+  it("does not label profiled audio as clean evidence when source audio is missing", () => {
+    const reportDir = join(
+      "reports",
+      "realtime",
+      "walk",
+      "maya_smoke",
+      "unit_report_trace"
+    );
+    rmSync(reportDir, { force: true, recursive: true });
+
+    const cleanAudio = new Uint8Array([
+      0, 0, 255, 31, 1, 224, 0, 0, 255, 63, 1, 192
+    ]).buffer;
+    const profile = applyWalkAudioProfile({
+      audio: cleanAudio,
+      profile: { name: "walk_phone_noise_v1", seed: 1701 },
+      sampleRateHz: 24_000
+    });
+    const paths = writeRealtimeReports({
+      caseId: "maya_smoke",
+      env_file_status: "loaded",
+      preparedInput: {
+        audio: profile.audio,
+        input_mode: "audio",
+        input_text: "Please look up Maya.",
+        walk_profile: profile.metadata,
+        audio_metadata: {
+          source: "test",
+          sample_rate_hz: 24_000,
+          walk_profile: profile.metadata
+        }
+      },
+      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      result: createResult(),
+      scoring: createScoring(),
+      stage: "walk"
+    });
+
+    const report = JSON.parse(readFileSync(paths.json_path, "utf8"));
+    expect(report.audio_artifacts.clean_input).toBeUndefined();
+    expect(report.audio_artifacts.profile_input.checksum_sha256).toBe(
+      profile.metadata.output_checksum_sha256
+    );
+    expect(readFileSync(report.audio_artifacts.profile_input.pcm_path)).toEqual(
+      Buffer.from(profile.audio)
+    );
+    expect(readFileSync(paths.markdown_path, "utf8")).toContain(
+      `Profile WAV: ${report.audio_artifacts.profile_input.wav_path}`
+    );
 
     rmSync(reportDir, { force: true, recursive: true });
   });
