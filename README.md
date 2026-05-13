@@ -91,6 +91,14 @@ Add `--oob-transcription` to run a diagnostic out-of-band realtime transcription
 
 Walk testing surfaced an important limitation: under heavily degraded audio, built-in transcription, out-of-band transcription, and the assistant's behavior can diverge, and the OOB transcript can still hallucinate plausible content. OOB evidence is therefore diagnostic only, not a source of operational truth or a scoring oracle. The safety target is observable behavior: when capture is uncertain, the agent should clarify instead of calling tools, guessing identifiers, or inferring an operational request. Further prompt comparisons should wait for cached PCM fixtures so runs use identical audio instead of regenerated TTS.
 
+### Browser Realtime Session Route
+
+`POST /api/realtime/session` mints a browser-safe Realtime client secret through the server-side OpenAI API. The endpoint requires `OPENAI_API_KEY` on the server, sends `OpenAI-Safety-Identifier` from server-owned configuration, and returns only the ephemeral `client_secret`, model, WebRTC calls URL, and a small server-control marker. It does not return the standard API key, tool definitions, or any domain write capability to the browser.
+
+Browser Realtime sessions are expected to use WebRTC with the ephemeral secret. Tool definitions and business actions remain server-side: `createServerRealtimeSessionUpdate` builds the sideband `session.update` event that attaches the MealPlan tools to the live Realtime session from trusted server code.
+
+After the browser posts its SDP offer to OpenAI, the SDP response `Location` header contains the live `call_id`. `POST /api/realtime/control` accepts that `rtc_...` call ID and starts a server-owned sideband WebSocket using the standard server API key. That sideband sends the MealPlan `session.update`, listens for function calls, executes them through the existing registry/policy/audit layer, and returns `function_call_output` events to the Realtime session. The browser only receives a control handle; it never receives tool definitions, the standard API key, or domain write capability. The current in-process control socket is local-demo infrastructure, not a production deployment pattern.
+
 ## Implementation Rules
 
 - Keep source files under 350 lines.

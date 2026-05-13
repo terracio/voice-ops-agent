@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { mealPlanModelTools } from "../tools/mealplanRegistry";
 
 export const DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2";
@@ -10,13 +10,12 @@ export const MEALPLAN_REALTIME_TOOL_NAMES = mealPlanModelTools.map(
 );
 
 const REALTIME_TOOL_LIST_PLACEHOLDER = "{{REALTIME_TOOL_LIST}}";
-const realtimeInstructionSourceUrl = new URL(
-  "./realtimeInstructions.md",
-  import.meta.url
-);
 
-export const MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH = fileURLToPath(
-  realtimeInstructionSourceUrl
+export const MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH = join(
+  process.cwd(),
+  "src",
+  "agent",
+  "realtimeInstructions.md"
 );
 
 export type RealtimeModelEnv = {
@@ -50,5 +49,5 @@ export function resolveOpenAIRealtimeModel(
 
 export const MEALPLAN_REALTIME_AGENT_INSTRUCTIONS =
   renderRealtimeInstructions(
-    readFileSync(realtimeInstructionSourceUrl, "utf8")
+    readFileSync(MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH, "utf8")
   );

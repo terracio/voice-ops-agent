@@ -20,6 +20,9 @@ importers:
       react-dom:
         specifier: 19.2.6
         version: 19.2.6(react@19.2.6)
+      ws:
+        specifier: 8.20.0
+        version: 8.20.0
       yaml:
         specifier: 2.9.0
         version: 2.9.0
@@ -39,6 +42,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
       eslint:
         specifier: 9.39.1
         version: 9.39.1
