@@ -12,7 +12,16 @@ import type { RealtimeModelEnv } from "./realtimeInstructions";
 export const REALTIME_RUNNER_TRANSPORT = "agents-sdk-websocket";
 
 export type RealtimeRunnerEnv = RealtimeModelEnv & {
+  OPENAI_AGENTS_DISABLE_TRACING?: string;
   OPENAI_API_KEY?: string;
+  OPENAI_REALTIME_DISABLE_TRACING?: string;
+};
+
+export type RealtimePlatformTracing = {
+  enabled: boolean;
+  group_id?: string;
+  metadata?: Record<string, unknown>;
+  workflow_name?: string;
 };
 
 export type RealtimeTraceEvent = {
@@ -77,6 +86,7 @@ export type RealtimeRunnerResult = {
   transport: typeof REALTIME_RUNNER_TRANSPORT;
   run_id: string;
   session_id: string;
+  platform_tracing: RealtimePlatformTracing;
   trace: RealtimeTraceEvent[];
 } & RealtimeTraceSummary;
 
@@ -111,7 +121,10 @@ export type RealtimeSessionFactoryOptions = {
     parallelToolCalls: false;
   };
   transport: "websocket";
-  tracingDisabled: true;
+  groupId?: string;
+  traceMetadata?: Record<string, unknown>;
+  tracingDisabled?: boolean;
+  workflowName?: string;
 };
 
 export type RealtimeToolContext = {
@@ -134,5 +147,9 @@ export type RunRealtimeAgentSmokeOptions = {
   sessionFactory?: RealtimeSessionFactory;
   sessionId?: string;
   timeoutMs?: number;
+  traceGroupId?: string;
+  traceMetadata?: Record<string, unknown>;
+  tracingDisabled?: boolean;
   userTurnId?: string;
+  workflowName?: string;
 };

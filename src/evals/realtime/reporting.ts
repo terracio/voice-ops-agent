@@ -134,6 +134,10 @@ export function writeRealtimeReports(options: {
       `Status: ${options.result.status}`,
       `Model: ${options.result.model}`,
       `Transport: ${options.result.transport}`,
+      `Platform tracing: ${options.result.platform_tracing.enabled ? "enabled" : "disabled"}`,
+      options.result.platform_tracing.group_id
+        ? `Platform trace group: ${options.result.platform_tracing.group_id}`
+        : undefined,
       `Trace events: ${options.result.trace.length}`,
       `Trace file: ${tracePath}`,
       `Tool calls: ${options.result.tool_calls.length}`,

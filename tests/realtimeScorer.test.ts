@@ -138,6 +138,7 @@ function completedResult(options: {
     transport: "agents-sdk-websocket",
     run_id: RUN_ID,
     session_id: "session_realtime_score",
+    platform_tracing: { enabled: false },
     trace: [],
     transcript_fragments: [
       {

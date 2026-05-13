@@ -73,7 +73,7 @@ The current runner is a smoke foundation, not the full realtime eval suite yet.
 - `createMealPlanRealtimeAgent`: builds the `RealtimeAgent` from the source-controlled realtime prompt and SDK-compatible tools.
 - `createRealtimeAgentSdkTools`: adapts the provider-neutral MealPlan tools into SDK function tools. Tool execution still goes through the existing registry, schemas, policies, ChangeSets, and audit layer.
 - `createRealtimeTraceCollector`: captures sanitized transport events, transcript fragments, SDK tool calls/results, audit IDs, and final DB state snapshots for later scoring.
-- `createRealtimeSessionFactoryOptions`: defines the server-side session configuration: `gpt-realtime-2`, WebSocket transport, low reasoning, PCM input, transcription, and no automatic turn detection for deterministic fixtures.
+- `createRealtimeSessionFactoryOptions`: defines the server-side session configuration: `gpt-realtime-2`, WebSocket transport, low reasoning, PCM input, transcription, platform tracing, and no automatic turn detection for deterministic fixtures.
 - `createSdkRealtimeSession`: the only place that instantiates the OpenAI SDK `RealtimeSession`. It is wrapped behind `RealtimeSessionLike` so tests and future fallback transports can use the same runner boundary.
 - `loadOpenAIServerEnv` and `resolveOpenAIRealtimeCredentials`: load local server credentials and skip cleanly when no key is present.
 - `streamPcm16AudioToRealtimeSession`: splits PCM16 input into fixed chunks, commits once at the end, and requests the model response.
@@ -81,7 +81,7 @@ The current runner is a smoke foundation, not the full realtime eval suite yet.
 - `createPcm16Silence`: creates a fallback tiny synthetic audio fixture for direct runner tests.
 - `sanitizeRealtimePayload`: keeps traces useful without logging raw audio/base64 payloads.
 
-`pnpm eval:realtime -- --stage crawl` runs the first clean-audio Crawl suite; add `--case maya_smoke` to run one case. With `OPENAI_API_KEY` present it calls the real realtime agent and writes timestamped reports under `reports/realtime/<stage>/<case>/<run>/`, including `report.json`, `report.md`, and a separate `trace.json` raw event trace. The command exits nonzero when completed cases fail scoring so prompt/tool regressions are visible. Current audio fixtures are generated on demand with OpenAI TTS and marked `stable_for_gating: false`; cached PCM fixtures and checksums are future work.
+`pnpm eval:realtime -- --stage crawl` runs the first clean-audio Crawl suite; add `--case maya_smoke` to run one case. With `OPENAI_API_KEY` present it calls the real realtime agent and writes timestamped reports under `reports/realtime/<stage>/<case>/<run>/`, including `report.json`, `report.md`, and a separate `trace.json` raw event trace. It also enables OpenAI platform tracing for the SDK Realtime session by default, with workflow/group metadata so runs are inspectable in the Traces dashboard. Set `OPENAI_REALTIME_DISABLE_TRACING=1` or `OPENAI_AGENTS_DISABLE_TRACING=1` for sensitive local runs. The command exits nonzero when completed cases fail scoring so prompt/tool regressions are visible. Current audio fixtures are generated on demand with OpenAI TTS and marked `stable_for_gating: false`; cached PCM fixtures and checksums are future work.
 
 ## Implementation Rules
 

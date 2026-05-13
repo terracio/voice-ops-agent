@@ -173,13 +173,20 @@ describe("Realtime runner", () => {
 
   it("keeps the SDK session configured for server-side websocket runner use", async () => {
     const options = createRealtimeSessionFactoryOptions({
-      model: "gpt-realtime-2"
+      model: "gpt-realtime-2",
+      traceGroupId: "realtime_crawl_group",
+      traceMetadata: { case_id: "maya_smoke" },
+      workflowName: "MealPlan VoiceOps Realtime Crawl Eval"
     });
     const agent = createMealPlanRealtimeAgent({
       getToolContext: () => toolContext
     });
 
     expect(options.transport).toBe("websocket");
+    expect(options.tracingDisabled).toBe(false);
+    expect(options.workflowName).toBe("MealPlan VoiceOps Realtime Crawl Eval");
+    expect(options.groupId).toBe("realtime_crawl_group");
+    expect(options.traceMetadata).toMatchObject({ case_id: "maya_smoke" });
     expect(options.config.outputModalities).toEqual(["text"]);
     expect(options.config.audio.input.turnDetection).toBeNull();
     expect(agent.tools?.map((sdkTool) => sdkTool.name)).toContain("lookup_customer");
@@ -197,6 +204,7 @@ describe("Realtime runner", () => {
     expect(result).toMatchObject({
       status: "skipped",
       reason: "missing_openai_api_key",
+      platform_tracing: { enabled: true },
       transport: REALTIME_RUNNER_TRANSPORT
     });
     expect(sessionFactory).not.toHaveBeenCalled();
@@ -273,6 +281,11 @@ describe("Realtime runner", () => {
 
     expect(result.status).toBe("completed");
     expect(fakeSession.connect).toHaveBeenCalledWith({ apiKey: "sk-test" });
+    expect(result.platform_tracing).toMatchObject({
+      enabled: true,
+      group_id: "run_audio",
+      workflow_name: "MealPlan VoiceOps Realtime Eval"
+    });
     expect(fakeSession.sendAudio).toHaveBeenCalledTimes(3);
     expect(fakeSession.sendAudio).toHaveBeenNthCalledWith(
       1,
@@ -296,5 +309,22 @@ describe("Realtime runner", () => {
       })
     );
     expect(result.trace.map((event) => event.type)).toContain("response.done");
+  });
+
+  it("can disable platform tracing for sensitive realtime runs", async () => {
+    const fakeSession = new FakeRealtimeSession();
+    const result = await runRealtimeAgentSmoke({
+      apiKey: "sk-test",
+      env: { OPENAI_REALTIME_DISABLE_TRACING: "1" },
+      runId: "run_private",
+      sessionFactory: (_agent, options) => {
+        expect(options.tracingDisabled).toBe(true);
+        expect(options.workflowName).toBeUndefined();
+        expect(options.groupId).toBeUndefined();
+        return fakeSession;
+      }
+    });
+
+    expect(result.platform_tracing).toEqual({ enabled: false });
   });
 });

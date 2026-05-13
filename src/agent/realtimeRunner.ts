@@ -4,6 +4,10 @@ import { createMealPlanToolRegistry, mealPlanModelTools } from "../tools/mealpla
 import type { ToolRegistry } from "../tools/registry";
 import { DEFAULT_OPENAI_REALTIME_REASONING_EFFORT, MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, resolveOpenAIRealtimeModel } from "./realtimeInstructions";
 import { streamPcm16AudioToRealtimeSession } from "./realtimeAudioStream";
+import {
+  createRealtimePlatformTracing,
+  DEFAULT_REALTIME_WORKFLOW_NAME
+} from "./realtimePlatformTracing";
 import { waitForRealtimeTurnComplete } from "./realtimeRunnerTiming";
 import {
   createPcm16Silence,
@@ -117,11 +121,21 @@ export function createMealPlanRealtimeAgent(options: {
 export function createRealtimeSessionFactoryOptions(options: {
   model: string;
   outputModalities?: ("text" | "audio")[];
+  traceGroupId?: string;
+  traceMetadata?: Record<string, unknown>;
+  tracingDisabled?: boolean;
+  workflowName?: string;
 }): RealtimeSessionFactoryOptions {
+  const tracingDisabled = options.tracingDisabled ?? false;
   return {
     model: options.model,
     transport: "websocket",
-    tracingDisabled: true,
+    tracingDisabled,
+    workflowName: tracingDisabled
+      ? undefined
+      : options.workflowName ?? DEFAULT_REALTIME_WORKFLOW_NAME,
+    groupId: tracingDisabled ? undefined : options.traceGroupId,
+    traceMetadata: tracingDisabled ? undefined : options.traceMetadata,
     config: {
       outputModalities: options.outputModalities ?? ["text"],
       audio: {
@@ -191,13 +205,24 @@ export async function runRealtimeAgentSmoke(
   const collector = createRealtimeTraceCollector({ now });
   const trace = collector.trace;
   const env: RealtimeRunnerEnv = options.env ?? {
+    OPENAI_AGENTS_DISABLE_TRACING: process.env.OPENAI_AGENTS_DISABLE_TRACING,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_REALTIME_DISABLE_TRACING: process.env.OPENAI_REALTIME_DISABLE_TRACING,
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL
   };
   const model = options.model ?? resolveOpenAIRealtimeModel(env);
   const runId = options.runId ?? `realtime_run_${Date.now()}`;
   const sessionId = options.sessionId ?? `realtime_session_${Date.now()}`;
   const userTurnId = options.userTurnId ?? `${sessionId}_turn_001`;
+  const platformTracing = createRealtimePlatformTracing({
+    env,
+    runId,
+    sessionId,
+    traceGroupId: options.traceGroupId,
+    traceMetadata: options.traceMetadata,
+    tracingDisabled: options.tracingDisabled,
+    workflowName: options.workflowName
+  });
   const credentials = resolveOpenAIRealtimeCredentials({
     apiKey: options.apiKey,
     env
@@ -207,6 +232,7 @@ export async function runRealtimeAgentSmoke(
     return skippedRealtimeRunnerResult({
       reason: credentials.reason,
       model,
+      platformTracing,
       runId,
       sessionId,
       trace
@@ -232,7 +258,11 @@ export async function runRealtimeAgentSmoke(
   });
   const sessionOptions = createRealtimeSessionFactoryOptions({
     model,
-    outputModalities: options.outputModalities
+    outputModalities: options.outputModalities,
+    traceGroupId: platformTracing.group_id,
+    traceMetadata: platformTracing.metadata,
+    tracingDisabled: !platformTracing.enabled,
+    workflowName: platformTracing.workflow_name
   });
   const session = (options.sessionFactory ?? createSdkRealtimeSession)(
     agent,
@@ -243,12 +273,13 @@ export async function runRealtimeAgentSmoke(
   collector.recordEvent({
     source: "runner",
     type: "connect_start",
-    payload: {
-      model,
-      transport: REALTIME_RUNNER_TRANSPORT,
-      tool_count: mealPlanModelTools.length
-    }
-  });
+      payload: {
+        model,
+        platform_tracing_enabled: platformTracing.enabled,
+        transport: REALTIME_RUNNER_TRANSPORT,
+        tool_count: mealPlanModelTools.length
+      }
+    });
 
   try {
     await session.connect({ apiKey: credentials.apiKey });
@@ -283,6 +314,7 @@ export async function runRealtimeAgentSmoke(
       transport: REALTIME_RUNNER_TRANSPORT,
       run_id: runId,
       session_id: sessionId,
+      platform_tracing: platformTracing,
       trace,
       ...collector.summarize(runId)
     };
@@ -299,6 +331,7 @@ export async function runRealtimeAgentSmoke(
       transport: REALTIME_RUNNER_TRANSPORT,
       run_id: runId,
       session_id: sessionId,
+      platform_tracing: platformTracing,
       trace,
       ...collector.summarize(runId)
     };

@@ -338,6 +338,7 @@ Realtime runner decision:
 - Prefer the OpenAI Realtime Agents SDK for the server-side runner.
 - Keep the runner behind a thin transport boundary so evals do not depend on SDK internals.
 - Keep using the live-audio `gpt-realtime-2` path, not the Responses WebSocket text-agent transport.
+- Keep SDK platform tracing enabled for credentialed Realtime evals so runs are visible in the OpenAI Traces dashboard. Attach workflow name, trace group, run id, session id, case id, stage, and seed metadata. Allow opt-out with `OPENAI_REALTIME_DISABLE_TRACING=1` or `OPENAI_AGENTS_DISABLE_TRACING=1`.
 - Use direct Realtime WebSocket only if the SDK cannot expose enough event, transcript, audio, or tool-call detail for deterministic eval traces.
 - Tool calls still execute through the existing server-side registry, policy layer, ChangeSet service, and audit log.
 
@@ -1531,6 +1532,7 @@ Rules:
 - Must require `OPENAI_API_KEY` server-side.
 - Must never expose the real API key to the browser.
 - Should include agent instructions and tool definitions in the session setup if using direct API.
+- Should preserve platform tracing metadata for eval/debug runs unless explicitly disabled.
 
 ---
 

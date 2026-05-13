@@ -9,6 +9,8 @@ export type RealtimeCaseRunSummary = RealtimeReportPaths & {
   env_file_status: string;
   input_mode: "audio" | "text";
   model: string;
+  platform_trace_group_id?: string;
+  platform_tracing_enabled: boolean;
   reason?: string;
   score_failures: number;
   scoring_status: RealtimeCrawlScoring["status"];

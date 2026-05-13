@@ -93,7 +93,15 @@ async function runRealtimeEvalCase(options: {
     audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,
     inputText: preparedInput.inputText,
     quietMs: 1_000,
-    timeoutMs: 20_000
+    timeoutMs: 20_000,
+    traceGroupId: `realtime_${safePathSegment(options.stage)}_${options.runStamp}`,
+    traceMetadata: {
+      case_id: options.caseId,
+      input_mode: preparedInput.input_mode,
+      seed_id: realtimeCase.seed_id,
+      stage: options.stage
+    },
+    workflowName: "MealPlan VoiceOps Realtime Crawl Eval"
   });
   const scoring = scoreRealtimeCrawlCase(realtimeCase, result);
   const reportPaths = writeRealtimeReports({
@@ -117,6 +125,8 @@ async function runRealtimeEvalCase(options: {
     transport: result.transport,
     input_mode: preparedInput.input_mode,
     env_file_status: options.env_file_status,
+    platform_tracing_enabled: result.platform_tracing.enabled,
+    platform_trace_group_id: result.platform_tracing.group_id,
     trace_event_count: result.trace.length,
     transcript_fragment_count: result.transcript_fragments.length,
     tool_call_count: result.tool_calls.length,

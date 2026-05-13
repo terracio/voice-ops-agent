@@ -95,6 +95,7 @@ function createSummary(
     json_path: "report.json",
     markdown_path: "report.md",
     model: "gpt-realtime-2",
+    platform_tracing_enabled: true,
     score_failures: 0,
     scoring_status: "passed",
     stage: "crawl",
@@ -119,6 +120,11 @@ function createResult(): RealtimeRunnerResult {
       payment_followups: []
     },
     model: "gpt-realtime-2",
+    platform_tracing: {
+      enabled: true,
+      group_id: "unit_group",
+      workflow_name: "Unit Realtime Eval"
+    },
     run_id: "unit_report_trace",
     session_id: "unit_report_trace_session",
     status: "completed",

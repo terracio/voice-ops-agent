@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { RealtimeModelEnv } from "./realtimeInstructions";
 import { REALTIME_RUNNER_TRANSPORT } from "./realtimeRunnerTypes";
 import type {
+  RealtimePlatformTracing,
   RealtimeRunnerEnv,
   RealtimeRunnerResult,
   RealtimeTraceEvent
@@ -78,6 +79,7 @@ export function createPcm16Silence(options: {
 
 export function skippedRealtimeRunnerResult(options: {
   model: string;
+  platformTracing: RealtimePlatformTracing;
   reason: string;
   runId: string;
   sessionId: string;
@@ -90,6 +92,7 @@ export function skippedRealtimeRunnerResult(options: {
     transport: REALTIME_RUNNER_TRANSPORT,
     run_id: options.runId,
     session_id: options.sessionId,
+    platform_tracing: options.platformTracing,
     trace: options.trace,
     transcript_fragments: [],
     tool_calls: [],
