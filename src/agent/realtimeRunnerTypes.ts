@@ -128,11 +128,11 @@ export type RunRealtimeAgentSmokeOptions = {
   model?: string;
   now?: () => Date;
   outputModalities?: ("text" | "audio")[];
+  quietMs?: number;
   registry?: ToolRegistry;
   runId?: string;
   sessionFactory?: RealtimeSessionFactory;
   sessionId?: string;
-  settleMs?: number;
   timeoutMs?: number;
   userTurnId?: string;
 };

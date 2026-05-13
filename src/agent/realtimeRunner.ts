@@ -1,34 +1,22 @@
-import {
-  RealtimeAgent,
-  RealtimeSession,
-  type FunctionTool
-} from "@openai/agents/realtime";
+import { RealtimeAgent, RealtimeSession, type FunctionTool } from "@openai/agents/realtime";
 import type { ToolExecutionContext } from "../tools/context";
-import {
-  createMealPlanToolRegistry,
-  mealPlanModelTools
-} from "../tools/mealplanRegistry";
+import { createMealPlanToolRegistry, mealPlanModelTools } from "../tools/mealplanRegistry";
 import type { ToolRegistry } from "../tools/registry";
-import {
-  DEFAULT_OPENAI_REALTIME_REASONING_EFFORT,
-  MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
-  resolveOpenAIRealtimeModel
-} from "./realtimeInstructions";
+import { DEFAULT_OPENAI_REALTIME_REASONING_EFFORT, MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, resolveOpenAIRealtimeModel } from "./realtimeInstructions";
 import { streamPcm16AudioToRealtimeSession } from "./realtimeAudioStream";
-import { waitForRealtimeEventSettle } from "./realtimeRunnerTiming";
+import { waitForRealtimeTurnComplete } from "./realtimeRunnerTiming";
 import {
   createPcm16Silence,
   resolveOpenAIRealtimeCredentials,
   sanitizeRealtimePayload,
-  skippedRealtimeRunnerResult,
-  timestamp
+  skippedRealtimeRunnerResult
 } from "./realtimeRunnerSupport";
+import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase, type RealtimeSessionState } from "./realtimeSessionState";
 import { createRealtimeTraceCollector, type RealtimeTraceCollector } from "./realtimeTrace";
 import {
   REALTIME_RUNNER_TRANSPORT,
   type RealtimeRunnerEnv,
   type RealtimeRunnerResult,
-  type RealtimeRunnerStatus,
   type RealtimeSessionFactoryOptions,
   type RealtimeSessionLike,
   type RealtimeToolContext,
@@ -45,28 +33,10 @@ function normalizeToolInput(input: unknown): unknown {
   }
 }
 
-function buildToolContext(options: {
-  lastUserMessage: string;
-  now: () => Date;
-  runId: string;
-  sessionId: string;
-  userTurnId: string;
-}): ToolExecutionContext {
-  return {
-    run_id: options.runId,
-    session_id: options.sessionId,
-    actor: "agent",
-    current_user_turn_id: options.userTurnId,
-    last_user_message: options.lastUserMessage,
-    identity_status: "unknown",
-    current_time: timestamp(options.now),
-    reference_time: timestamp(options.now)
-  };
-}
-
 export function createRealtimeAgentSdkTools(options: {
   getToolContext: () => ToolExecutionContext;
   registry?: ToolRegistry;
+  sessionState?: RealtimeSessionState;
   traceCollector?: RealtimeTraceCollector;
 }): FunctionTool<RealtimeToolContext>[] {
   const registry = options.registry ?? createMealPlanToolRegistry();
@@ -95,6 +65,20 @@ export function createRealtimeAgentSdkTools(options: {
             modelArgs,
             context: options.getToolContext()
           });
+          const identityUpdate = options.sessionState
+            ? applyRealtimeToolResultToSessionState({
+              result,
+              state: options.sessionState,
+              toolName: realtimeTool.name
+            })
+            : undefined;
+          if (identityUpdate) {
+            options.traceCollector?.recordEvent({
+              source: "runner",
+              type: "identity_state_updated",
+              payload: identityUpdate
+            });
+          }
           if (toolCall) {
             options.traceCollector?.recordToolResult(
               toolCall.tool_call_id,
@@ -119,6 +103,7 @@ export function createRealtimeAgentSdkTools(options: {
 export function createMealPlanRealtimeAgent(options: {
   getToolContext: () => ToolExecutionContext;
   registry?: ToolRegistry;
+  sessionState?: RealtimeSessionState;
   traceCollector?: RealtimeTraceCollector;
 }): RealtimeAgent<RealtimeToolContext> {
   return new RealtimeAgent<RealtimeToolContext>({
@@ -199,35 +184,6 @@ function attachTraceListeners(
   });
 }
 
-function waitForTerminalEvent(
-  session: RealtimeSessionLike,
-  timeoutMs: number
-): Promise<Exclude<RealtimeRunnerStatus, "skipped">> {
-  const terminalTypes = new Set(["response.done", "turn_done"]);
-
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve("timed_out"), timeoutMs);
-    session.on("transport_event", (event) => {
-      if (typeof event !== "object" || event === null || !("type" in event)) {
-        return;
-      }
-      const eventType = String(event.type);
-      if (terminalTypes.has(eventType)) {
-        clearTimeout(timeout);
-        resolve("completed");
-      }
-      if (eventType === "error") {
-        clearTimeout(timeout);
-        resolve("failed");
-      }
-    });
-    session.on("error", () => {
-      clearTimeout(timeout);
-      resolve("failed");
-    });
-  });
-}
-
 export async function runRealtimeAgentSmoke(
   options: RunRealtimeAgentSmokeOptions = {}
 ): Promise<RealtimeRunnerResult> {
@@ -259,7 +215,8 @@ export async function runRealtimeAgentSmoke(
 
   const lastUserMessage =
     options.lastUserMessage ?? "Realtime smoke audio fixture.";
-  const toolContext = buildToolContext({
+  const sessionState = createRealtimeSessionState();
+  const toolContextBase = createRealtimeToolContextBase({
     lastUserMessage,
     now,
     runId,
@@ -268,7 +225,9 @@ export async function runRealtimeAgentSmoke(
   });
   const agent = createMealPlanRealtimeAgent({
     registry: options.registry,
-    getToolContext: () => toolContext,
+    sessionState,
+    getToolContext: () =>
+      buildRealtimeToolContext({ base: toolContextBase, state: sessionState }),
     traceCollector: collector
   });
   const sessionOptions = createRealtimeSessionFactoryOptions({
@@ -295,10 +254,11 @@ export async function runRealtimeAgentSmoke(
     await session.connect({ apiKey: credentials.apiKey });
     collector.recordEvent({ source: "runner", type: "connect_done" });
 
-    const terminalEvent = waitForTerminalEvent(
+    const terminalEvent = waitForRealtimeTurnComplete({
       session,
-      options.timeoutMs ?? 20_000
-    );
+      quietMs: options.quietMs,
+      timeoutMs: options.timeoutMs ?? 20_000
+    });
     if (options.inputText) {
       session.sendMessage(options.inputText);
     } else {
@@ -315,7 +275,6 @@ export async function runRealtimeAgentSmoke(
     }
 
     const status = await terminalEvent;
-    await waitForRealtimeEventSettle(status, options.settleMs);
     return {
       status,
       reason:

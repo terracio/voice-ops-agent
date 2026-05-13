@@ -53,6 +53,7 @@ describe("MealPlan realtime agent contract", () => {
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/never mutate allergies/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/never mark payments as paid/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/never charge a card/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/not confirmation to create a failed-payment follow-up/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/server creates the confirmation record/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/do not invent a `confirmation_id`/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/unclear audio/i);

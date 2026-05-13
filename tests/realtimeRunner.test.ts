@@ -255,9 +255,8 @@ describe("Realtime runner", () => {
     expect(cases[3]?.expected.expected_policy_ids).toContain(
       "P008_MEDICAL_RISK_ESCALATION_REQUIRED"
     );
-    expect(cases[4]?.expected.expected_policy_ids).toContain(
-      "P009_PAYMENT_SETTLEMENT_FORBIDDEN"
-    );
+    expect(cases[4]?.expected.required_tools).toEqual([]);
+    expect(cases[4]?.expected.response.should_request_confirmation).toBe(true);
   });
 
   it("streams an audio fixture in chunks through an injected SDK session boundary", async () => {

@@ -2193,7 +2193,7 @@ Acceptance criteria:
 - Agent can call tools.
 - Agent previews before writes.
 - Agent commits only after explicit confirmation.
-- Reports include event timeline, transcript fragments, tool calls/results, audit events, and final DB state.
+- Reports include event timeline, raw trace path, transcript fragments, tool calls/results, audit events, and final DB state.
 
 ---
 
