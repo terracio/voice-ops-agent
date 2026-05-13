@@ -4,12 +4,17 @@ import type {
   RealtimeRunnerResult,
   RealtimeTranscriptFragment
 } from "../../agent/realtimeRunnerTypes";
+import {
+  writeCleanInputAudioArtifacts,
+  type RealtimeAudioArtifacts
+} from "./audioArtifacts";
 import type { RealtimeEvalCase } from "./caseLoader";
 import type { PreparedRealtimeInput } from "./input";
 import { renderRealtimeCrawlScores } from "./scorer";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
 export type RealtimeReportPaths = {
+  audio_artifacts?: RealtimeAudioArtifacts;
   json_path: string;
   markdown_path: string;
   trace_path: string;
@@ -83,6 +88,11 @@ export function writeRealtimeReports(options: {
   const jsonPath = join(reportDir, "report.json");
   const markdownPath = join(reportDir, "report.md");
   const tracePath = join(reportDir, "trace.json");
+  const audioArtifacts = writeCleanInputAudioArtifacts({
+    audio: options.preparedInput.audio,
+    reportDir,
+    sampleRateHz: options.realtimeCase.audio.sample_rate_hz
+  });
   const eventLines = options.result.trace
     .map((event, index) =>
       `${index + 1}. ${event.at} ${event.source}:${event.type}`
@@ -99,6 +109,16 @@ export function writeRealtimeReports(options: {
   )
     .map((fragment, index) => `${index + 1}. ${fragment.role}: ${fragment.text}`)
     .join("\n");
+  const audioArtifactLines = audioArtifacts
+    ? [
+      `Clean PCM: ${audioArtifacts.clean_input.pcm_path}`,
+      `Clean WAV: ${audioArtifacts.clean_input.wav_path}`,
+      `Checksum: ${audioArtifacts.clean_input.checksum_sha256}`,
+      `Sample rate: ${audioArtifacts.clean_input.sample_rate_hz} Hz`,
+      `Duration: ${audioArtifacts.clean_input.duration_ms} ms`,
+      `Byte length: ${audioArtifacts.clean_input.byte_length}`
+    ].join("\n")
+    : "Audio artifacts: not written";
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
   writeFileSync(
@@ -111,6 +131,7 @@ export function writeRealtimeReports(options: {
         input_mode: options.preparedInput.input_mode,
         input_text: options.preparedInput.input_text,
         audio_metadata: options.preparedInput.audio_metadata,
+        audio_artifacts: audioArtifacts,
         expected: options.realtimeCase.expected,
         scoring: options.scoring,
         env_file_status: options.env_file_status,
@@ -153,6 +174,10 @@ export function writeRealtimeReports(options: {
         ? `Audio: ${JSON.stringify(options.preparedInput.audio_metadata)}`
         : "Audio: not used",
       "",
+      "## Audio Artifacts",
+      "",
+      audioArtifactLines,
+      "",
       "## Transcript",
       "",
       transcriptLines || "No transcript fragments captured.",
@@ -174,6 +199,7 @@ export function writeRealtimeReports(options: {
   );
 
   return {
+    audio_artifacts: audioArtifacts,
     json_path: jsonPath,
     markdown_path: markdownPath,
     trace_path: tracePath

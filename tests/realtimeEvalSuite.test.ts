@@ -79,6 +79,68 @@ describe("realtime eval suite", () => {
     expect(
       JSON.parse(readFileSync(paths.json_path, "utf8")).trace_path
     ).toBe(paths.trace_path);
+    expect(
+      JSON.parse(readFileSync(paths.json_path, "utf8")).audio_artifacts
+    ).toBeUndefined();
+
+    rmSync(reportDir, { force: true, recursive: true });
+  });
+
+  it("writes clean input PCM and playable WAV audio artifacts", () => {
+    const reportDir = join(
+      "reports",
+      "realtime",
+      "crawl",
+      "maya_smoke",
+      "unit_report_trace"
+    );
+    rmSync(reportDir, { force: true, recursive: true });
+
+    const paths = writeRealtimeReports({
+      caseId: "maya_smoke",
+      env_file_status: "loaded",
+      preparedInput: {
+        audio: new Uint8Array([0, 0, 255, 127, 0, 128, 1, 0]).buffer,
+        input_mode: "audio",
+        input_text: "Please look up Maya.",
+        audio_metadata: { source: "test", sample_rate_hz: 24_000 }
+      },
+      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      result: createResult(),
+      scoring: createScoring(),
+      stage: "crawl"
+    });
+
+    const report = JSON.parse(readFileSync(paths.json_path, "utf8"));
+    const cleanInput = report.audio_artifacts.clean_input;
+    expect(cleanInput).toMatchObject({
+      byte_length: 8,
+      channels: 1,
+      duration_ms: 0,
+      encoding: "pcm16le",
+      label: "clean_input",
+      sample_rate_hz: 24_000
+    });
+    expect(cleanInput.checksum_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(cleanInput.pcm_path).toBe(join(reportDir, "audio", "clean_input.pcm"));
+    expect(cleanInput.wav_path).toBe(join(reportDir, "audio", "clean_input.wav"));
+    expect(paths.audio_artifacts?.clean_input.wav_path).toBe(cleanInput.wav_path);
+    expect(readFileSync(cleanInput.pcm_path)).toEqual(
+      Buffer.from([0, 0, 255, 127, 0, 128, 1, 0])
+    );
+
+    const wav = readFileSync(cleanInput.wav_path);
+    expect(wav.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(wav.subarray(8, 12).toString("ascii")).toBe("WAVE");
+    expect(wav.readUInt16LE(20)).toBe(1);
+    expect(wav.readUInt16LE(22)).toBe(1);
+    expect(wav.readUInt32LE(24)).toBe(24_000);
+    expect(wav.readUInt16LE(34)).toBe(16);
+    expect(wav.readUInt32LE(40)).toBe(8);
+
+    const markdown = readFileSync(paths.markdown_path, "utf8");
+    expect(markdown).toContain(`Clean WAV: ${cleanInput.wav_path}`);
+    expect(markdown).toContain(`Checksum: ${cleanInput.checksum_sha256}`);
 
     rmSync(reportDir, { force: true, recursive: true });
   });
