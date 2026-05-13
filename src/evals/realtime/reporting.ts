@@ -118,6 +118,9 @@ export function writeRealtimeReports(options: {
   const audioArtifactLines = audioArtifacts
     ? renderAudioArtifactLines(audioArtifacts)
     : "Audio artifacts: not written";
+  const oobLines = renderOutOfBandTranscription(
+    options.result.out_of_band_transcription
+  );
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
   writeFileSync(
@@ -187,6 +190,10 @@ export function writeRealtimeReports(options: {
       "",
       `Raw transcript fragments: ${options.result.transcript_fragments.length}`,
       "",
+      "## Out-of-Band Realtime Transcript",
+      "",
+      oobLines,
+      "",
       "## Scoring",
       "",
       renderRealtimeCrawlScores(options.scoring),
@@ -207,6 +214,19 @@ export function writeRealtimeReports(options: {
     markdown_path: markdownPath,
     trace_path: tracePath
   };
+}
+
+function renderOutOfBandTranscription(
+  transcription: RealtimeRunnerResult["out_of_band_transcription"]
+): string {
+  if (!transcription) return "Not requested.";
+  return [
+    `Status: ${transcription.status}`,
+    transcription.response_id ? `Response ID: ${transcription.response_id}` : undefined,
+    transcription.reason ? `Reason: ${transcription.reason}` : undefined,
+    "",
+    transcription.transcript ?? ""
+  ].filter((line): line is string => line !== undefined).join("\n");
 }
 
 function renderAudioArtifactLines(artifacts: RealtimeAudioArtifacts): string {

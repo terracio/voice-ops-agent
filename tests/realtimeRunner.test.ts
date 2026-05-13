@@ -10,10 +10,6 @@ import {
   type RealtimeSessionLike
 } from "../src/agent";
 import { resetDb } from "../src/domain/db";
-import {
-  loadRealtimeEvalCase,
-  REALTIME_CRAWL_CONTRACT_CASE_IDS
-} from "../src/evals/realtime/caseLoader";
 import { createMealPlanToolRegistry } from "../src/tools";
 import type { ToolExecutionContext } from "../src/tools/context";
 
@@ -210,63 +206,6 @@ describe("Realtime runner", () => {
     expect(sessionFactory).not.toHaveBeenCalled();
   });
 
-  it("loads the maya smoke case as a clean-audio crawl fixture", () => {
-    expect(loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }))
-      .toMatchObject({
-        case_id: "maya_smoke",
-        stage: "crawl",
-        seed_id: "maya_default",
-        input: {
-          mode: "audio"
-        },
-        audio: {
-          source: "openai_tts",
-          response_format: "pcm",
-          sample_rate_hz: 24_000,
-          chunk_duration_ms: 20
-        },
-        expected: {
-          required_tools: ["lookup_customer"]
-        }
-      });
-  });
-
-  it("loads the first realtime crawl contract cases", () => {
-    const cases = REALTIME_CRAWL_CONTRACT_CASE_IDS.map((caseId) =>
-      loadRealtimeEvalCase({ caseId, stage: "crawl" })
-    );
-
-    expect(cases.map((realtimeCase) => realtimeCase.case_id)).toEqual([
-      "maya_smoke",
-      "missing_identity_asks_clarification",
-      "ambiguous_date_asks_clarification",
-      "allergy_change_escalates",
-      "payment_settlement_forbidden"
-    ]);
-    for (const realtimeCase of cases) {
-      expect(realtimeCase.stage).toBe("crawl");
-      expect(realtimeCase.input.mode).toBe("audio");
-      expect(realtimeCase.audio).toMatchObject({
-        source: "openai_tts",
-        fixture_mode: "generated_on_demand",
-        stable_for_gating: false,
-        response_format: "pcm",
-        sample_rate_hz: 24_000,
-        chunk_duration_ms: 20
-      });
-      expect(realtimeCase.expected.intent).toEqual(expect.any(String));
-      expect(realtimeCase.expected.expected_final_state.changed).toBe(false);
-      expect(realtimeCase.expected.required_tools).toEqual(expect.any(Array));
-      expect(realtimeCase.expected.forbidden_tools).toEqual(expect.any(Array));
-    }
-    expect(cases[2]?.expected.expected_policy_ids).toContain("P002_AMBIGUOUS_DATE");
-    expect(cases[3]?.expected.expected_policy_ids).toContain(
-      "P008_MEDICAL_RISK_ESCALATION_REQUIRED"
-    );
-    expect(cases[4]?.expected.required_tools).toEqual([]);
-    expect(cases[4]?.expected.response.should_request_confirmation).toBe(true);
-  });
-
   it("streams an audio fixture in chunks through an injected SDK session boundary", async () => {
     const fakeSession = new FakeRealtimeSession();
     const audio = new ArrayBuffer(2_000);
@@ -276,7 +215,12 @@ describe("Realtime runner", () => {
       audioChunkDurationMs: 20,
       runId: "run_audio",
       sessionId: "session_audio",
-      sessionFactory: () => fakeSession
+      sessionFactory: () => fakeSession,
+      traceMetadata: {
+        attempt: 1,
+        case_id: "maya_smoke",
+        oob_transcription: true
+      }
     });
 
     expect(result.status).toBe("completed");
@@ -284,6 +228,11 @@ describe("Realtime runner", () => {
     expect(result.platform_tracing).toMatchObject({
       enabled: true,
       group_id: "run_audio",
+      metadata: {
+        attempt: "1",
+        case_id: "maya_smoke",
+        oob_transcription: "true"
+      },
       workflow_name: "MealPlan VoiceOps Realtime Eval"
     });
     expect(fakeSession.sendAudio).toHaveBeenCalledTimes(3);
@@ -327,4 +276,5 @@ describe("Realtime runner", () => {
 
     expect(result.platform_tracing).toEqual({ enabled: false });
   });
+
 });

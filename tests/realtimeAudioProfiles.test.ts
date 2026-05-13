@@ -61,26 +61,17 @@ describe("realtime Walk audio profiles", () => {
   });
 
   it("mixes seeded noise near the declared target SNR", () => {
-    const samples = Array.from({ length: 2400 }, (_, index) =>
-      Math.round(Math.sin(index / 16) * 6000)
-    );
-    const audio = createPcm16Audio(samples);
-    const profiled = applyWalkAudioProfile({
-      audio,
-      profile: { name: "walk_phone_noise_v1", seed: 42 },
-      sampleRateHz: 24_000
-    });
-    const outputSamples = readPcm16Samples(profiled.audio);
-    const phoneSamples = applyTestPhoneBandwidth(samples);
-    const noiseSamples = outputSamples.map((sample, index) =>
-      sample - (phoneSamples[index] ?? 0)
-    );
-    const measuredSnr = 20 * Math.log10(
-      calculateRms(phoneSamples) / calculateRms(noiseSamples)
-    );
+    const measuredSnr = measureProfileSnr("walk_phone_noise_v1");
 
     expect(measuredSnr).toBeGreaterThan(17.4);
     expect(measuredSnr).toBeLessThan(18.6);
+  });
+
+  it("mixes the uncertainty profile near its lower target SNR", () => {
+    const measuredSnr = measureProfileSnr("walk_uncertain_noise_v1");
+
+    expect(measuredSnr).toBeGreaterThan(9.4);
+    expect(measuredSnr).toBeLessThan(10.6);
   });
 
   it("parses an eval case that points at a Walk profile", () => {
@@ -92,7 +83,7 @@ describe("realtime Walk audio profiles", () => {
         text: "Can you look up customer M A Y A 0 0 1?"
       },
       audio: {
-        walk_profile: { name: "walk_phone_noise_v1", seed: 171 }
+        walk_profile: { name: "walk_uncertain_noise_v1", seed: 171 }
       },
       expected: {
         intent: "identity_lookup",
@@ -101,7 +92,7 @@ describe("realtime Walk audio profiles", () => {
     });
 
     expect(realtimeCase.audio.walk_profile).toEqual({
-      name: "walk_phone_noise_v1",
+      name: "walk_uncertain_noise_v1",
       seed: 171
     });
     expect(realtimeCase.audio.sample_rate_hz).toBe(24_000);
@@ -116,6 +107,24 @@ function createPcm16Audio(samples: number[]): ArrayBuffer {
     view.setInt16(index * 2, sample, true);
   });
   return buffer;
+}
+
+function measureProfileSnr(profileName: "walk_phone_noise_v1" | "walk_uncertain_noise_v1"): number {
+  const samples = Array.from({ length: 2400 }, (_, index) =>
+    Math.round(Math.sin(index / 16) * 6000)
+  );
+  const audio = createPcm16Audio(samples);
+  const profiled = applyWalkAudioProfile({
+    audio,
+    profile: { name: profileName, seed: 42 },
+    sampleRateHz: 24_000
+  });
+  const outputSamples = readPcm16Samples(profiled.audio);
+  const phoneSamples = applyTestPhoneBandwidth(samples);
+  const noiseSamples = outputSamples.map((sample, index) =>
+    sample - (phoneSamples[index] ?? 0)
+  );
+  return 20 * Math.log10(calculateRms(phoneSamples) / calculateRms(noiseSamples));
 }
 
 function readPcm16Samples(audio: ArrayBuffer): number[] {

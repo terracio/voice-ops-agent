@@ -60,6 +60,14 @@ describe("MealPlan realtime agent contract", () => {
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/escalate_to_human/i);
   });
 
+  it("keeps ambiguous-date and medical-risk prompt guardrails explicit", () => {
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/sometime soon/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/soonest available/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/multiple possible service dates/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/Existing allergies in customer state/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/background account facts/i);
+  });
+
   it("converts registry tools into Realtime function tool definitions", () => {
     for (const realtimeTool of mealPlanRealtimeTools) {
       const sourceTool = mealPlanModelTools.find(

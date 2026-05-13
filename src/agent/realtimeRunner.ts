@@ -8,6 +8,7 @@ import {
   createRealtimePlatformTracing,
   DEFAULT_REALTIME_WORKFLOW_NAME
 } from "./realtimePlatformTracing";
+import { findLatestUserAudioItemId, runRealtimeOutOfBandTranscription } from "./realtimeOutOfBandTranscription";
 import { waitForRealtimeTurnComplete } from "./realtimeRunnerTiming";
 import {
   createPcm16Silence,
@@ -122,7 +123,7 @@ export function createRealtimeSessionFactoryOptions(options: {
   model: string;
   outputModalities?: ("text" | "audio")[];
   traceGroupId?: string;
-  traceMetadata?: Record<string, unknown>;
+  traceMetadata?: Record<string, string>;
   tracingDisabled?: boolean;
   workflowName?: string;
 }): RealtimeSessionFactoryOptions {
@@ -306,6 +307,11 @@ export async function runRealtimeAgentSmoke(
     }
 
     const status = await terminalEvent;
+    const summary = collector.summarize(runId);
+    const outOfBandTranscription = status === "completed" &&
+      options.outOfBandTranscription
+      ? await runRealtimeOutOfBandTranscription({ session, userAudioItemId: findLatestUserAudioItemId(trace) })
+      : undefined;
     return {
       status,
       reason:
@@ -316,7 +322,8 @@ export async function runRealtimeAgentSmoke(
       session_id: sessionId,
       platform_tracing: platformTracing,
       trace,
-      ...collector.summarize(runId)
+      out_of_band_transcription: outOfBandTranscription,
+      ...summary
     };
   } catch (error) {
     collector.recordEvent({

@@ -1,5 +1,6 @@
 export * from "./realtimeInstructions";
 export * from "./realtimeAudioStream";
+export * from "./realtimeOutOfBandTranscription";
 export * from "./realtimeRunner";
 export * from "./realtimeRunnerSupport";
 export * from "./realtimeSessionState";

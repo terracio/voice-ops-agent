@@ -5,6 +5,7 @@ import {
 } from "../agent/realtimeRunnerSupport";
 import { resetDb } from "../domain/db";
 import {
+  applyWalkProfileContract,
   createTextRealtimeEvalCase,
   loadRealtimeEvalCase,
   type RealtimeEvalCase
@@ -22,12 +23,18 @@ import {
   summarizeRealtimeSuite,
   type RealtimeCaseRunSummary
 } from "./realtime/suite";
+import {
+  WALK_AUDIO_PROFILE_NAMES,
+  type WalkAudioProfileName
+} from "./realtime/walkAudioProfiles";
 
 type RealtimeEvalArgs = {
   caseId?: string;
   inputText?: string;
   noEnv: boolean;
+  oobTranscription: boolean;
   stage: string;
+  walkProfile?: WalkAudioProfileName;
 };
 
 function readArgValue(args: string[], name: string): string | undefined {
@@ -37,30 +44,49 @@ function readArgValue(args: string[], name: string): string | undefined {
 }
 
 function parseArgs(args: string[]): RealtimeEvalArgs {
+  const walkProfile = parseWalkProfile(readArgValue(args, "--walk-profile"));
   return {
     caseId: readArgValue(args, "--case"),
     inputText: readArgValue(args, "--input-text"),
     noEnv: args.includes("--no-env"),
-    stage: readArgValue(args, "--stage") ?? "crawl"
+    oobTranscription: args.includes("--oob-transcription"),
+    stage: readArgValue(args, "--stage") ?? "crawl",
+    walkProfile
   };
+}
+
+function parseWalkProfile(value?: string): WalkAudioProfileName | undefined {
+  if (!value) return undefined;
+  const parsed = WALK_AUDIO_PROFILE_NAMES.find((profile) => profile === value);
+  if (!parsed) {
+    throw new Error(
+      `Unsupported --walk-profile ${value}. Expected one of: ${WALK_AUDIO_PROFILE_NAMES.join(", ")}.`
+    );
+  }
+  return parsed;
 }
 
 function loadCase(options: {
   caseId: string;
   inputText?: string;
   stage: string;
+  walkProfile?: WalkAudioProfileName;
 }): RealtimeEvalCase {
-  if (options.inputText) {
-    return createTextRealtimeEvalCase({
+  const realtimeCase = options.inputText
+    ? createTextRealtimeEvalCase({
       caseId: options.caseId,
       stage: options.stage,
       text: options.inputText
+    })
+    : loadRealtimeEvalCase({
+      caseId: options.caseId,
+      stage: options.stage
     });
-  }
 
-  return loadRealtimeEvalCase({
-    caseId: options.caseId,
-    stage: options.stage
+  if (!options.walkProfile || realtimeCase.input.mode !== "audio") return realtimeCase;
+  return applyWalkProfileContract({
+    realtimeCase,
+    walkProfile: options.walkProfile
   });
 }
 
@@ -69,8 +95,10 @@ async function runRealtimeEvalCase(options: {
   caseId: string;
   env_file_status: string;
   inputText?: string;
+  oobTranscription?: boolean;
   runStamp: string;
   stage: string;
+  walkProfile?: WalkAudioProfileName;
 }): Promise<RealtimeCaseRunSummary> {
   const realtimeCase = loadCase(options);
   resetDb(realtimeCase.seed_id);
@@ -92,16 +120,19 @@ async function runRealtimeEvalCase(options: {
     audio: preparedInput.audio,
     audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,
     inputText: preparedInput.inputText,
+    outOfBandTranscription: options.oobTranscription,
     quietMs: 1_000,
     timeoutMs: 20_000,
     traceGroupId: `realtime_${safePathSegment(options.stage)}_${options.runStamp}`,
     traceMetadata: {
       case_id: options.caseId,
       input_mode: preparedInput.input_mode,
+      oob_transcription: options.oobTranscription,
       seed_id: realtimeCase.seed_id,
-      stage: options.stage
+      stage: options.stage,
+      walk_profile: options.walkProfile
     },
-    workflowName: "MealPlan VoiceOps Realtime Crawl Eval"
+    workflowName: `MealPlan VoiceOps Realtime ${options.stage} Eval`
   });
   const scoring = scoreRealtimeCrawlCase(realtimeCase, result);
   const reportPaths = writeRealtimeReports({
@@ -155,8 +186,10 @@ async function main(): Promise<void> {
         caseId,
         env_file_status,
         inputText: args.inputText,
+        oobTranscription: args.oobTranscription,
         runStamp,
-        stage: args.stage
+        stage: args.stage,
+        walkProfile: args.walkProfile
       })
     );
   }

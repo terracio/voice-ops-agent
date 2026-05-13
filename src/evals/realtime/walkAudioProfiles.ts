@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 
-export const WALK_AUDIO_PROFILE_NAMES = ["walk_phone_noise_v1"] as const;
+export const WALK_AUDIO_PROFILE_NAMES = [
+  "walk_phone_noise_v1",
+  "walk_uncertain_noise_v1"
+] as const;
 
 export type WalkAudioProfileName = typeof WALK_AUDIO_PROFILE_NAMES[number];
 
@@ -37,7 +40,19 @@ export type WalkAudioProfileResult = {
 
 const DEFAULT_WALK_PROFILE_SEED = 1701;
 const PHONE_SAMPLE_RATE_HZ = 8_000;
-const WALK_NOISE_SNR_DB = 18;
+const WALK_AUDIO_PROFILE_SETTINGS: Record<WalkAudioProfileName, {
+  snrDb: number;
+  targetSampleRateHz: number;
+}> = {
+  walk_phone_noise_v1: {
+    snrDb: 18,
+    targetSampleRateHz: PHONE_SAMPLE_RATE_HZ
+  },
+  walk_uncertain_noise_v1: {
+    snrDb: 10,
+    targetSampleRateHz: PHONE_SAMPLE_RATE_HZ
+  }
+};
 const INT16_MIN = -32_768;
 const INT16_MAX = 32_767;
 
@@ -50,7 +65,8 @@ export function applyWalkAudioProfile(options: {
     name: options.profile.name,
     seed: options.profile.seed ?? DEFAULT_WALK_PROFILE_SEED
   };
-  if (config.name !== "walk_phone_noise_v1") {
+  const settings = WALK_AUDIO_PROFILE_SETTINGS[config.name];
+  if (!settings) {
     throw new Error(`Unsupported Walk audio profile: ${config.name}`);
   }
 
@@ -58,11 +74,11 @@ export function applyWalkAudioProfile(options: {
   const sourceSamples = readPcm16Samples(options.audio);
   const phoneSamples = applyPhoneBandwidth(sourceSamples, {
     sampleRateHz: options.sampleRateHz,
-    targetSampleRateHz: PHONE_SAMPLE_RATE_HZ
+    targetSampleRateHz: settings.targetSampleRateHz
   });
   const outputSamples = mixSeededWhiteNoise(phoneSamples, {
     seed: config.seed,
-    snrDb: WALK_NOISE_SNR_DB
+    snrDb: settings.snrDb
   });
   const outputAudio = writePcm16Samples(outputSamples);
 
@@ -77,12 +93,12 @@ export function applyWalkAudioProfile(options: {
       profile_name: config.name,
       transforms: [
         {
-          target_sample_rate_hz: PHONE_SAMPLE_RATE_HZ,
+          target_sample_rate_hz: settings.targetSampleRateHz,
           type: "phone_bandwidth"
         },
         {
           noise: "seeded_white",
-          snr_db: WALK_NOISE_SNR_DB,
+          snr_db: settings.snrDb,
           type: "background_noise"
         }
       ]

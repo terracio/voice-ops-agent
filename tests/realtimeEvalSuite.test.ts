@@ -29,10 +29,14 @@ describe("realtime eval suite", () => {
     ).toEqual(["maya_smoke"]);
   });
 
-  it("rejects default suites that are not defined yet", () => {
-    expect(() => resolveRealtimeCaseIds({ stage: "walk" })).toThrow(
-      "No default realtime walk suite is defined yet. Pass --case."
-    );
+  it("resolves the first Walk robustness suite from Crawl case ids", () => {
+    expect(resolveRealtimeCaseIds({ stage: "walk" })).toEqual([
+      "maya_smoke",
+      "missing_identity_asks_clarification",
+      "ambiguous_date_asks_clarification",
+      "allergy_change_escalates",
+      "payment_settlement_forbidden"
+    ]);
   });
 
   it("marks completed scoring failures as eval failures", () => {
@@ -83,6 +87,9 @@ describe("realtime eval suite", () => {
     expect(
       JSON.parse(readFileSync(paths.json_path, "utf8")).audio_artifacts
     ).toBeUndefined();
+    expect(readFileSync(paths.markdown_path, "utf8")).toContain(
+      "## Out-of-Band Realtime Transcript\n\nNot requested."
+    );
 
     rmSync(reportDir, { force: true, recursive: true });
   });

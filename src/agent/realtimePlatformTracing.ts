@@ -45,8 +45,18 @@ function envFlagEnabled(value?: string): boolean {
 
 function compactMetadata(
   metadata: Record<string, unknown>
-): Record<string, unknown> {
+): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(metadata).filter((entry) => entry[1] !== undefined)
+    Object.entries(metadata)
+      .filter((entry) => entry[1] !== undefined && entry[1] !== null)
+      .map(([key, value]) => [key, metadataValue(value)])
   );
+}
+
+function metadataValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return JSON.stringify(value) ?? String(value);
 }

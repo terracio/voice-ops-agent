@@ -20,7 +20,7 @@ export type RealtimeRunnerEnv = RealtimeModelEnv & {
 export type RealtimePlatformTracing = {
   enabled: boolean;
   group_id?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string>;
   workflow_name?: string;
 };
 
@@ -73,6 +73,13 @@ export type RealtimeTraceSummary = {
   event_counts: Record<string, number>;
 };
 
+export type RealtimeOutOfBandTranscription = {
+  response_id?: string;
+  status: "completed" | "failed" | "skipped" | "timed_out";
+  transcript?: string;
+  reason?: string;
+};
+
 export type RealtimeRunnerStatus =
   | "completed"
   | "failed"
@@ -88,6 +95,7 @@ export type RealtimeRunnerResult = {
   session_id: string;
   platform_tracing: RealtimePlatformTracing;
   trace: RealtimeTraceEvent[];
+  out_of_band_transcription?: RealtimeOutOfBandTranscription;
 } & RealtimeTraceSummary;
 
 export type RealtimeSessionLike = {
@@ -97,7 +105,7 @@ export type RealtimeSessionLike = {
   sendMessage: (message: string) => void;
   close: () => void;
   transport?: {
-    requestResponse?: () => void;
+    requestResponse?: (response?: Record<string, unknown>) => void;
   };
 };
 
@@ -122,7 +130,7 @@ export type RealtimeSessionFactoryOptions = {
   };
   transport: "websocket";
   groupId?: string;
-  traceMetadata?: Record<string, unknown>;
+  traceMetadata?: Record<string, string>;
   tracingDisabled?: boolean;
   workflowName?: string;
 };
@@ -141,6 +149,7 @@ export type RunRealtimeAgentSmokeOptions = {
   model?: string;
   now?: () => Date;
   outputModalities?: ("text" | "audio")[];
+  outOfBandTranscription?: boolean;
   quietMs?: number;
   registry?: ToolRegistry;
   runId?: string;

@@ -1,5 +1,8 @@
 import type { RealtimeRunnerStatus } from "../../agent/realtimeRunnerTypes";
-import { REALTIME_CRAWL_CONTRACT_CASE_IDS } from "./caseLoader";
+import {
+  REALTIME_CRAWL_CONTRACT_CASE_IDS,
+  REALTIME_WALK_ROBUSTNESS_CASE_IDS
+} from "./caseLoader";
 import type { RealtimeReportPaths } from "./reporting";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
@@ -30,6 +33,7 @@ export function resolveRealtimeCaseIds(options: {
   if (options.inputText) return [options.caseId ?? "ad_hoc_text"];
   if (options.caseId) return [options.caseId];
   if (options.stage === "crawl") return [...REALTIME_CRAWL_CONTRACT_CASE_IDS];
+  if (options.stage === "walk") return [...REALTIME_WALK_ROBUSTNESS_CASE_IDS];
 
   throw new Error(
     `No default realtime ${options.stage} suite is defined yet. Pass --case.`
