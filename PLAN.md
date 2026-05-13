@@ -791,32 +791,56 @@ Gate to exit:
 
 Tickets:
 
-#### MVP-705: Persist Realtime Eval Audio Artifacts and Walk Profiles
+#### MVP-705: Persist Realtime Eval Audio Artifacts
 
 Scope:
 
 - Persist generated clean input audio per realtime eval run.
 - Write playable WAV wrappers for PCM16 input under the timestamped report directory.
-- Add deterministic Walk audio profile metadata such as `clean`, `phone_8khz`, or seeded background-noise profiles.
-- Implement at least one simple deterministic transform needed for first Walk cases.
-- Store transform config, seed, profile name, checksums, byte lengths, sample rate, and paths in `report.json`.
+- Store byte lengths, sample rate, duration where available, checksums, and paths in `report.json`.
+- Link audio artifacts from `report.md`.
 - Keep generated/cached fixture distinction honest; do not mark generated-on-demand fixtures as stable gating artifacts.
+- Do not add noise injection, browser UI, or multi-turn simulation here.
 
 Acceptance:
 
 - `pnpm eval:realtime -- --case maya_smoke --stage crawl` writes a playable clean input WAV artifact plus metadata.
-- A Walk-profile preparation path can generate and save a noisy or phone-like input artifact deterministically from clean generated audio.
+- `report.json` and `report.md` link the clean audio artifact and include checksum/sample-rate metadata.
 - Existing Crawl scoring remains unchanged.
 
 Review focus:
 
 - Audio artifacts are eval/debug evidence, not operational truth.
 
+#### MVP-706: Deterministic Walk Audio Perturbation Profiles
+
+Scope:
+
+- Add a small eval-only audio transform module for PCM16 buffers.
+- Add a named Walk profile contract, for example `walk_phone_noise_v1`.
+- Implement deterministic seeded background noise at a target SNR.
+- Implement one phone-like channel transform, preferably downsample/upsample or 8 kHz telephony-like bandwidth reduction without adding heavyweight dependencies.
+- Optionally add a tiny frame-drop transform only if it stays small and deterministic.
+- Persist transformed PCM/WAV artifacts beside the clean artifact.
+- Store profile name, config, seed, transform list, checksums, input/output sample rates, and paths in `report.json`.
+- Do not add Walk cases, browser UI, multi-turn simulation, or OOB transcription here.
+
+Acceptance:
+
+- Given the same clean PCM and seed, the transform output checksum is stable across runs.
+- A narrow Walk prep path can produce a transformed audio artifact once the case points at the profile.
+- Existing Crawl runs can still use clean audio unchanged.
+
+Review focus:
+
+- Keep this as eval infrastructure. Noise is not a model-facing concept, and transformed audio must not replace the clean source evidence.
+
 #### MVP-801: Walk Audio Evals
 
 Scope:
 
-- Add 3-5 Walk cases using saved/generated Walk profile artifacts.
+- Reuse the existing five Crawl scenarios as the first Walk suite where practical.
+- Point the cases at the deterministic Walk profile from MVP-706 instead of duplicating noise logic in case files.
 - Cover exact customer ID or date capture under noisy/phone-like audio.
 - Cover at least one safety/policy path under noisy/phone-like audio.
 - Include at least one case where clarification is expected instead of guessing.
@@ -826,8 +850,8 @@ Scope:
 Acceptance:
 
 - `pnpm eval:realtime -- --stage walk` runs the first cases when credentials are present.
+- Walk cases write both clean-source and transformed audio artifact links in their reports.
 - Reports distinguish likely audio perception failures from tool/policy failures where possible.
-- Reports link to the persisted audio artifacts produced by MVP-705.
 
 Review focus:
 
