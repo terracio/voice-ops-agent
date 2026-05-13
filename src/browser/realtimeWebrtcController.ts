@@ -52,6 +52,12 @@ const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
   "waiting-for-confirmation"
 ]);
 
+class RealtimeStartCancelledError extends Error {
+  constructor() {
+    super("Realtime WebRTC session start was cancelled.");
+  }
+}
+
 export function createRealtimeWebrtcController(
   options: RealtimeWebrtcControllerOptions = {}
 ): RealtimeWebrtcController {
@@ -71,6 +77,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   private readonly remoteAudioElement?: HTMLAudioElement;
   private remoteStreamValue?: MediaStream;
   private readonly sessionEndpoint: string;
+  private startGeneration = 0;
   private stateValue: RealtimeWebrtcControllerState = "idle";
 
   constructor(options: RealtimeWebrtcControllerOptions) {
@@ -97,6 +104,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   }
 
   reset(): void {
+    this.startGeneration += 1;
     this.cleanupResources();
     this.setState("idle");
   }
@@ -114,6 +122,8 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       throw new Error("Realtime WebRTC session is already active.");
     }
 
+    const generation = this.startGeneration + 1;
+    this.startGeneration = generation;
     this.cleanupResources();
     this.setState("connecting");
 
@@ -122,6 +132,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
         audio: true
       });
       this.localStream = mediaStream;
+      this.assertStartCurrent(generation);
       this.setMuted(this.mutedValue);
 
       const peerConnection = this.createPeerConnection();
@@ -138,14 +149,18 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       });
 
       const offer = await peerConnection.createOffer();
+      this.assertStartCurrent(generation);
       await peerConnection.setLocalDescription(offer);
+      this.assertStartCurrent(generation);
 
       const session = await this.requestSession();
+      this.assertStartCurrent(generation);
       const answerResponse = await this.postOffer({
         callsUrl: session.transport.calls_url,
         clientSecret: session.client_secret.value,
         offerSdp: offer.sdp ?? ""
       });
+      this.assertStartCurrent(generation);
       const answerSdp = await answerResponse.text();
       const callId = parseRealtimeCallIdFromLocation(
         answerResponse.headers.get("Location")
@@ -159,10 +174,14 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
         type: "answer"
       });
       await this.handoffControl(callId);
+      this.assertStartCurrent(generation);
       this.setState("listening");
     } catch (error) {
       const normalized = normalizeRealtimeError(error);
       this.cleanupResources();
+      if (normalized instanceof RealtimeStartCancelledError) {
+        throw normalized;
+      }
       this.setState("error");
       this.emit({ error: normalized, type: "error" });
       throw normalized;
@@ -170,6 +189,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   }
 
   stop(): void {
+    this.startGeneration += 1;
     this.cleanupResources();
     this.setState("ended");
   }
@@ -198,6 +218,12 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       const nextState = stateFromRealtimeBrowserEvent(message);
       if (nextState) this.setState(nextState);
     };
+  }
+
+  private assertStartCurrent(generation: number): void {
+    if (generation !== this.startGeneration) {
+      throw new RealtimeStartCancelledError();
+    }
   }
 
   private cleanupResources(): void {

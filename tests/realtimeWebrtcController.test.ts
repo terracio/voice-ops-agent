@@ -112,7 +112,11 @@ function sdpResponse(location?: string) {
   } as Response;
 }
 
-function createHarness(options: { controlOk?: boolean; location?: string } = {}) {
+function createHarness(options: {
+  controlOk?: boolean;
+  location?: string;
+  sessionResponse?: Promise<Response>;
+} = {}) {
   const localTrack = new FakeTrack();
   const localStream = new FakeStream([localTrack]);
   const pc = new FakePeerConnection();
@@ -120,6 +124,7 @@ function createHarness(options: { controlOk?: boolean; location?: string } = {})
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/realtime/session") {
+      if (options.sessionResponse) return options.sessionResponse;
       return jsonResponse({
         client_secret: { value: "ek_test_browser_secret" },
         transport: {
@@ -230,6 +235,38 @@ describe("Realtime WebRTC browser controller", () => {
     expect(pc.closed).toBe(true);
     expect(pc.dataChannel.closed).toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not reactivate when stopped during async start", async () => {
+    let resolveSession!: (response: Response) => void;
+    const sessionResponse = new Promise<Response>((resolve) => {
+      resolveSession = resolve;
+    });
+    const { controller, fetchImpl, localTrack, pc } = createHarness({
+      sessionResponse
+    });
+
+    const startPromise = controller.start();
+    for (let step = 0; step < 5 && fetchImpl.mock.calls.length === 0; step += 1) {
+      await Promise.resolve();
+    }
+    expect(fetchImpl).toHaveBeenCalledWith("/api/realtime/session", expect.anything());
+    controller.stop();
+    resolveSession(
+      jsonResponse({
+        client_secret: { value: "ek_test_browser_secret" },
+        transport: {
+          calls_url: "https://api.openai.com/v1/realtime/calls",
+          type: "webrtc"
+        }
+      })
+    );
+
+    await expect(startPromise).rejects.toThrow("start was cancelled");
+    expect(controller.state).toBe("ended");
+    expect(localTrack.stopped).toBe(true);
+    expect(pc.closed).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("mutes local audio tracks without closing the active session", async () => {
