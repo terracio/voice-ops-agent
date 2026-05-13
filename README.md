@@ -58,12 +58,12 @@ The next milestone is Realtime-first:
 ```text
 server-side Realtime runner
   -> clean-audio Crawl evals
+  -> saved/noisy Walk evals
   -> browser Realtime demo
-  -> noisy Walk evals
   -> multi-turn Run evals
 ```
 
-The browser UI comes after the server-side Realtime runner can start a session, send audio, receive events and tool calls, execute tools through the existing registry, and produce eval-compatible traces. `pnpm eval:realtime` is the planned credential-gated command for this path; `pnpm eval` remains the no-credentials scripted safety baseline.
+The browser UI comes after the server-side Realtime runner can start a session, send audio, receive events and tool calls, execute tools through the existing registry, produce eval-compatible traces, and preserve audio artifacts for clean and noisy single-turn evals. `pnpm eval:realtime` is the planned credential-gated command for this path; `pnpm eval` remains the no-credentials scripted safety baseline.
 
 ### Realtime Runner Function Map
 

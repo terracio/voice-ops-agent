@@ -2199,11 +2199,35 @@ Acceptance criteria:
 
 ---
 
-### M4 — Browser realtime demo
+### M4 — Realtime Walk evals
 
 Goal:
 
-Add the live browser voice interface after the Realtime runner and Crawl loop work.
+Add saved/noisy single-turn audio replay before browser UI work.
+
+Deliverables:
+
+- Persisted realtime eval audio artifacts.
+- Playable WAV wrappers for the exact input audio sent to the agent.
+- Deterministic Walk audio profile metadata and transforms.
+- First 3-5 Walk cases covering realistic capture issues.
+- Reports that link trace evidence, audio artifacts, tool calls, audit events, and final state.
+
+Acceptance criteria:
+
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` writes playable clean input audio artifacts.
+- `pnpm eval:realtime -- --stage walk` runs first Walk cases with credentials.
+- Walk reports distinguish likely audio perception failures from tool/policy failures where possible.
+- The agent clarifies instead of guessing when capture quality is insufficient.
+- Browser UI is not required for this milestone.
+
+---
+
+### M5 — Browser realtime demo
+
+Goal:
+
+Add the live browser voice interface after the Realtime runner, Crawl loop, and Walk audio evidence work.
 
 Deliverables:
 
@@ -2226,7 +2250,7 @@ Acceptance criteria:
 
 ---
 
-### M5 — Walk/Run evals and portfolio polish
+### M6 — Run evals and portfolio polish
 
 Goal:
 
@@ -2234,7 +2258,6 @@ Make the project easy to understand and review.
 
 Deliverables:
 
-- Walk evals with noisy or phone-like single-turn audio.
 - Run evals with multi-turn contact-center simulations.
 - Optional OOB transcription debugging hooks.
 - README.
@@ -2319,15 +2342,15 @@ When implementing:
 
 Do not ask Codex to build the whole project in one task.
 
-After the scripted safety baseline is complete, continue with:
+After the realtime Crawl foundation is complete, continue with:
 
 ```text
-Implement M3 only: Realtime runner + Crawl foundation.
+Implement M4 only: Realtime Walk eval artifacts and first Walk cases.
 
-Create the server-side Realtime runner, realtime prompt, tool definition adapter, event trace, and one clean-audio maya_smoke Crawl case.
+Persist the exact input audio sent to the realtime agent, add deterministic Walk audio profiles, and add the first noisy or phone-like single-turn Walk cases.
 Do not implement the browser UI yet.
 Keep pnpm test, pnpm lint, and pnpm eval working.
-Add pnpm eval:realtime as a credential-gated command.
+Keep pnpm eval:realtime credential-gated.
 ```
 
 Then continue milestone-by-milestone.
@@ -2340,7 +2363,7 @@ The project is complete when:
 
 1. A user can run `pnpm dev` and test the voice demo.
 2. A user can run `pnpm eval` and see a 20-case eval report.
-3. A credentialed user can run realtime Crawl evals.
+3. A credentialed user can run realtime Crawl and Walk evals.
 4. Risky writes require preview + confirmation.
 5. Hard policy violations are blocked.
 6. Audit logs show reads, previews, writes, blocks, and side effects.

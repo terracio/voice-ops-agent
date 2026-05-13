@@ -40,17 +40,23 @@ Checkpoint B: realtime runner and Crawl proof
 - The realtime agent prompt, tool definitions, event trace, audit capture, and final state capture are inspectable.
 - No browser UI is required for this checkpoint.
 
-Checkpoint C: browser realtime demo
+Checkpoint C: realtime Walk proof
 
 - Wave 7 complete.
+- Walk evals exercise noisy or phone-like single-turn audio.
+- Realtime eval reports preserve playable audio artifacts and enough metadata to reproduce the capture profile.
+- The agent clarifies instead of guessing when capture quality is insufficient.
+
+Checkpoint D: browser realtime demo
+
+- Wave 8 complete.
 - Browser voice uses WebRTC with ephemeral credentials only.
 - Realtime tool execution remains server-side.
 - The visible demo shows transcript, tool timeline, audit events, preview/diff, and explicit confirmation.
 
-Checkpoint D: Walk/Run portfolio proof
+Checkpoint E: Run portfolio proof
 
-- Wave 8 complete.
-- Walk evals exercise noisy or phone-like single-turn audio.
+- Wave 9 complete.
 - Run evals exercise multi-turn contact-center behavior such as clarification, correction, interruption, tool failures, policy blocks, and escalation.
 - README and docs explain the architecture, guardrails, realtime eval stages, run commands, demo script, and limitations.
 
@@ -73,8 +79,9 @@ Domain schemas
   -> realtime agent prompt and tool definition adapter
   -> minimal server-side realtime runner
   -> realtime Crawl evals
+  -> realtime Walk evals
   -> browser realtime demo
-  -> Walk/Run realtime evals
+  -> Run realtime evals
 ```
 
 The realtime layer must not contain domain rules, write logic, policy decisions, or its own tool registry. Realtime sessions, scripted mode, model-backed mode, browser demo mode, and eval replay mode should all call the same server-side tool executor and policy-backed services.
@@ -139,8 +146,9 @@ In scope:
 - 20 eval cases, starting with scripted runs.
 - Minimal server-side Realtime runner for automated evals.
 - Realtime Crawl evals using clean deterministic audio fixtures.
+- Realtime Walk evals using persisted noisy or phone-like audio artifacts.
 - Browser realtime demo using server-side API credentials and browser-side ephemeral credentials.
-- Walk/Run realtime eval stages for noisy audio and multi-turn contact-center workflows.
+- Run realtime eval stages for multi-turn contact-center workflows.
 - Documentation and demo script.
 
 Out of scope:
@@ -769,9 +777,65 @@ Review focus:
 
 - Crawl cases should be small and diagnostic, not full demo scripts.
 
-### Wave 7: Browser Realtime Demo
+### Wave 7: Realtime Walk Evals
 
-Goal: build the visible voice demo only after the Realtime runner and Crawl eval loop are working.
+Goal: add saved/noisy single-turn realtime eval evidence before browser UI work.
+
+Gate to exit:
+
+- Realtime eval runs persist playable input audio artifacts and metadata.
+- Walk profiles can deterministically produce phone-like or noisy audio from clean generated input.
+- `pnpm eval:realtime -- --stage walk` runs the first 3-5 single-turn cases when credentials are present.
+- Reports link audio artifacts, trace events, transcript fragments, tool calls/results, audit events, and final DB state.
+- The agent asks for clarification instead of guessing when capture quality is insufficient.
+
+Tickets:
+
+#### MVP-705: Persist Realtime Eval Audio Artifacts and Walk Profiles
+
+Scope:
+
+- Persist generated clean input audio per realtime eval run.
+- Write playable WAV wrappers for PCM16 input under the timestamped report directory.
+- Add deterministic Walk audio profile metadata such as `clean`, `phone_8khz`, or seeded background-noise profiles.
+- Implement at least one simple deterministic transform needed for first Walk cases.
+- Store transform config, seed, profile name, checksums, byte lengths, sample rate, and paths in `report.json`.
+- Keep generated/cached fixture distinction honest; do not mark generated-on-demand fixtures as stable gating artifacts.
+
+Acceptance:
+
+- `pnpm eval:realtime -- --case maya_smoke --stage crawl` writes a playable clean input WAV artifact plus metadata.
+- A Walk-profile preparation path can generate and save a noisy or phone-like input artifact deterministically from clean generated audio.
+- Existing Crawl scoring remains unchanged.
+
+Review focus:
+
+- Audio artifacts are eval/debug evidence, not operational truth.
+
+#### MVP-801: Walk Audio Evals
+
+Scope:
+
+- Add 3-5 Walk cases using saved/generated Walk profile artifacts.
+- Cover exact customer ID or date capture under noisy/phone-like audio.
+- Cover at least one safety/policy path under noisy/phone-like audio.
+- Include at least one case where clarification is expected instead of guessing.
+- Add stage resolver support for `walk` if it is not already present.
+- Score whether the agent calls the correct tools or asks clarification while preserving hard safety boundaries.
+
+Acceptance:
+
+- `pnpm eval:realtime -- --stage walk` runs the first cases when credentials are present.
+- Reports distinguish likely audio perception failures from tool/policy failures where possible.
+- Reports link to the persisted audio artifacts produced by MVP-705.
+
+Review focus:
+
+- The agent should clarify instead of guessing when capture quality is insufficient.
+
+### Wave 8: Browser Realtime Demo
+
+Goal: build the visible voice demo only after the Realtime runner, Crawl eval loop, and Walk audio evidence are working.
 
 Gate to exit:
 
@@ -853,34 +917,17 @@ Review focus:
 
 - Transcript limitations should be documented honestly; tool calls and DB state remain the source of truth.
 
-### Wave 8: Walk/Run Evals and Portfolio Hardening
+### Wave 9: Run Evals and Portfolio Hardening
 
-Goal: make the demo credible under more realistic contact-center conditions and document the evidence.
+Goal: make the demo credible under multi-turn contact-center conditions and document the evidence.
 
 Gate to exit:
 
-- Walk evals run noisy or phone-like single-turn cases.
 - Run evals run multi-turn contact-center simulations.
 - README and docs explain the realtime architecture, guardrails, eval stages, run commands, demo script, and limitations.
 - Final safety review finds no known unsafe write path.
 
 Tickets:
-
-#### MVP-801: Walk Audio Evals
-
-Scope:
-
-- Add phone-bandwidth/noisy audio fixtures or deterministic audio transforms.
-- Cover names, order numbers, addresses, hesitations, and minor self-corrections.
-
-Acceptance:
-
-- `pnpm eval:realtime -- --stage walk` runs.
-- Expected behavior may be a correct tool call or a clarification question.
-
-Review focus:
-
-- The agent should clarify instead of guessing when capture quality is insufficient.
 
 #### MVP-802: Run Multi-Turn Simulations
 
@@ -952,12 +999,15 @@ Good parallel handoffs after Wave 5:
 
 - Crawl fixture/case authoring.
 - Realtime trace scoring.
-- Browser UI pieces that consume already-defined realtime traces and records.
+
+Good parallel handoffs after Wave 7:
+
+- Browser UI pieces that consume already-defined realtime traces, audio evidence, and records.
 
 Avoid handoffs for:
 
 - The central ChangeSet commit path until the policy model is settled.
-- Realtime browser UI until the server-side Realtime runner and Crawl loop are stable.
+- Realtime browser UI until the server-side Realtime runner, Crawl loop, and Walk audio evidence are stable.
 - Large cross-cutting refactors without a narrow acceptance test.
 
 Each handoff should include:
@@ -978,10 +1028,11 @@ Each handoff should include:
 5. Wave 4 proves behavior through scripted runner and evals.
 6. Wave 5 creates the minimal server-side Realtime runner and tool bridge.
 7. Wave 6 adds clean-audio Crawl evals for prompt/tool iteration.
-8. Wave 7 adds the browser Realtime demo.
-9. Wave 8 adds Walk/Run evals, docs, and final hardening.
+8. Wave 7 adds saved/noisy Walk evals and persisted audio artifacts.
+9. Wave 8 adds the browser Realtime demo.
+10. Wave 9 adds Run evals, docs, and final hardening.
 
-This order is deliberate: scripted evals prove the operational boundary, then the Realtime runner proves the actual product runtime before browser UI work starts.
+This order is deliberate: scripted evals prove the operational boundary, the Realtime runner proves the actual product runtime, Crawl/Walk evals prove prompt and audio behavior, and only then browser UI work starts.
 
 ## 11. Milestone Definition of Done
 
@@ -1007,15 +1058,22 @@ Checkpoint B is done when:
 
 Checkpoint C is done when:
 
+- Realtime reports preserve playable audio artifacts for clean and noisy single-turn cases.
+- `pnpm eval:realtime -- --stage walk` runs first Walk cases with credentials.
+- Walk reports link audio artifacts, traces, tools, audit events, and final state.
+- The agent clarifies instead of guessing when capture quality is insufficient.
+
+Checkpoint D is done when:
+
 - Main demo scenario works by browser realtime voice over the same backend.
 - Browser receives only ephemeral realtime credentials.
 - UI shows transcript, tool timeline, audit events, preview/diff, and confirmation state.
 
-Checkpoint D is done when:
+Checkpoint E is done when:
 
-- Walk and Run realtime evals are implemented or explicitly documented as future work with clear gaps.
+- Run realtime evals are implemented or explicitly documented as future work with clear gaps.
 - README and docs match the implemented behavior.
 
 ## 12. Immediate Next Step
 
-Start Wave 5 with `MVP-501` through `MVP-504`. Keep the first handoff narrow: implement the server-side Realtime runner, prompt/tool adapter, event trace, and one smoke Crawl case before starting browser UI.
+Start Wave 7 with `MVP-705`. Keep the first handoff narrow: persist realtime eval audio artifacts and add one deterministic Walk profile before expanding the Walk case suite or starting browser UI.
