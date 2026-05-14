@@ -66,6 +66,23 @@ describe("Realtime server sideband control", () => {
     expect(JSON.stringify(response)).not.toContain("lookup_customer");
   });
 
+  it("can attach to a sideband URL derived from the SDP Location host", () => {
+    const socket = new FakeSidebandSocket();
+    const socketFactory = vi.fn(() => socket);
+
+    startRealtimeServerControl({
+      apiKey: "sk-server-secret",
+      callId: "rtc_regional_123456",
+      sidebandUrl: "wss://eu.api.openai.com/v1/realtime?call_id=rtc_regional_123456",
+      socketFactory
+    });
+
+    expect(socketFactory).toHaveBeenCalledWith(
+      "wss://eu.api.openai.com/v1/realtime?call_id=rtc_regional_123456",
+      { headers: { Authorization: "Bearer sk-server-secret" } }
+    );
+  });
+
   it("returns the existing control when the same call ID is attached twice", () => {
     const firstSocket = new FakeSidebandSocket();
     const secondSocket = new FakeSidebandSocket();

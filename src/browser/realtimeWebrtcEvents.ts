@@ -1,7 +1,4 @@
-import { z } from "zod";
-
-export const DEFAULT_REALTIME_SESSION_ENDPOINT = "/api/realtime/session";
-export const DEFAULT_REALTIME_CONTROL_ENDPOINT = "/api/realtime/control";
+export const DEFAULT_REALTIME_CALL_ENDPOINT = "/api/realtime/call";
 export const REALTIME_EVENTS_CHANNEL = "oai-events";
 
 export type RealtimeWebrtcControllerState =
@@ -29,14 +26,6 @@ export type RealtimeWebrtcControllerEvent =
 export type RealtimeWebrtcControllerListener = (
   event: RealtimeWebrtcControllerEvent
 ) => void;
-
-export const RealtimeSessionResponseSchema = z.object({
-  client_secret: z.object({ value: z.string().min(1) }).passthrough(),
-  transport: z.object({
-    calls_url: z.string().min(1),
-    type: z.literal("webrtc")
-  }).passthrough()
-}).passthrough();
 
 export function normalizeRealtimeError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));

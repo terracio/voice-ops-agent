@@ -6,6 +6,7 @@ export * from "./realtimeRunner";
 export * from "./realtimeRunnerSupport";
 export * from "./realtimeServerControl";
 export * from "./realtimeSessionState";
+export * from "./realtimeSidebandUrl";
 export * from "./realtimeTrace";
 export * from "./realtimeRunnerTypes";
 export * from "./realtimeTools";

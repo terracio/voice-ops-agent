@@ -33,13 +33,13 @@ export function markRealtimeStartRequested(
       assistantAudioLabel: "Requesting microphone access",
       callId: null,
       controlHandoff: "pending",
-      ephemeralCredential: "not-issued",
+      serverCallSetup: "not-created",
       inputLevel: 0,
       sessionStatus: "connecting"
     },
     {
       at,
-      detail: "Browser is requesting microphone access and a realtime session",
+      detail: "Browser is requesting microphone access and server call setup",
       id: `realtime-start-requested-${at}`,
       label: "STARTING",
       title: "Starting realtime session",
@@ -66,11 +66,11 @@ export function markRealtimeCallId(
     {
       ...state,
       callId,
-      ephemeralCredential: "issued"
+      serverCallSetup: "created"
     },
     {
       at,
-      detail: "Ephemeral browser credential exchanged for a Realtime call",
+      detail: "Server created the Realtime call and attached sideband control",
       id: `realtime-call-${callId}`,
       label: "CALL",
       title: "Realtime call created",
@@ -139,7 +139,7 @@ export function markRealtimeError(
       assistantAudioLabel: "Realtime session error",
       callId: null,
       controlHandoff: "pending",
-      ephemeralCredential: "not-issued",
+      serverCallSetup: "not-created",
       inputLevel: 0,
       isMuted: true,
       microphonePermission: message.toLowerCase().includes("permission")
@@ -177,7 +177,7 @@ function statePatchForRealtimeState(
       agentMode: "listening",
       assistantAudioLabel: "Listening for caller audio",
       controlHandoff: "attached",
-      ephemeralCredential: "issued",
+      serverCallSetup: "created",
       inputLevel: state.isMuted ? 0 : 38,
       microphonePermission: "granted",
       sessionStatus: "connected"
@@ -218,7 +218,7 @@ function statePatchForRealtimeState(
       assistantAudioLabel: "No audio playing",
       callId: null,
       controlHandoff: "pending",
-      ephemeralCredential: "not-issued",
+      serverCallSetup: "not-created",
       inputLevel: 0,
       isMuted: true,
       microphonePermission: "not-requested",
@@ -247,7 +247,7 @@ function activityForRealtimeState(
     { detail: string; label: string; title: string; tone: ActivityTone }
   > = {
     connecting: {
-      detail: "Browser media and Realtime credentials are being prepared",
+      detail: "Browser media and server Realtime call setup are being prepared",
       label: "CONNECTING",
       title: "Connecting to Realtime",
       tone: "pending"

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "eval": "tsx src/evals/runEval.ts",
     "eval:realtime": "tsx src/evals/runRealtimeEval.ts",
+    "debug:sideband": "tsx src/dev/debugRealtimeSideband.ts",
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {

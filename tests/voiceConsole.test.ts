@@ -31,13 +31,67 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Agent");
     expect(html).toContain("Caller");
     expect(html).toContain("Live activity");
+    expect(html).toContain("Transcript evidence");
+    expect(html).toContain("Tool timeline");
     expect(html).toContain("Call ID");
     expect(html).toContain("Control handoff");
-    expect(html).toContain("Ephemeral credential (browser)");
+    expect(html).toContain("Server call setup");
     expect(html).toContain("Server-side only");
-    expect(html).not.toContain("Transcript");
     expect(html).not.toContain("Audit log");
     expect(html).not.toContain("Before/after diff");
+  });
+
+  it("renders transcript and tool timeline from server evidence", () => {
+    const state = markRealtimeState(
+      markRealtimeCallId(
+        markRealtimeStartRequested(createInitialVoiceConsoleState("10:51:24"), "10:52:00"),
+        "rtc_test_123456",
+        "10:52:01"
+      ),
+      { at: "10:52:02", previousState: "connecting", state: "listening" }
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(VoiceConsoleView, {
+        state,
+        evidence: {
+          status: "ready",
+          lastUpdated: "2026-05-14T09:00:00.000Z",
+          transcript: [{
+            actor: "user",
+            at: "09:00:00",
+            id: "tr_user_1",
+            kind: "realtime_transcript",
+            text: "Please make my meals spicy next week."
+          }],
+          tools: [{
+            at: "09:00:01",
+            id: "tool_preview_1",
+            input: "{\"change_set_id\":\"cs_001\"}",
+            name: "preview_change_set",
+            risk: "preview",
+            status: "blocked",
+            summary: "Customization update requires a preview delta.",
+            policyId: "P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA"
+          }],
+          events: [{
+            at: "09:00:01",
+            eventType: "response.done",
+            id: "evt_1",
+            label: "response.done",
+            severity: "info"
+          }]
+        },
+        onAction: () => undefined
+      })
+    );
+
+    expect(html).toContain("Debug text only");
+    expect(html).toContain("Please make my meals spicy next week.");
+    expect(html).toContain("preview_change_set");
+    expect(html).toContain("Blocked");
+    expect(html).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
+    expect(html).toContain("response.done");
+    expect(html).not.toContain("completed successfully");
   });
 
   it("drives visible call state through the mocked controller contract", () => {
@@ -60,7 +114,7 @@ describe("voice console UI shell", () => {
     expect(started.agentMode).toBe("listening");
     expect(started.microphonePermission).toBe("granted");
     expect(started.controlHandoff).toBe("attached");
-    expect(started.ephemeralCredential).toBe("issued");
+    expect(started.serverCallSetup).toBe("created");
     expect(started.callId).toMatch(/^local-call-/);
     expect(started.events[0]?.title).toBe("Session started");
 
@@ -93,7 +147,11 @@ describe("voice console UI shell", () => {
       "src/app/voiceConsoleIcons.tsx",
       "src/app/voiceConsoleLabels.ts",
       "src/app/voiceConsoleRealtimeState.ts",
-      "src/app/useVoiceConsoleRealtime.ts"
+      "src/app/useVoiceConsoleRealtime.ts",
+      "src/app/useRealtimeEvidence.ts",
+      "src/app/VoiceEvidencePanels.tsx",
+      "src/app/VoiceConsolePrimitives.tsx",
+      "src/app/voiceConsoleEvidence.ts"
     ];
 
     for (const file of browserFiles) {
@@ -120,7 +178,7 @@ describe("voice console UI shell", () => {
     expect(starting.sessionStatus).toBe("connecting");
     expect(starting.controlHandoff).toBe("pending");
     expect(callCreated.callId).toBe("rtc_test_123");
-    expect(callCreated.ephemeralCredential).toBe("issued");
+    expect(callCreated.serverCallSetup).toBe("created");
     expect(listening.sessionStatus).toBe("connected");
     expect(listening.agentMode).toBe("listening");
     expect(listening.microphonePermission).toBe("granted");

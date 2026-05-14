@@ -1,8 +1,6 @@
 import {
-  DEFAULT_REALTIME_CONTROL_ENDPOINT,
-  DEFAULT_REALTIME_SESSION_ENDPOINT,
+  DEFAULT_REALTIME_CALL_ENDPOINT,
   REALTIME_EVENTS_CHANNEL,
-  RealtimeSessionResponseSchema,
   normalizeRealtimeError,
   parseRealtimeCallIdFromLocation,
   parseRealtimeMessageData,
@@ -11,10 +9,10 @@ import {
   type RealtimeWebrtcControllerListener,
   type RealtimeWebrtcControllerState
 } from "./realtimeWebrtcEvents";
+import { waitForRealtimeDataChannelOpen } from "./realtimeDataChannel";
 
 export {
-  DEFAULT_REALTIME_CONTROL_ENDPOINT,
-  DEFAULT_REALTIME_SESSION_ENDPOINT,
+  DEFAULT_REALTIME_CALL_ENDPOINT,
   REALTIME_EVENTS_CHANNEL,
   parseRealtimeCallIdFromLocation,
   stateFromRealtimeBrowserEvent,
@@ -37,12 +35,11 @@ export type RealtimeWebrtcController = {
 };
 
 export type RealtimeWebrtcControllerOptions = {
-  controlEndpoint?: string;
+  callEndpoint?: string;
   fetchImpl?: typeof fetch;
   mediaDevices?: Pick<MediaDevices, "getUserMedia">;
   peerConnectionFactory?: () => RTCPeerConnection;
   remoteAudioElement?: HTMLAudioElement;
-  sessionEndpoint?: string;
 };
 
 const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
@@ -66,7 +63,7 @@ export function createRealtimeWebrtcController(
 }
 
 class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
-  private readonly controlEndpoint: string;
+  private readonly callEndpoint: string;
   private dataChannel?: RTCDataChannel;
   private readonly fetchImpl: typeof fetch;
   private readonly listeners = new Set<RealtimeWebrtcControllerListener>();
@@ -78,19 +75,15 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   private realtimeCallId?: string;
   private readonly remoteAudioElement?: HTMLAudioElement;
   private remoteStreamValue?: MediaStream;
-  private readonly sessionEndpoint: string;
   private startGeneration = 0;
   private stateValue: RealtimeWebrtcControllerState = "idle";
 
   constructor(options: RealtimeWebrtcControllerOptions) {
-    this.controlEndpoint =
-      options.controlEndpoint ?? DEFAULT_REALTIME_CONTROL_ENDPOINT;
+    this.callEndpoint = options.callEndpoint ?? DEFAULT_REALTIME_CALL_ENDPOINT;
     this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis);
     this.mediaDevices = options.mediaDevices ?? globalThis.navigator?.mediaDevices;
     this.peerConnectionFactory = options.peerConnectionFactory;
     this.remoteAudioElement = options.remoteAudioElement;
-    this.sessionEndpoint =
-      options.sessionEndpoint ?? DEFAULT_REALTIME_SESSION_ENDPOINT;
   }
 
   get callId() {
@@ -159,18 +152,13 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       await peerConnection.setLocalDescription(offer);
       this.assertStartCurrent(generation);
 
-      const session = await this.requestSession();
-      this.assertStartCurrent(generation);
       const answerResponse = await this.postOffer({
-        callsUrl: session.transport.calls_url,
-        clientSecret: session.client_secret.value,
         offerSdp: offer.sdp ?? ""
       });
       this.assertStartCurrent(generation);
       const answerSdp = await answerResponse.text();
-      const callId = parseRealtimeCallIdFromLocation(
-        answerResponse.headers.get("Location")
-      );
+      const location = answerResponse.headers.get("Location");
+      const callId = parseRealtimeCallIdFromLocation(location);
       if (!callId) {
         throw new Error("Realtime call id was missing from the SDP response.");
       }
@@ -181,12 +169,15 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
         sdp: answerSdp,
         type: "answer"
       });
-      await this.handoffControl(callId);
+      await waitForRealtimeDataChannelOpen(dataChannel);
       this.assertStartCurrent(generation);
       this.setState("listening");
     } catch (error) {
       const normalized = normalizeRealtimeError(error);
       this.cleanupResources();
+      if (generation !== this.startGeneration) {
+        throw new RealtimeStartCancelledError();
+      }
       if (normalized instanceof RealtimeStartCancelledError) {
         throw normalized;
       }
@@ -264,19 +255,6 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
     this.listeners.forEach((listener) => listener(event));
   }
 
-  private async handoffControl(callId: string): Promise<void> {
-    const response = await this.fetchImpl(this.controlEndpoint, {
-      body: JSON.stringify({ call_id: callId }),
-      headers: { "Content-Type": "application/json" },
-      method: "POST"
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Realtime control handoff failed with ${response.status} ${response.statusText}.`
-      );
-    }
-  }
-
   private handleRemoteTrack(event: RTCTrackEvent): void {
     const [stream] = event.streams;
     if (!stream) return;
@@ -289,38 +267,23 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   }
 
   private async postOffer(options: {
-    callsUrl: string;
-    clientSecret: string;
     offerSdp: string;
   }): Promise<Response> {
-    const response = await this.fetchImpl(options.callsUrl, {
+    const response = await this.fetchImpl(this.callEndpoint, {
       body: options.offerSdp,
       headers: {
-        Authorization: `Bearer ${options.clientSecret}`,
         "Content-Type": "application/sdp"
       },
       method: "POST"
     });
     if (!response.ok) {
+      const detail = await response.text();
+      const suffix = detail.trim() ? ` ${detail.trim()}` : "";
       throw new Error(
-        `Realtime SDP exchange failed with ${response.status} ${response.statusText}.`
+        `Realtime SDP exchange failed with ${response.status} ${response.statusText}.${suffix}`
       );
     }
     return response;
-  }
-
-  private async requestSession() {
-    const response = await this.fetchImpl(this.sessionEndpoint, {
-      headers: { Accept: "application/json" },
-      method: "POST"
-    });
-    const data: unknown = await response.json();
-    if (!response.ok) {
-      throw new Error(
-        `Realtime session request failed with ${response.status} ${response.statusText}.`
-      );
-    }
-    return RealtimeSessionResponseSchema.parse(data);
   }
 
   private resolveMediaDevices(): Pick<MediaDevices, "getUserMedia"> {

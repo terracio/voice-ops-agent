@@ -41,7 +41,9 @@ type ToolRecordOptions = {
   toolName: string;
 };
 
-const evidenceByCallId = new Map<string, EvidenceState>();
+const evidenceByCallId = ((globalThis as typeof globalThis & {
+  __mealplanRealtimeEvidenceByCallId?: Map<string, EvidenceState>;
+}).__mealplanRealtimeEvidenceByCallId ??= new Map<string, EvidenceState>());
 
 export function resetRealtimeEvidenceStore(): void {
   evidenceByCallId.clear();

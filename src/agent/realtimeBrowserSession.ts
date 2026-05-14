@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { buildRealtimeSidebandUrlFromLocation } from "./realtimeSidebandUrl";
 import {
   DEFAULT_OPENAI_REALTIME_REASONING_EFFORT,
   MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
@@ -9,47 +9,36 @@ import { mealPlanRealtimeTools, type RealtimeFunctionTool } from "./realtimeTool
 
 export const OPENAI_REALTIME_CALLS_URL =
   "https://api.openai.com/v1/realtime/calls";
-export const OPENAI_REALTIME_CLIENT_SECRETS_URL =
-  "https://api.openai.com/v1/realtime/client_secrets";
-export const REALTIME_BROWSER_TRANSPORT = "webrtc";
 
 const DEFAULT_BROWSER_VOICE = "alloy";
+const DEFAULT_INPUT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
 const DEFAULT_SAFETY_IDENTIFIER = "mealplan-voiceops-local-demo";
 
-type FetchLike = (
+type SdpFetchLike = (
   input: string,
   init: {
-    body: string;
+    body: FormData;
     headers: Record<string, string>;
     method: "POST";
   }
-) => Promise<Pick<Response, "json" | "ok" | "status" | "statusText">>;
+) => Promise<Pick<Response, "headers" | "ok" | "status" | "statusText" | "text">>;
 
 export type RealtimeBrowserSessionEnv = RealtimeModelEnv & {
   MEALPLAN_REALTIME_SAFETY_IDENTIFIER?: string;
   OPENAI_API_KEY?: string;
 };
 
-export type BrowserRealtimeSession = {
-  client_secret: {
-    expires_at?: number;
-    value: string;
-  };
-  model: string;
-  server_controls: {
-    mode: "sideband_required";
-    tool_count: number;
-    tools: "server_side_only";
-  };
-  transport: {
-    calls_url: typeof OPENAI_REALTIME_CALLS_URL;
-    type: typeof REALTIME_BROWSER_TRANSPORT;
-  };
+export type BrowserRealtimeSdpExchange = {
+  answer_sdp: string;
+  call_id: string;
+  location: string;
+  sideband_url: string;
 };
 
 export type ServerRealtimeSessionUpdate = {
   type: "session.update";
   session: {
+    audio: ReturnType<typeof createRealtimeAudioConfig>;
     instructions: string;
     parallel_tool_calls: false;
     reasoning: { effort: typeof DEFAULT_OPENAI_REALTIME_REASONING_EFFORT };
@@ -57,16 +46,6 @@ export type ServerRealtimeSessionUpdate = {
     type: "realtime";
   };
 };
-
-const ClientSecretResponseSchema = z.object({
-  expires_at: z.number().optional(),
-  value: z.string().min(1)
-}).passthrough();
-const ClientSecretEnvelopeSchema = z.union([
-  ClientSecretResponseSchema,
-  z.object({ client_secret: ClientSecretResponseSchema }).passthrough()
-]);
-type ClientSecretResponse = z.infer<typeof ClientSecretResponseSchema>;
 
 export function createBrowserRealtimeSessionConfig(options: {
   model: string;
@@ -76,16 +55,19 @@ export function createBrowserRealtimeSessionConfig(options: {
       type: "realtime",
       model: options.model,
       instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
-      audio: {
-        output: {
-          voice: DEFAULT_BROWSER_VOICE
-        }
-      },
+      audio: createRealtimeAudioConfig(),
       reasoning: {
         effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT
       }
     }
   };
+}
+
+export function createBrowserRealtimeCallSession(options: {
+  model: string;
+}): Record<string, unknown> {
+  const config = createBrowserRealtimeSessionConfig(options);
+  return config.session as Record<string, unknown>;
 }
 
 export function createServerRealtimeSessionUpdate(): ServerRealtimeSessionUpdate {
@@ -94,9 +76,24 @@ export function createServerRealtimeSessionUpdate(): ServerRealtimeSessionUpdate
     session: {
       type: "realtime",
       instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
+      audio: createRealtimeAudioConfig(),
       tools: mealPlanRealtimeTools,
       reasoning: { effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT },
       parallel_tool_calls: false
+    }
+  };
+}
+
+function createRealtimeAudioConfig() {
+  return {
+    input: {
+      transcription: {
+        language: "en",
+        model: DEFAULT_INPUT_TRANSCRIPTION_MODEL
+      }
+    },
+    output: {
+      voice: DEFAULT_BROWSER_VOICE
     }
   };
 }
@@ -111,22 +108,16 @@ function resolveSafetyIdentifier(env: RealtimeBrowserSessionEnv): string {
 function resolveApiKey(env: RealtimeBrowserSessionEnv): string {
   const apiKey = env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY for Realtime session creation.");
+    throw new Error("Missing OPENAI_API_KEY for Realtime call creation.");
   }
   return apiKey;
 }
 
-function normalizeClientSecretResponse(data: unknown): ClientSecretResponse {
-  const parsedSecret = ClientSecretEnvelopeSchema.parse(data);
-  return "client_secret" in parsedSecret
-    ? ClientSecretResponseSchema.parse(parsedSecret.client_secret)
-    : parsedSecret;
-}
-
-export async function mintBrowserRealtimeSession(options: {
+export async function exchangeBrowserRealtimeSdpOffer(options: {
   env?: RealtimeBrowserSessionEnv;
-  fetchImpl?: FetchLike;
-} = {}): Promise<BrowserRealtimeSession> {
+  fetchImpl?: SdpFetchLike;
+  offerSdp: string;
+}): Promise<BrowserRealtimeSdpExchange> {
   const env = options.env ?? {
     MEALPLAN_REALTIME_SAFETY_IDENTIFIER:
       process.env.MEALPLAN_REALTIME_SAFETY_IDENTIFIER,
@@ -135,42 +126,54 @@ export async function mintBrowserRealtimeSession(options: {
   };
   const model = resolveOpenAIRealtimeModel(env);
   const apiKey = resolveApiKey(env);
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchImpl(OPENAI_REALTIME_CLIENT_SECRETS_URL, {
+  const form = new FormData();
+  form.set("sdp", options.offerSdp);
+  form.set("session", JSON.stringify(createBrowserRealtimeCallSession({ model })));
+
+  const response = await (options.fetchImpl ?? fetch)(OPENAI_REALTIME_CALLS_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
       "OpenAI-Safety-Identifier": resolveSafetyIdentifier(env)
     },
-    body: JSON.stringify(createBrowserRealtimeSessionConfig({ model }))
+    body: form
   });
-
-  const data: unknown = await response.json();
+  const answerSdp = await response.text();
   if (!response.ok) {
     throw new Error(
-      `OpenAI Realtime session creation failed with ${response.status} ${response.statusText}.`
+      formatSdpExchangeError({
+        body: answerSdp,
+        status: response.status,
+        statusText: response.statusText
+      })
     );
   }
-
-  const clientSecret = normalizeClientSecretResponse(data);
-
+  const location = response.headers.get("Location") ?? "";
+  const callId = parseRealtimeCallIdFromLocation(location);
   return {
-    client_secret: {
-      value: clientSecret.value,
-      ...(clientSecret.expires_at !== undefined
-        ? { expires_at: clientSecret.expires_at }
-        : {})
-    },
-    model,
-    transport: {
-      type: REALTIME_BROWSER_TRANSPORT,
-      calls_url: OPENAI_REALTIME_CALLS_URL
-    },
-    server_controls: {
-      mode: "sideband_required",
-      tools: "server_side_only",
-      tool_count: mealPlanRealtimeTools.length
-    }
+    answer_sdp: answerSdp,
+    call_id: callId,
+    location,
+    sideband_url: buildRealtimeSidebandUrlFromLocation({ callId, location })
   };
+}
+
+function formatSdpExchangeError(options: {
+  body: string;
+  status: number;
+  statusText: string;
+}): string {
+  const detail = options.body.trim().replace(/\s+/g, " ").slice(0, 600);
+  return [
+    `OpenAI Realtime SDP exchange failed with ${options.status} ${options.statusText}.`,
+    detail ? `Response: ${detail}` : undefined
+  ].filter(Boolean).join(" ");
+}
+
+function parseRealtimeCallIdFromLocation(location: string): string {
+  const callId = location.match(/(?:^|[/=])(rtc_[A-Za-z0-9_-]+)/)?.[1];
+  if (!callId) {
+    throw new Error("Realtime call id was missing from the SDP response.");
+  }
+  return callId;
 }

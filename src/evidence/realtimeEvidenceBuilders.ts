@@ -279,15 +279,21 @@ function transcriptFragment(
   event: Record<string, unknown>,
   eventType: string
 ): { actor: "assistant" | "user"; text: string } | undefined {
-  if (eventType === "conversation.item.input_audio_transcription.completed") {
-    const text = stringValue(event.transcript);
+  if (isUserTranscriptEvent(eventType)) {
+    const text = stringValue(event.transcript) ?? stringValue(event.delta);
     return text ? { actor: "user", text } : undefined;
   }
-  if (eventType === "response.audio_transcript.delta") {
+  if (
+    eventType === "response.audio_transcript.delta" ||
+    eventType === "response.output_audio_transcript.delta"
+  ) {
     const text = stringValue(event.delta);
     return text ? { actor: "assistant", text } : undefined;
   }
-  if (eventType === "response.audio_transcript.done") {
+  if (
+    eventType === "response.audio_transcript.done" ||
+    eventType === "response.output_audio_transcript.done"
+  ) {
     const text = stringValue(event.transcript);
     return text ? { actor: "assistant", text } : undefined;
   }
@@ -296,6 +302,20 @@ function transcriptFragment(
     return text ? { actor: "assistant", text } : undefined;
   }
   return undefined;
+}
+
+function isUserTranscriptEvent(eventType: string): boolean {
+  return [
+    "conversation.item.input_audio_transcription.completed",
+    "conversation.item.input_audio_transcription.done",
+    "conversation.item.input_audio_transcription.delta",
+    "input_audio_buffer.transcription.completed",
+    "input_audio_buffer.transcription.done",
+    "input_audio_buffer.transcription.delta",
+    "input_audio_transcription.completed",
+    "input_audio_transcription.done",
+    "input_audio_transcription.delta"
+  ].includes(eventType);
 }
 
 function diffStatus(status: ChangeSet["status"]): ChangeSetDiffEvidenceItem["status"] {

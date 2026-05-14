@@ -7,7 +7,7 @@ export type AgentMode =
   | "waiting-for-confirmation";
 export type MicrophonePermission = "not-requested" | "granted" | "denied";
 export type ControlHandoff = "pending" | "attached";
-export type EphemeralCredential = "not-issued" | "issued";
+export type ServerCallSetup = "not-created" | "created";
 export type ActivityTone = "ready" | "pending" | "info" | "success" | "error";
 
 export type ActivityEvent = {
@@ -31,7 +31,7 @@ export type VoiceConsoleState = {
   customerContext: string;
   callId: string | null;
   controlHandoff: ControlHandoff;
-  ephemeralCredential: EphemeralCredential;
+  serverCallSetup: ServerCallSetup;
   serverToolsLabel: "Server-side only";
   events: ActivityEvent[];
 };
@@ -68,7 +68,7 @@ export function createInitialVoiceConsoleState(
     customerContext: "No caller identified yet",
     callId: null,
     controlHandoff: "pending",
-    ephemeralCredential: "not-issued",
+    serverCallSetup: "not-created",
     serverToolsLabel: "Server-side only",
     events: seedActivityEvents(at)
   };
@@ -103,7 +103,7 @@ export function applyVoiceConsoleAction(
         inputLevel: 44,
         callId: state.callId ?? createCallId(at),
         controlHandoff: "attached",
-        ephemeralCredential: "issued"
+        serverCallSetup: "created"
       },
       {
         id: `session-started-${at}`,
@@ -139,7 +139,7 @@ export function applyVoiceConsoleAction(
         isMuted: true,
         inputLevel: 0,
         controlHandoff: "pending",
-        ephemeralCredential: "not-issued"
+        serverCallSetup: "not-created"
       },
       {
         id: `session-stopped-${at}`,

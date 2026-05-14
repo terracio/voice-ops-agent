@@ -24,8 +24,12 @@ export async function handleRealtimeControlRequest(
     const callId = typeof body === "object" && body !== null
       ? (body as { call_id?: unknown }).call_id
       : undefined;
+    const sidebandUrl = typeof body === "object" && body !== null
+      ? (body as { sideband_url?: unknown }).sideband_url
+      : undefined;
     const control = startRealtimeServerControl({
       callId,
+      sidebandUrl,
       socketFactory: options.socketFactory
     });
     return NextResponse.json(control, {

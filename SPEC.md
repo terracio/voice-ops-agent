@@ -373,7 +373,7 @@ NEXT_PUBLIC_APP_NAME=MealPlan VoiceOps
 Rules:
 
 - Never expose `OPENAI_API_KEY` to the browser.
-- Browser should request an ephemeral realtime session/token from a server route.
+- Browser should send its WebRTC SDP offer to a server route; the server owns the OpenAI Realtime call creation and sideband tool control.
 - Unit tests must not require OpenAI credentials.
 - Eval tests should support a deterministic mock runner.
 
@@ -1503,35 +1503,39 @@ payment follow-up created
 
 ## 20. API routes
 
-### 20.1 `POST /api/realtime/session`
+### 20.1 `POST /api/realtime/call`
 
 Purpose:
 
-Create an ephemeral session/token for the browser realtime voice client.
+Create a server-owned Realtime WebRTC call for the browser voice client.
 
 Request:
 
-```json
-{
-  "scenario": "maya_default"
-}
+```text
+Content-Type: application/sdp
+
+v=0
+...
 ```
 
 Response:
 
-```json
-{
-  "client_secret": "...",
-  "model": "gpt-realtime-2",
-  "expires_at": "2026-05-11T12:00:00Z"
-}
+```text
+Content-Type: application/sdp
+Location: https://api.openai.com/v1/realtime/calls/rtc_...
+X-Realtime-Call-Id: rtc_...
+
+v=0
+...
 ```
 
 Rules:
 
 - Must require `OPENAI_API_KEY` server-side.
 - Must never expose the real API key to the browser.
-- Should include agent instructions and tool definitions in the session setup if using direct API.
+- Must not expose tool definitions or domain write capability to the browser.
+- Must send agent instructions in the server-created call configuration.
+- Must start server-owned sideband control for tool execution after call creation.
 - Should preserve platform tracing metadata for eval/debug runs unless explicitly disabled.
 
 ---
@@ -2231,7 +2235,7 @@ Add the live browser voice interface after the Realtime runner, Crawl loop, and 
 
 Deliverables:
 
-- Realtime session API route for browser sessions.
+- Server-mediated Realtime WebRTC call route for browser sessions.
 - Browser microphone input.
 - Speech-to-speech agent response.
 - Live transcript panel.
@@ -2242,7 +2246,7 @@ Deliverables:
 
 Acceptance criteria:
 
-- Browser receives only ephemeral realtime credentials.
+- Browser receives only the SDP answer and call id, never server credentials or tools.
 - User can speak the demo request.
 - Tool calls execute server-side.
 - UI shows audit log and state diff.

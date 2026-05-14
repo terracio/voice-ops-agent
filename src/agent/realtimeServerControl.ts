@@ -5,11 +5,9 @@ import type { ToolResult } from "../domain/schema";
 import { createMealPlanToolRegistry } from "../tools/mealplanRegistry";
 import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./realtimeSessionState";
 import { createServerRealtimeSessionUpdate } from "./realtimeBrowserSession";
+import { resolveRealtimeSidebandUrl } from "./realtimeSidebandUrl";
 import { mealPlanRealtimeTools } from "./realtimeTools";
 import { beginRealtimeEvidenceRun, finishRealtimeEvidenceRun, recordRealtimeEvidenceEvent, recordRealtimeToolResult, recordRealtimeToolStart, recordRealtimeTransportEvidence } from "../evidence";
-
-export const OPENAI_REALTIME_SIDEBAND_URL =
-  "wss://api.openai.com/v1/realtime";
 
 export const RealtimeCallIdSchema = z.string().regex(/^rtc_[A-Za-z0-9_-]{6,}$/);
 
@@ -197,6 +195,7 @@ export function startRealtimeServerControl(options: {
   callId: unknown;
   now?: () => Date;
   registry?: ToolRegistry;
+  sidebandUrl?: unknown;
   socketFactory?: RealtimeSidebandSocketFactory;
 }): RealtimeServerControlResponse {
   const callId = parseCallId(options.callId);
@@ -224,7 +223,7 @@ export function startRealtimeServerControl(options: {
   let socket: RealtimeSidebandSocket;
   try {
     socket = socketFactory(
-      `${OPENAI_REALTIME_SIDEBAND_URL}?call_id=${encodeURIComponent(callId)}`,
+      resolveRealtimeSidebandUrl({ callId, sidebandUrl: options.sidebandUrl }),
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
   } catch {
@@ -245,11 +244,12 @@ export function startRealtimeServerControl(options: {
     });
     socket.send(JSON.stringify(createServerRealtimeSessionUpdate()));
   });
-  socket.on("error", () => {
+  socket.on("error", (error) => {
+    const detail = error instanceof Error && error.message ? `: ${error.message}` : "";
     recordRealtimeEvidenceEvent({
       callId,
       eventType: "sideband.error",
-      label: "Realtime sideband error",
+      label: `Realtime sideband error${detail}`,
       now,
       severity: "error"
     });

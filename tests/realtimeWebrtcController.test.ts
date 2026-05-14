@@ -30,7 +30,7 @@ class FakeDataChannel {
   onerror: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent<string>) => void) | null = null;
   onopen: (() => void) | null = null;
-  readyState: RTCDataChannelState = "open";
+  constructor(public readyState: RTCDataChannelState = "open") {}
 
   close() {
     this.closed = true;
@@ -41,11 +41,15 @@ class FakeDataChannel {
 
 class FakePeerConnection {
   closed = false;
-  readonly dataChannel = new FakeDataChannel();
+  readonly dataChannel: FakeDataChannel;
   readonly addedTracks: MediaStreamTrack[] = [];
   localDescription?: RTCSessionDescriptionInit;
   ontrack: ((event: RTCTrackEvent) => void) | null = null;
   remoteDescription?: RTCSessionDescriptionInit;
+
+  constructor(dataChannelReadyState: RTCDataChannelState = "open") {
+    this.dataChannel = new FakeDataChannel(dataChannelReadyState);
+  }
 
   addTrack(track: MediaStreamTrack, _stream: MediaStream) {
     this.addedTracks.push(track);
@@ -81,62 +85,40 @@ class FakePeerConnection {
   }
 }
 
-function jsonResponse(data: unknown, init: {
+function sdpResponse(location?: string, init: {
   ok?: boolean;
   status?: number;
   statusText?: string;
 } = {}) {
-  return {
-    headers: new Headers(),
-    json: async () => data,
-    ok: init.ok ?? true,
-    status: init.status ?? 200,
-    statusText: init.statusText ?? "OK",
-    text: async () => JSON.stringify(data)
-  } as Response;
-}
-
-function sdpResponse(location?: string) {
   const headers = new Headers();
   if (location) headers.set("Location", location);
   return {
     headers,
     json: async () => ({}),
-    ok: true,
-    status: 201,
-    statusText: "Created",
+    ok: init.ok ?? true,
+    status: init.status ?? 201,
+    statusText: init.statusText ?? "Created",
     text: async () => "v=0\r\ns=openai-answer"
   } as Response;
 }
 
 function createHarness(options: {
-  controlOk?: boolean;
+  callOk?: boolean;
+  callResponse?: Promise<Response>;
+  dataChannelReadyState?: RTCDataChannelState;
   location?: string;
-  sessionResponse?: Promise<Response>;
 } = {}) {
   const localTrack = new FakeTrack();
   const localStream = new FakeStream([localTrack]);
-  const pc = new FakePeerConnection();
+  const pc = new FakePeerConnection(options.dataChannelReadyState);
   const audioElement = { autoplay: false, srcObject: null } as HTMLAudioElement;
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);
-    if (url === "/api/realtime/session") {
-      if (options.sessionResponse) return options.sessionResponse;
-      return jsonResponse({
-        client_secret: { value: "ek_test_browser_secret" },
-        transport: {
-          calls_url: "https://api.openai.com/v1/realtime/calls",
-          type: "webrtc"
-        }
-      });
-    }
-    if (url === "https://api.openai.com/v1/realtime/calls") {
-      return sdpResponse(options.location ?? "/v1/realtime/calls/rtc_test_123");
-    }
-    if (url === "/api/realtime/control") {
-      return jsonResponse(
-        { call_id: "rtc_test_123", status: "connecting" },
-        options.controlOk === false
+    if (url === "/api/realtime/call") {
+      if (options.callResponse) return options.callResponse;
+      return sdpResponse(
+        options.location ?? "/v1/realtime/calls/rtc_test_123",
+        options.callOk === false
           ? { ok: false, status: 502, statusText: "Bad Gateway" }
           : {}
       );
@@ -169,7 +151,7 @@ describe("Realtime WebRTC browser controller", () => {
     expect(parseRealtimeCallIdFromLocation("/calls/not-a-call")).toBeNull();
   });
 
-  it("starts a WebRTC session with the ephemeral secret and hands off control once", async () => {
+  it("starts a WebRTC session through the server-mediated SDP exchange", async () => {
     const { controller, fetchImpl, pc } = createHarness();
     const states: string[] = [];
     controller.subscribe((event) => {
@@ -192,22 +174,18 @@ describe("Realtime WebRTC browser controller", () => {
       sdp: "v=0\r\ns=openai-answer",
       type: "answer"
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(calls[1]?.[1]).toMatchObject({
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(calls[0]?.[0]).toBe("/api/realtime/call");
+    expect(calls[0]?.[1]).toMatchObject({
       body: "v=0\r\ns=mealplan-test",
       headers: {
-        Authorization: "Bearer ek_test_browser_secret",
         "Content-Type": "application/sdp"
       },
       method: "POST"
     });
-    expect(calls[2]?.[0]).toBe("/api/realtime/control");
-    expect(JSON.parse(String(calls[2]?.[1]?.body))).toEqual({
-      call_id: "rtc_test_123"
-    });
   });
 
-  it("cleans up and skips control handoff when the call id is missing", async () => {
+  it("cleans up when the server SDP response misses a call id", async () => {
     const { controller, fetchImpl, localTrack, pc } = createHarness({
       location: "/v1/realtime/calls/nope"
     });
@@ -219,53 +197,76 @@ describe("Realtime WebRTC browser controller", () => {
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
     expect(pc.dataChannel.closed).toBe(true);
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it("cleans up when the server control handoff fails", async () => {
+  it("cleans up when the server SDP exchange fails", async () => {
     const { controller, fetchImpl, localTrack, pc } = createHarness({
-      controlOk: false
+      callOk: false
     });
 
-    await expect(controller.start()).rejects.toThrow("control handoff failed");
+    await expect(controller.start()).rejects.toThrow("SDP exchange failed");
 
     expect(controller.state).toBe("error");
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
     expect(pc.dataChannel.closed).toBe(true);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("includes server SDP exchange error details", async () => {
+    const { controller } = createHarness({
+      callResponse: Promise.resolve(new Response(
+        "{\"message\":\"OpenAI rejected the SDP offer\"}",
+        { status: 502, statusText: "Bad Gateway" }
+      ))
+    });
+
+    await expect(controller.start()).rejects.toThrow(
+      "OpenAI rejected the SDP offer"
+    );
   });
 
   it("does not reactivate when stopped during async start", async () => {
-    let resolveSession!: (response: Response) => void;
-    const sessionResponse = new Promise<Response>((resolve) => {
-      resolveSession = resolve;
+    let resolveCall!: (response: Response) => void;
+    const callResponse = new Promise<Response>((resolve) => {
+      resolveCall = resolve;
     });
     const { controller, fetchImpl, localTrack, pc } = createHarness({
-      sessionResponse
+      callResponse
     });
 
     const startPromise = controller.start();
     for (let step = 0; step < 5 && fetchImpl.mock.calls.length === 0; step += 1) {
       await Promise.resolve();
     }
-    expect(fetchImpl).toHaveBeenCalledWith("/api/realtime/session", expect.anything());
+    expect(fetchImpl).toHaveBeenCalledWith("/api/realtime/call", expect.anything());
     controller.stop();
-    resolveSession(
-      jsonResponse({
-        client_secret: { value: "ek_test_browser_secret" },
-        transport: {
-          calls_url: "https://api.openai.com/v1/realtime/calls",
-          type: "webrtc"
-        }
-      })
-    );
+    resolveCall(sdpResponse("/v1/realtime/calls/rtc_test_123"));
 
     await expect(startPromise).rejects.toThrow("start was cancelled");
     expect(controller.state).toBe("ended");
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps ended state when stopped while waiting for the data channel", async () => {
+    const { controller, fetchImpl, localTrack, pc } = createHarness({
+      dataChannelReadyState: "connecting"
+    });
+
+    const startPromise = controller.start();
+    for (let step = 0; step < 5 && fetchImpl.mock.calls.length === 0; step += 1) {
+      await Promise.resolve();
+    }
+
+    controller.stop();
+
+    await expect(startPromise).rejects.toThrow("start was cancelled");
+    expect(controller.state).toBe("ended");
+    expect(localTrack.stopped).toBe(true);
+    expect(pc.closed).toBe(true);
   });
 
   it("mutes local audio tracks without closing the active session", async () => {
@@ -279,7 +280,7 @@ describe("Realtime WebRTC browser controller", () => {
     expect(localTrack.enabled).toBe(true);
     expect(pc.closed).toBe(false);
     expect(pc.dataChannel.closed).toBe(false);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("maps Realtime data channel messages into UI states", async () => {

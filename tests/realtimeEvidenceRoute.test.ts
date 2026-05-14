@@ -6,6 +6,7 @@ import {
 } from "../src/app/api/realtime/evidence/handler";
 import { resetDb } from "../src/domain/db";
 import {
+  beginRealtimeEvidenceRun,
   RealtimeEvidenceSnapshotSchema,
   resetRealtimeEvidenceStore
 } from "../src/evidence";
@@ -62,6 +63,25 @@ describe("GET /api/realtime/evidence", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(body.error).toBe("evidence_not_found");
+  });
+
+  it("keeps browser evidence in a process-wide store across route bundles", async () => {
+    beginRealtimeEvidenceRun({
+      callId: "rtc_global_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      runId: "browser_rtc_global_123456"
+    });
+    vi.resetModules();
+
+    const { getRealtimeEvidenceSnapshot } = await import(
+      "../src/evidence/realtimeEvidenceStore"
+    );
+
+    expect(getRealtimeEvidenceSnapshot("rtc_global_123456")).toMatchObject({
+      call_id: "rtc_global_123456",
+      run_id: "browser_rtc_global_123456",
+      status: "active"
+    });
   });
 
   it("returns validated server-owned evidence for a sideband tool call", async () => {
@@ -142,6 +162,10 @@ describe("GET /api/realtime/evidence", () => {
     expect(parsed.realtime_events.map((event) => event.event_type)).toContain(
       "sideband.error"
     );
+    expect(parsed.realtime_events).toContainEqual(expect.objectContaining({
+      event_type: "sideband.error",
+      label: "Realtime sideband error: sideband failed"
+    }));
   });
 
   it("rejects browser mutation attempts", async () => {

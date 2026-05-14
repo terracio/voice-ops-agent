@@ -1,7 +1,17 @@
 "use client";
 
-import { useRef, type ReactNode, type RefObject } from "react";
-import { AgentAvatar, Icon, Waveform, type IconName } from "./voiceConsoleIcons";
+import { useRef, type RefObject } from "react";
+import { AgentAvatar, Icon, Waveform } from "./voiceConsoleIcons";
+import { VoiceEvidencePanels } from "./VoiceEvidencePanels";
+import {
+  ActivityItem,
+  ControlButton,
+  Panel,
+  StatusPair,
+  TechItem,
+  type VoiceConsoleViewActionHandler
+} from "./VoiceConsolePrimitives";
+import { useRealtimeEvidence } from "./useRealtimeEvidence";
 import { useVoiceConsoleRealtime } from "./useVoiceConsoleRealtime";
 import {
   toHandoffLabel,
@@ -10,19 +20,23 @@ import {
   toStatusLabel
 } from "./voiceConsoleLabels";
 import {
-  type VoiceConsoleAction,
   type VoiceConsoleController,
   type VoiceConsoleState
 } from "./voiceConsoleController";
+import {
+  EMPTY_VOICE_CONSOLE_EVIDENCE,
+  type VoiceConsoleEvidenceState
+} from "./voiceConsoleEvidence";
 
 type VoiceConsoleProps = {
   controller?: VoiceConsoleController;
 };
 
 type VoiceConsoleViewProps = {
+  evidence?: VoiceConsoleEvidenceState;
   remoteAudioRef?: RefObject<HTMLAudioElement | null>;
   state: VoiceConsoleState;
-  onAction: (action: VoiceConsoleAction) => Promise<void> | void;
+  onAction: VoiceConsoleViewActionHandler;
 };
 
 const meterBars = Array.from({ length: 16 }, (_, index) => index);
@@ -35,9 +49,14 @@ export function VoiceConsole({
     controller,
     remoteAudioRef
   });
+  const evidence = useRealtimeEvidence({
+    callId: state.callId,
+    enabled: !controller && state.sessionStatus === "connected" && Boolean(state.callId)
+  });
 
   return (
     <VoiceConsoleView
+      evidence={evidence}
       remoteAudioRef={remoteAudioRef}
       state={state}
       onAction={onAction}
@@ -46,6 +65,7 @@ export function VoiceConsole({
 }
 
 export function VoiceConsoleView({
+  evidence = EMPTY_VOICE_CONSOLE_EVIDENCE,
   remoteAudioRef,
   state,
   onAction
@@ -204,6 +224,8 @@ export function VoiceConsoleView({
         </section>
       </div>
 
+      <VoiceEvidencePanels evidence={evidence} />
+
       <section className="technical-strip" aria-label="Technical state">
         <TechItem icon="hash" label="Call ID" value={state.callId ?? "-"} />
         <TechItem
@@ -214,127 +236,11 @@ export function VoiceConsoleView({
         />
         <TechItem
           icon="shield"
-          label="Ephemeral credential (browser)"
-          value={state.ephemeralCredential === "issued" ? "Issued" : "-"}
+          label="Server call setup"
+          value={state.serverCallSetup === "created" ? "Ready" : "-"}
         />
         <TechItem icon="lock" label="Tools" value={state.serverToolsLabel} />
       </section>
     </main>
-  );
-}
-
-function Panel({
-  title,
-  icon,
-  children
-}: {
-  title: string;
-  icon: IconName;
-  children: ReactNode;
-}) {
-  return (
-    <section className="console-panel" aria-labelledby={`${title.toLowerCase()}-title`}>
-      <div className="panel-title">
-        <Icon name={icon} />
-        <h2 id={`${title.toLowerCase()}-title`}>{title}</h2>
-      </div>
-      <div className="panel-body">{children}</div>
-    </section>
-  );
-}
-
-function StatusPair({
-  label,
-  value,
-  tone
-}: {
-  label: string;
-  value: string;
-  tone: "teal" | "neutral";
-}) {
-  return (
-    <div className="status-pair">
-      <span>{label}</span>
-      <strong className={tone}>{value}</strong>
-    </div>
-  );
-}
-
-function ControlButton({
-  label,
-  detail,
-  icon,
-  tone = "neutral",
-  disabled = false,
-  pressed,
-  onClick
-}: {
-  label: string;
-  detail: string;
-  icon: IconName;
-  tone?: "primary" | "neutral";
-  disabled?: boolean;
-  pressed?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-label={`${label}: ${detail}`}
-      aria-pressed={pressed}
-      className={`control-button ${tone}`}
-      disabled={disabled}
-      onClick={onClick}
-      type="button"
-    >
-      <Icon name={icon} />
-      <span>
-        <strong>{label}</strong>
-        <small>{detail}</small>
-      </span>
-    </button>
-  );
-}
-
-function ActivityItem({
-  event
-}: {
-  event: VoiceConsoleState["events"][number];
-}) {
-  return (
-    <li className="activity-item">
-      <time>{event.at}</time>
-      <span className={`event-icon ${event.tone}`} aria-hidden="true">
-        <Icon name={event.tone === "info" ? "info" : event.tone === "ready" || event.tone === "success" ? "check" : "question"} />
-      </span>
-      <div className="event-copy">
-        <strong>{event.title}</strong>
-        <p>{event.detail}</p>
-      </div>
-      <span className={`event-label ${event.tone}`}>{event.label}</span>
-    </li>
-  );
-}
-
-function TechItem({
-  icon,
-  label,
-  value,
-  badge
-}: {
-  icon: IconName;
-  label: string;
-  value: string;
-  badge?: string;
-}) {
-  return (
-    <div className="tech-item">
-      <span className="tech-icon" aria-hidden="true">
-        <Icon name={icon} />
-      </span>
-      <div>
-        <p>{label}</p>
-        {badge ? <strong className="tech-badge">{badge}</strong> : <strong>{value}</strong>}
-      </div>
-    </div>
   );
 }
