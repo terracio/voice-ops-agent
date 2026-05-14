@@ -8,7 +8,6 @@ import {
 class FakeTrack {
   enabled = true;
   stopped = false;
-
   stop() {
     this.stopped = true;
   }
@@ -16,11 +15,9 @@ class FakeTrack {
 
 class FakeStream {
   constructor(private readonly tracks: FakeTrack[]) {}
-
   getTracks() {
     return this.tracks as unknown as MediaStreamTrack[];
   }
-
   getAudioTracks() {
     return this.tracks as unknown as MediaStreamTrack[];
   }
@@ -186,6 +183,7 @@ describe("Realtime WebRTC browser controller", () => {
     ][];
 
     expect(states).toEqual(["connecting", "listening"]);
+    expect(controller.callId).toBe("rtc_test_123");
     expect(controller.state).toBe("listening");
     expect(pc.addedTracks).toHaveLength(1);
     expect(pc.dataChannel.label).toBe("oai-events");
@@ -217,6 +215,7 @@ describe("Realtime WebRTC browser controller", () => {
     await expect(controller.start()).rejects.toThrow("Realtime call id");
 
     expect(controller.state).toBe("error");
+    expect(controller.callId).toBeUndefined();
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
     expect(pc.dataChannel.closed).toBe(true);
@@ -327,6 +326,7 @@ describe("Realtime WebRTC browser controller", () => {
     controller.stop();
 
     expect(controller.state).toBe("ended");
+    expect(controller.callId).toBeUndefined();
     expect(localTrack.stopped).toBe(true);
     expect(remoteTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);

@@ -182,6 +182,8 @@ button { font: inherit; }
   color: #4b5565;
 }
 
+.remote-audio { display: none; }
+
 .call-controls {
   display: grid;
   grid-template-columns: repeat(4, minmax(130px, 1fr));

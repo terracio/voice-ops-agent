@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import { AgentAvatar, Icon, Waveform, type IconName } from "./voiceConsoleIcons";
+import { useVoiceConsoleRealtime } from "./useVoiceConsoleRealtime";
 import {
   toHandoffLabel,
   toModeLabel,
@@ -9,7 +10,6 @@ import {
   toStatusLabel
 } from "./voiceConsoleLabels";
 import {
-  demoVoiceConsoleController,
   type VoiceConsoleAction,
   type VoiceConsoleController,
   type VoiceConsoleState
@@ -20,25 +20,36 @@ type VoiceConsoleProps = {
 };
 
 type VoiceConsoleViewProps = {
+  remoteAudioRef?: RefObject<HTMLAudioElement | null>;
   state: VoiceConsoleState;
-  onAction: (action: VoiceConsoleAction) => void;
+  onAction: (action: VoiceConsoleAction) => Promise<void> | void;
 };
 
 const meterBars = Array.from({ length: 16 }, (_, index) => index);
 
 export function VoiceConsole({
-  controller = demoVoiceConsoleController
+  controller
 }: VoiceConsoleProps) {
-  const [state, setState] = useState(() => controller.getInitialState());
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const { onAction, state } = useVoiceConsoleRealtime({
+    controller,
+    remoteAudioRef
+  });
 
-  function handleAction(action: VoiceConsoleAction) {
-    setState((current) => controller.dispatch(current, action));
-  }
-
-  return <VoiceConsoleView state={state} onAction={handleAction} />;
+  return (
+    <VoiceConsoleView
+      remoteAudioRef={remoteAudioRef}
+      state={state}
+      onAction={onAction}
+    />
+  );
 }
 
-export function VoiceConsoleView({ state, onAction }: VoiceConsoleViewProps) {
+export function VoiceConsoleView({
+  remoteAudioRef,
+  state,
+  onAction
+}: VoiceConsoleViewProps) {
   const statusLabel = toStatusLabel(state.sessionStatus);
   const permissionLabel = toPermissionLabel(state.microphonePermission);
   const activeBars = Math.round((state.inputLevel / 100) * meterBars.length);
@@ -79,6 +90,7 @@ export function VoiceConsoleView({ state, onAction }: VoiceConsoleViewProps) {
                 </div>
                 <Waveform />
                 <div className="audio-output">
+                  <audio ref={remoteAudioRef} className="remote-audio" />
                   <span className="mini-icon" aria-hidden="true">
                     <Icon name="speaker" />
                   </span>
@@ -92,7 +104,7 @@ export function VoiceConsoleView({ state, onAction }: VoiceConsoleViewProps) {
                 detail="Start session"
                 icon="play"
                 tone="primary"
-                disabled={state.sessionStatus === "connected"}
+                disabled={state.sessionStatus !== "disconnected"}
                 onClick={() => onAction({ type: "start" })}
               />
               <ControlButton

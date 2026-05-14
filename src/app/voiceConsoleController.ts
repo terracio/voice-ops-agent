@@ -1,5 +1,10 @@
 export type SessionStatus = "disconnected" | "connecting" | "connected";
-export type AgentMode = "idle" | "listening" | "speaking";
+export type AgentMode =
+  | "idle"
+  | "listening"
+  | "speaking"
+  | "tool-running"
+  | "waiting-for-confirmation";
 export type MicrophonePermission = "not-requested" | "granted" | "denied";
 export type ControlHandoff = "pending" | "attached";
 export type EphemeralCredential = "not-issued" | "issued";
@@ -129,6 +134,7 @@ export function applyVoiceConsoleAction(
         sessionStatus: "disconnected",
         agentMode: "idle",
         assistantAudioLabel: "No audio playing",
+        callId: null,
         microphonePermission: "not-requested",
         isMuted: true,
         inputLevel: 0,

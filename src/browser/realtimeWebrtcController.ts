@@ -24,6 +24,7 @@ export {
 } from "./realtimeWebrtcEvents";
 
 export type RealtimeWebrtcController = {
+  readonly callId: string | undefined;
   readonly muted: boolean;
   readonly remoteStream: MediaStream | undefined;
   readonly state: RealtimeWebrtcControllerState;
@@ -74,6 +75,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   private mutedValue = false;
   private peerConnection?: RTCPeerConnection;
   private readonly peerConnectionFactory?: () => RTCPeerConnection;
+  private realtimeCallId?: string;
   private readonly remoteAudioElement?: HTMLAudioElement;
   private remoteStreamValue?: MediaStream;
   private readonly sessionEndpoint: string;
@@ -89,6 +91,10 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
     this.remoteAudioElement = options.remoteAudioElement;
     this.sessionEndpoint =
       options.sessionEndpoint ?? DEFAULT_REALTIME_SESSION_ENDPOINT;
+  }
+
+  get callId() {
+    return this.realtimeCallId;
   }
 
   get muted() {
@@ -168,6 +174,8 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       if (!callId) {
         throw new Error("Realtime call id was missing from the SDP response.");
       }
+      this.realtimeCallId = callId;
+      this.emit({ callId, type: "call-id" });
 
       await peerConnection.setRemoteDescription({
         sdp: answerSdp,
@@ -227,6 +235,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
   }
 
   private cleanupResources(): void {
+    this.realtimeCallId = undefined;
     const dataChannel = this.dataChannel;
     this.dataChannel = undefined;
     if (dataChannel && dataChannel.readyState !== "closed") dataChannel.close();

@@ -19,6 +19,12 @@ export function toModeLabel(mode: VoiceConsoleState["agentMode"]): string {
   if (mode === "speaking") {
     return "Speaking";
   }
+  if (mode === "tool-running") {
+    return "Tool running";
+  }
+  if (mode === "waiting-for-confirmation") {
+    return "Waiting for confirmation";
+  }
   return "Idle";
 }
 

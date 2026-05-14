@@ -20,6 +20,7 @@ export type RealtimeWebrtcControllerEvent =
       state: RealtimeWebrtcControllerState;
       type: "state";
     }
+  | { callId: string; type: "call-id" }
   | { message: unknown; type: "message" }
   | { error: Error; type: "error" }
   | { muted: boolean; type: "muted" }
