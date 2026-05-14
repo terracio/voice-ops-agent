@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   confirmationSourceForContext,
-  isExplicitConfirmation,
-  matchesConfirmationChallenge
+  isExplicitConfirmation
 } from "../src/tools/changeSetToolSupport";
 
 describe("confirmation language", () => {
@@ -17,17 +16,6 @@ describe("confirmation language", () => {
     expect(isExplicitConfirmation("Actually change it to May 19th."))
       .toBe(false);
     expect(isExplicitConfirmation("Confirm what date was that?")).toBe(false);
-  });
-
-  it("matches server challenge phrases without punctuation sensitivity", () => {
-    expect(matchesConfirmationChallenge(
-      "confirm payment follow up",
-      "Confirm payment follow-up."
-    )).toBe(true);
-    expect(matchesConfirmationChallenge(
-      "yes confirm it",
-      "Confirm payment follow-up."
-    )).toBe(false);
   });
 
   it("treats browser Realtime call IDs as realtime user turns", () => {

@@ -190,18 +190,10 @@ export function confirmationChallengeForChangeSet(
   };
 }
 
-export function matchesConfirmationChallenge(
-  message: string,
-  phrase: string
-): boolean {
-  return confirmationPhraseKey(message) === confirmationPhraseKey(phrase);
-}
-
-export function requiresConfirmationChallenge(
+export function requiresTranscriptConfirmation(
   context: ToolExecutionContext
 ): boolean {
-  const source = confirmationSourceForContext(context);
-  return source === "realtime_user_turn" || source === "model_eval_user_turn";
+  return confirmationSourceForContext(context) !== "realtime_user_turn";
 }
 
 export function requireConfirmationTurnAfterPreview(
@@ -254,14 +246,4 @@ function confirmationChallengeSubject(changeSet: ChangeSet): string {
     return "payment follow-up";
   }
   return "meal preference change";
-}
-
-function confirmationPhraseKey(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[’‘]/g, "'")
-    .replace(/[-_]/g, " ")
-    .replace(/[^a-z0-9 ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }

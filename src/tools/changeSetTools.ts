@@ -9,10 +9,9 @@ import {
   confirmationChallengeForChangeSet,
   confirmationSourceForContext,
   isExplicitConfirmation,
-  matchesConfirmationChallenge,
   nonActionableItems,
   ok,
-  requiresConfirmationChallenge,
+  requiresTranscriptConfirmation,
   requireConfirmationTurnAfterPreview,
   requireOwnedChangeSet,
   requireResolvedCustomer,
@@ -155,7 +154,10 @@ export const captureConfirmationTool = defineTool({
     if (!ownership.ok) return ownership;
 
     const transcript = context.last_user_message.trim();
-    if (!isExplicitConfirmation(transcript)) {
+    if (
+      requiresTranscriptConfirmation(context) &&
+      !isExplicitConfirmation(transcript)
+    ) {
       return failedToolResult({
         code: "CONFIRMATION_NOT_EXPLICIT",
         message: "Confirmation must come from an explicit current user turn."
@@ -167,17 +169,6 @@ export const captureConfirmationTool = defineTool({
       context
     );
     if (turnIssue) return turnIssue;
-
-    const challenge = confirmationChallengeForChangeSet(ownership.data);
-    if (
-      requiresConfirmationChallenge(context) &&
-      !matchesConfirmationChallenge(transcript, challenge.phrase)
-    ) {
-      return failedToolResult({
-        code: "CONFIRMATION_NOT_EXPLICIT",
-        message: `Confirmation must match the server confirmation phrase: "${challenge.phrase}"`
-      });
-    }
 
     return captureServerConfirmation({
       run_id: context.run_id,

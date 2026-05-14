@@ -86,12 +86,12 @@ describe("Realtime server confirmation context", () => {
     });
   });
 
-  it("rejects generic yes for Realtime confirmations after preview", async () => {
+  it("allows Realtime confirmation when diagnostic transcript mishears the challenge", async () => {
     const socket = new FakeSidebandSocket();
     let now = new Date("2026-05-11T10:00:00Z");
     startRealtimeServerControl({
       apiKey: "sk-server-secret",
-      callId: "rtc_generic_confirm_123456",
+      callId: "rtc_misheard_confirm_123456",
       now: () => now,
       socketFactory: () => socket
     });
@@ -100,7 +100,7 @@ describe("Realtime server confirmation context", () => {
       customer_id: "CUS_001"
     });
     await emitFunctionCall(socket, "create_change_set", "call_create", {
-      change_set_id: "cs_generic_confirm",
+      change_set_id: "cs_misheard_confirm",
       operations: [{
         type: "pause_dates",
         dates: ["2026-05-18"],
@@ -109,23 +109,24 @@ describe("Realtime server confirmation context", () => {
     });
     now = new Date("2026-05-11T10:01:00Z");
     await emitFunctionCall(socket, "preview_change_set", "call_preview", {
-      change_set_id: "cs_generic_confirm"
+      change_set_id: "cs_misheard_confirm"
     });
     now = new Date("2026-05-11T10:02:00Z");
     socket.emit("message", JSON.stringify({
-      item_id: "item_generic_yes",
-      transcript: "Yes.",
+      item_id: "item_misheard_confirm",
+      transcript: "Confirm past delivery.",
       type: "conversation.item.input_audio_transcription.completed"
     }));
     await emitFunctionCall(socket, "capture_confirmation", "call_confirm", {
-      change_set_id: "cs_generic_confirm"
+      change_set_id: "cs_misheard_confirm"
     });
 
     expect(functionOutputs(socket).at(-1)).toMatchObject({
-      ok: false,
-      error: {
-        code: "CONFIRMATION_NOT_EXPLICIT",
-        message: "Confirmation must match the server confirmation phrase: \"Confirm pause delivery.\""
+      ok: true,
+      data: {
+        change_set_id: "cs_misheard_confirm",
+        source_user_turn_id: "item_misheard_confirm",
+        transcript_excerpt: "Confirm past delivery."
       }
     });
   });

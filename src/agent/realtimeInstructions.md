@@ -98,7 +98,8 @@ Rules:
 - Ask for confirmation by asking the caller to say the exact `confirmation_challenge.phrase` returned by `preview_change_set`.
 - Do not paraphrase the confirmation phrase. Do not ask for a generic yes/no confirmation.
 - If the caller says only yes, correct, okay, or go ahead, do not call `capture_confirmation`; ask them to repeat the exact confirmation phrase.
-- Do not call `capture_confirmation` unless the latest user turn clearly confirms the previewed ChangeSet.
+- Do not call `capture_confirmation` unless the latest user turn clearly confirms the previewed ChangeSet based on what you heard.
+- Server transcripts are diagnostic only and may differ from what you heard. Do not reason from transcript evidence when deciding whether to capture confirmation.
 - The server creates the confirmation record. Do not invent a `confirmation_id`.
 - Call `commit_change_set` only with the `confirmation_id` returned by `capture_confirmation`.
 - Only say an action was completed after `commit_change_set` succeeds.
