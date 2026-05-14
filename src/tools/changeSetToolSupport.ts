@@ -168,13 +168,35 @@ export function nonActionableItems(changeSet: ChangeSet): string[] {
 
 export function isExplicitConfirmation(message: string): boolean {
   const normalized = message.toLowerCase().replace(/\s+/g, " ").trim();
-  if (/\b(but|instead|change|actually|except)\b/.test(normalized)) {
+  if (/\b(but|instead|actually|except)\b/.test(normalized)) {
     return false;
   }
+  if (/\bchange\b.+\bto\b/.test(normalized)) return false;
 
-  return /^(yes|yep|yeah|correct|confirmed|confirm|i confirm|that is correct|looks good|go ahead)([,. ]+(confirm|please do|those changes|the changes|it|that|this))*[.!]?$/.test(
-    normalized
-  );
+  if (/^confirm\b.+[?]$/.test(normalized)) return false;
+  if (/^confirm\b(?: [a-z0-9,.'_-]+)*[.!]?$/.test(normalized)) return true;
+
+  return /^(yes|yep|yeah|correct|confirmed|i confirm|that is correct|looks good|go ahead)([,. ]+(confirm|please do|those changes|the changes|it|that|this))*[.!]?$/.test(normalized);
+}
+
+export function requireConfirmationTurnAfterPreview(
+  changeSet: ChangeSet,
+  context: ToolExecutionContext
+): ToolResult<never> | undefined {
+  const previewedAt = changeSet.previewed_at;
+  const confirmationTurnAt = context.last_user_turn_at ?? context.current_time;
+  if (
+    !previewedAt ||
+    !confirmationTurnAt ||
+    new Date(confirmationTurnAt).getTime() <= new Date(previewedAt).getTime()
+  ) {
+    return failedToolResult({
+      code: "CONFIRMATION_NOT_EXPLICIT",
+      message: "Confirmation must come from a user turn after preview."
+    });
+  }
+
+  return undefined;
 }
 
 export function confirmationSourceForContext(

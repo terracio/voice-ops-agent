@@ -57,7 +57,7 @@ export function stateFromRealtimeBrowserEvent(
   const itemName = stringValue(item?.name);
   const marker = `${type} ${itemType} ${itemName}`.toLowerCase();
 
-  if (type === "error" || type.endsWith(".error")) return "error";
+  if (type.endsWith(".error")) return "error";
   if (
     marker.includes("waiting_for_confirmation") ||
     marker.includes("waiting-for-confirmation") ||

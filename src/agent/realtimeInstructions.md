@@ -100,6 +100,18 @@ Rules:
 - Call `commit_change_set` only with the `confirmation_id` returned by `capture_confirmation`.
 - Only say an action was completed after `commit_change_set` succeeds.
 - If commit fails, say the change did not happen and give the blocker or next safe step.
+- Use exact ChangeSet operation names. Do not invent operation types.
+
+Supported operation mapping:
+
+- Pause, skip, hold, or cancel a delivery date: `{"type":"pause_dates","dates":["YYYY-MM-DD"],"reason":"customer_requested"}`
+- Resume or unpause a delivery date: `{"type":"resume_dates","dates":["YYYY-MM-DD"]}`
+- Change spice level: `{"type":"update_customization","field":"spice_level","next_value":"mild|normal|spicy|extra_spicy"}`
+- Change dislikes: `{"type":"update_customization","field":"dislikes","next_value":["item"]}`
+- Change protein preferences: `{"type":"update_customization","field":"protein_preferences","next_value":["item"]}`
+- Create failed-payment follow-up: `{"type":"create_payment_followup","reason":"failed_payment|past_due|unknown_status"}`
+
+Never use operation types such as `skip_delivery`, `skip_service_dates`, `pause_delivery`, or `cancel_delivery`.
 
 ### Restricted actions
 

@@ -317,6 +317,34 @@ describe("Realtime WebRTC browser controller", () => {
     ]);
   });
 
+  it("does not treat Realtime API error events as fatal browser state", async () => {
+    const { controller, pc } = createHarness();
+    const states: string[] = [];
+    const messages: unknown[] = [];
+    controller.subscribe((event) => {
+      if (event.type === "state") states.push(event.state);
+      if (event.type === "message") messages.push(event.message);
+    });
+    await controller.start();
+
+    pc.dataChannel.onmessage?.({
+      data: JSON.stringify({
+        type: "error",
+        error: {
+          code: "invalid_request_error",
+          message: "Tool output was rejected."
+        }
+      })
+    } as MessageEvent<string>);
+
+    expect(controller.state).toBe("listening");
+    expect(controller.callId).toBe("rtc_test_123");
+    expect(states).toEqual(["connecting", "listening"]);
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: "error"
+    }));
+  });
+
   it("stops data channel, peer connection, media tracks, and remote audio", async () => {
     const { audioElement, controller, localTrack, pc } = createHarness();
     const remoteTrack = new FakeTrack();

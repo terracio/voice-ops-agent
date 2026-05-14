@@ -1,9 +1,9 @@
-import WebSocket from "ws";
+import { createRequire } from "node:module";
 import { z } from "zod";
 import type { ToolRegistry } from "../tools/registry";
 import type { ToolResult } from "../domain/schema";
 import { createMealPlanToolRegistry } from "../tools/mealplanRegistry";
-import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./realtimeSessionState";
+import { applyRealtimeToolResultToSessionState, applyRealtimeTranscriptEventToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./realtimeSessionState";
 import { createServerRealtimeSessionUpdate } from "./realtimeBrowserSession";
 import { resolveRealtimeSidebandUrl } from "./realtimeSidebandUrl";
 import { mealPlanRealtimeTools } from "./realtimeTools";
@@ -47,6 +47,7 @@ type ActiveControl = {
 };
 
 const activeControls = new Map<string, ActiveControl>();
+const nodeRequire = createRequire(import.meta.url);
 
 export class RealtimeServerControlError extends Error {
   constructor(
@@ -59,6 +60,8 @@ export class RealtimeServerControlError extends Error {
 }
 
 function defaultSocketFactory(url: string, options: { headers: Record<string, string> }): RealtimeSidebandSocket {
+  process.env.WS_NO_BUFFER_UTIL ??= "1";
+  const { WebSocket } = nodeRequire("ws") as typeof import("ws");
   return new WebSocket(url, options);
 }
 
@@ -101,30 +104,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function extractFunctionCalls(event: unknown): FunctionCall[] {
   if (!isRecord(event)) return [];
-  if (event.type === "response.function_call_arguments.done") {
-    if (
-      typeof event.name !== "string" ||
-      typeof event.call_id !== "string"
-    ) {
-      return [];
-    }
-    return [{
-      name: event.name,
-      call_id: event.call_id,
-      arguments: event.arguments
-    }];
+  if (
+    event.type !== "response.done" ||
+    !isRecord(event.response) ||
+    !Array.isArray(event.response.output)
+  ) {
+    return [];
   }
 
-  const output =
-    event.type === "response.done" &&
-    isRecord(event.response) &&
-    Array.isArray(event.response.output)
-      ? event.response.output
-      : event.type === "response.output_item.done" && isRecord(event.item)
-        ? [event.item]
-        : [];
-
-  return output
+  return event.response.output
     .filter((item): item is Record<string, unknown> => {
       return isRecord(item) && item.type === "function_call";
     })
@@ -187,7 +175,7 @@ function sendFunctionCallResult(
       output: JSON.stringify(result)
     }
   }));
-  socket.send(JSON.stringify({ type: "response.create" }));
+  socket.send(JSON.stringify({ type: "response.create", response: { output_modalities: ["audio"] } }));
 }
 
 export function startRealtimeServerControl(options: {
@@ -269,6 +257,12 @@ export function startRealtimeServerControl(options: {
   socket.on("message", (rawMessage) => {
     const parsed = parseRealtimeSocketMessage(rawMessage);
     recordRealtimeTransportEvidence({ callId, event: parsed, now });
+    applyRealtimeTranscriptEventToSessionState({
+      event: parsed,
+      fallbackTurnId: `${callId}_turn`,
+      now,
+      state: sessionState
+    });
     for (const call of extractFunctionCalls(parsed)) {
       if (processedFunctionCallIds.has(call.call_id)) {
         continue;
@@ -287,6 +281,7 @@ export function startRealtimeServerControl(options: {
 
       const toolContext = buildRealtimeToolContext({
         base: toolContextBase,
+        now,
         state: sessionState
       });
       void executeFunctionCall({ call, registry, toolContext }).then(
@@ -308,11 +303,12 @@ export function startRealtimeServerControl(options: {
           });
           sendFunctionCallResult(socket, call.call_id, result);
         }
-      ).catch(() => {
+      ).catch((error: unknown) => {
+        const detail = error instanceof Error && error.message ? `: ${error.message}` : "";
         recordRealtimeEvidenceEvent({
           callId,
           eventType: "tool.execution_error",
-          label: "Realtime tool execution failed",
+          label: `Realtime tool execution failed${detail}`,
           now,
           severity: "error"
         });

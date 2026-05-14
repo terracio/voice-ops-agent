@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildRealtimeSidebandUrlFromLocation } from "./realtimeSidebandUrl";
 import {
   DEFAULT_OPENAI_REALTIME_REASONING_EFFORT,
@@ -13,6 +14,8 @@ export const OPENAI_REALTIME_CALLS_URL =
 const DEFAULT_BROWSER_VOICE = "alloy";
 const DEFAULT_INPUT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
 const DEFAULT_SAFETY_IDENTIFIER = "mealplan-voiceops-local-demo";
+const REALTIME_TRACE_GROUP_ID = "mealplan-voiceops-browser";
+const REALTIME_TRACE_WORKFLOW_NAME = "MealPlan VoiceOps Browser Realtime";
 
 type SdpFetchLike = (
   input: string,
@@ -47,6 +50,25 @@ export type ServerRealtimeSessionUpdate = {
   };
 };
 
+export function createRealtimeTracingConfig(options: {
+  model: string;
+}): Record<string, unknown> {
+  return {
+    workflow_name: REALTIME_TRACE_WORKFLOW_NAME,
+    group_id: REALTIME_TRACE_GROUP_ID,
+    metadata: {
+      app: "mealplan-voiceops",
+      model: options.model,
+      prompt_sha256: createHash("sha256")
+        .update(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS)
+        .digest("hex"),
+      prompt_source: "src/agent/realtimeInstructions.md",
+      surface: "browser-demo",
+      tool_count: String(mealPlanRealtimeTools.length)
+    }
+  };
+}
+
 export function createBrowserRealtimeSessionConfig(options: {
   model: string;
 }): Record<string, unknown> {
@@ -58,7 +80,10 @@ export function createBrowserRealtimeSessionConfig(options: {
       audio: createRealtimeAudioConfig(),
       reasoning: {
         effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT
-      }
+      },
+      tracing: createRealtimeTracingConfig({ model: options.model }),
+      tools: mealPlanRealtimeTools,
+      parallel_tool_calls: false
     }
   };
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./voiceConsoleEvidence.css";
 import "./voiceConsoleResponsive.css";
+import "./voiceConsoleTranscript.css";
 
 export const metadata: Metadata = {
   title: "MealPlan VoiceOps",

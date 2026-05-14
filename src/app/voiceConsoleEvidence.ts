@@ -7,6 +7,7 @@ export type EvidenceTranscriptItem = {
   id: string;
   kind: string;
   text: string;
+  turnId: string;
 };
 
 export type EvidenceToolItem = {
@@ -75,12 +76,14 @@ export function formatEvidenceStatus(status: EvidenceToolStatus): string {
 
 function toTranscriptItem(value: unknown, index: number): EvidenceTranscriptItem {
   const item = isRecord(value) ? value : {};
+  const source = isRecord(item.source) ? item.source : {};
   return {
     actor: actorValue(item.actor),
     at: displayTime(item.created_at),
     id: stringValue(item.evidence_id) ?? `transcript-${index}`,
     kind: stringValue(item.transcript_kind) ?? "realtime_transcript",
-    text: stringValue(item.text) ?? ""
+    text: stringValue(item.text) ?? "",
+    turnId: stringValue(item.turn_id) ?? stringValue(source.turn_id) ?? `turn-${index}`
   };
 }
 

@@ -6,30 +6,39 @@ import {
   type EvidenceToolItem,
   type VoiceConsoleEvidenceState
 } from "./voiceConsoleEvidence";
+import {
+  normalizeTranscriptTurns,
+  type VoiceTranscriptTurn
+} from "./voiceConsoleTranscript";
 
 type VoiceEvidencePanelsProps = {
   evidence?: VoiceConsoleEvidenceState;
+  transcript?: VoiceTranscriptTurn[];
 };
 
 export function VoiceEvidencePanels({
-  evidence = EMPTY_VOICE_CONSOLE_EVIDENCE
+  evidence = EMPTY_VOICE_CONSOLE_EVIDENCE,
+  transcript = normalizeTranscriptTurns(evidence.transcript)
 }: VoiceEvidencePanelsProps) {
   return (
     <section className="evidence-grid" aria-label="Realtime evidence">
       <EvidencePanel title="Transcript evidence" note="Debug text only">
         <EvidenceStateLine evidence={evidence} />
-        {evidence.transcript.length === 0 ? (
+        {transcript.length === 0 ? (
           <EmptyEvidence message="No transcript evidence for this call yet." />
         ) : (
           <ol className="transcript-list">
-            {evidence.transcript.map((item) => (
+            {transcript.map((item) => (
               <li className={`transcript-item ${item.actor}`} key={item.id}>
                 <span className="transcript-meta">
                   <strong>{item.actor}</strong>
                   <time>{item.at}</time>
                 </span>
                 <p>{item.text}</p>
-                <small>{item.kind}</small>
+                <small>
+                  {item.kind}
+                  {item.fragmentCount > 1 ? ` · ${item.fragmentCount} fragments` : ""}
+                </small>
               </li>
             ))}
           </ol>
@@ -48,7 +57,7 @@ export function VoiceEvidencePanels({
         )}
         {evidence.events.length > 0 ? (
           <div className="realtime-events" aria-label="Realtime event summaries">
-            {evidence.events.slice(0, 4).map((event) => (
+            {evidence.events.slice(-6).map((event) => (
               <span className={`realtime-event ${event.severity}`} key={event.id}>
                 {event.label}
               </span>

@@ -21,6 +21,7 @@ import {
   timestamp,
   transcriptEvidence
 } from "./realtimeEvidenceBuilders";
+import { realtimeEventLabel } from "./realtimeEventLabels";
 
 type EvidenceState = {
   audit_event_ids: Set<string>;
@@ -137,7 +138,7 @@ export function recordRealtimeTransportEvidence(options: {
   recordRealtimeEvidenceEvent({
     callId: options.callId,
     eventType,
-    label: eventType,
+    label: realtimeEventLabel(event),
     now: options.now,
     severity: eventType.includes("error") ? "error" : "info"
   });

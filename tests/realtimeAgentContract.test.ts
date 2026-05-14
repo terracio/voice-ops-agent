@@ -68,6 +68,15 @@ describe("MealPlan realtime agent contract", () => {
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/background account facts/i);
   });
 
+  it("documents exact ChangeSet operation names for voice tool calls", () => {
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("pause_dates");
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("resume_dates");
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("update_customization");
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("create_payment_followup");
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("skip_delivery");
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toContain("skip_service_dates");
+  });
+
   it("converts registry tools into Realtime function tool definitions", () => {
     for (const realtimeTool of mealPlanRealtimeTools) {
       const sourceTool = mealPlanModelTools.find(

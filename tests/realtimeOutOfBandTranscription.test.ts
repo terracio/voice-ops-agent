@@ -129,7 +129,7 @@ describe("Realtime out-of-band transcription diagnostics", () => {
       "realtime",
       "walk",
       "maya_smoke",
-      "unit_report_trace"
+      "unit_oob_report_trace"
     );
     rmSync(reportDir, { force: true, recursive: true });
 
@@ -144,6 +144,8 @@ describe("Realtime out-of-band transcription diagnostics", () => {
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "walk" }),
       result: {
         ...createResult(),
+        run_id: "unit_oob_report_trace",
+        session_id: "unit_oob_report_trace_session",
         out_of_band_transcription: {
           response_id: "resp_oob",
           status: "completed",

@@ -27,6 +27,7 @@ import {
   EMPTY_VOICE_CONSOLE_EVIDENCE,
   type VoiceConsoleEvidenceState
 } from "./voiceConsoleEvidence";
+import { buildVoiceTranscriptState } from "./voiceConsoleTranscript";
 
 type VoiceConsoleProps = {
   controller?: VoiceConsoleController;
@@ -73,6 +74,7 @@ export function VoiceConsoleView({
   const statusLabel = toStatusLabel(state.sessionStatus);
   const permissionLabel = toPermissionLabel(state.microphonePermission);
   const activeBars = Math.round((state.inputLevel / 100) * meterBars.length);
+  const transcript = buildVoiceTranscriptState(evidence.transcript);
 
   return (
     <main className="voice-shell">
@@ -116,6 +118,11 @@ export function VoiceConsoleView({
                   </span>
                   <span>{state.assistantAudioLabel}</span>
                 </div>
+                <LiveTranscript
+                  actor="agent"
+                  label="Agent transcript"
+                  text={transcript.currentAgentText}
+                />
               </div>
             </div>
             <div className="call-controls" aria-label="Call controls">
@@ -198,6 +205,11 @@ export function VoiceConsoleView({
                 <p>{state.customerContext}</p>
               </div>
             </div>
+            <LiveTranscript
+              actor="caller"
+              label="Caller transcript"
+              text={transcript.currentCallerText}
+            />
           </Panel>
         </section>
 
@@ -224,7 +236,7 @@ export function VoiceConsoleView({
         </section>
       </div>
 
-      <VoiceEvidencePanels evidence={evidence} />
+      <VoiceEvidencePanels evidence={evidence} transcript={transcript.history} />
 
       <section className="technical-strip" aria-label="Technical state">
         <TechItem icon="hash" label="Call ID" value={state.callId ?? "-"} />
@@ -242,5 +254,24 @@ export function VoiceConsoleView({
         <TechItem icon="lock" label="Tools" value={state.serverToolsLabel} />
       </section>
     </main>
+  );
+}
+
+function LiveTranscript({
+  actor,
+  label,
+  text
+}: {
+  actor: "agent" | "caller";
+  label: string;
+  text: string;
+}) {
+  return (
+    <div className={`live-transcript ${actor}`}>
+      <p className="field-title">{label}</p>
+      <p className={text ? "live-transcript-text" : "live-transcript-empty"}>
+        {text || "Waiting for transcript evidence."}
+      </p>
+    </div>
   );
 }

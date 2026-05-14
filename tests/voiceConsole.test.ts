@@ -61,7 +61,15 @@ describe("voice console UI shell", () => {
             at: "09:00:00",
             id: "tr_user_1",
             kind: "realtime_transcript",
-            text: "Please make my meals spicy next week."
+            text: "Please make my meals spicy next week.",
+            turnId: "turn_user_1"
+          }, {
+            actor: "assistant",
+            at: "09:00:02",
+            id: "tr_assistant_1",
+            kind: "realtime_transcript",
+            text: "I can help with that.",
+            turnId: "turn_assistant_1"
           }],
           tools: [{
             at: "09:00:01",
@@ -79,6 +87,12 @@ describe("voice console UI shell", () => {
             id: "evt_1",
             label: "response.done",
             severity: "info"
+          }, {
+            at: "09:00:02",
+            eventType: "error",
+            id: "evt_2",
+            label: "error: invalid_request_error",
+            severity: "error"
           }]
         },
         onAction: () => undefined
@@ -86,11 +100,15 @@ describe("voice console UI shell", () => {
     );
 
     expect(html).toContain("Debug text only");
+    expect(html).toContain("Caller transcript");
+    expect(html).toContain("Agent transcript");
     expect(html).toContain("Please make my meals spicy next week.");
+    expect(html).toContain("I can help with that.");
     expect(html).toContain("preview_change_set");
     expect(html).toContain("Blocked");
     expect(html).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
     expect(html).toContain("response.done");
+    expect(html).toContain("error: invalid_request_error");
     expect(html).not.toContain("completed successfully");
   });
 
@@ -151,7 +169,8 @@ describe("voice console UI shell", () => {
       "src/app/useRealtimeEvidence.ts",
       "src/app/VoiceEvidencePanels.tsx",
       "src/app/VoiceConsolePrimitives.tsx",
-      "src/app/voiceConsoleEvidence.ts"
+      "src/app/voiceConsoleEvidence.ts",
+      "src/app/voiceConsoleTranscript.ts"
     ];
 
     for (const file of browserFiles) {

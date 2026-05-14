@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createBrowserRealtimeSessionConfig,
+  createRealtimeTracingConfig,
   exchangeBrowserRealtimeSdpOffer,
   createServerRealtimeSessionUpdate,
   OPENAI_REALTIME_CALLS_URL
@@ -8,10 +9,11 @@ import {
 import { mealPlanRealtimeTools } from "../src/agent/realtimeTools";
 
 describe("Realtime browser session boundary", () => {
-  it("builds a browser session config without client-side tools", () => {
+  it("builds a server-mediated browser session config with tools attached", () => {
     const config = createBrowserRealtimeSessionConfig({
       model: "gpt-realtime-2"
     });
+    const session = config.session as Record<string, unknown>;
 
     expect(config).toMatchObject({
       session: {
@@ -29,8 +31,28 @@ describe("Realtime browser session boundary", () => {
         reasoning: { effort: "low" }
       }
     });
+    expect(session).toMatchObject({
+      tracing: {
+        workflow_name: "MealPlan VoiceOps Browser Realtime",
+        group_id: "mealplan-voiceops-browser",
+        metadata: {
+          app: "mealplan-voiceops",
+          model: "gpt-realtime-2",
+          prompt_source: "src/agent/realtimeInstructions.md",
+          surface: "browser-demo",
+          tool_count: String(mealPlanRealtimeTools.length)
+        }
+      }
+    });
+    expect(JSON.stringify(session.tracing)).toMatch(
+      /"prompt_sha256":"[a-f0-9]{64}"/
+    );
     expect(JSON.stringify(config)).toContain("MealPlan VoiceOps");
-    expect(JSON.stringify(config)).not.toContain("\"tools\"");
+    expect(JSON.stringify(config)).toContain("\"tools\"");
+    expect(JSON.stringify(config)).toContain("lookup_customer");
+    expect(session).toMatchObject({
+      parallel_tool_calls: false
+    });
     expect(JSON.stringify(config)).not.toContain("OPENAI_API_KEY");
   });
 
@@ -59,6 +81,25 @@ describe("Realtime browser session boundary", () => {
     expect(update.session.tools.map((tool) => tool.name)).toContain(
       "lookup_customer"
     );
+    expect(update.session).not.toHaveProperty("tracing");
+  });
+
+  it("keeps browser Realtime trace metadata stable for Platform inspection", () => {
+    const tracing = createRealtimeTracingConfig({ model: "gpt-realtime-2" });
+
+    expect(tracing).toMatchObject({
+      workflow_name: "MealPlan VoiceOps Browser Realtime",
+      group_id: "mealplan-voiceops-browser",
+      metadata: {
+        app: "mealplan-voiceops",
+        model: "gpt-realtime-2",
+        prompt_source: "src/agent/realtimeInstructions.md",
+        surface: "browser-demo",
+        tool_count: String(mealPlanRealtimeTools.length)
+      }
+    });
+    expect(String((tracing.metadata as Record<string, unknown>).prompt_sha256))
+      .toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("exchanges browser SDP through the server-owned Realtime call API", async () => {
@@ -68,7 +109,10 @@ describe("Realtime browser session boundary", () => {
     const fetchImpl = vi.fn(async (_url, init) => {
       const session = String(init.body.get("session"));
       expect(session).toContain("gpt-realtime-2");
-      expect(session).not.toContain("\"tools\"");
+      expect(session).toContain("MealPlan VoiceOps Browser Realtime");
+      expect(session).toContain("prompt_sha256");
+      expect(session).toContain("\"tools\"");
+      expect(session).toContain("lookup_customer");
       return {
         headers,
         ok: true,

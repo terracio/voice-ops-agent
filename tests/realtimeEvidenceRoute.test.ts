@@ -168,6 +168,36 @@ describe("GET /api/realtime/evidence", () => {
     }));
   });
 
+  it("includes Realtime API error details in transport evidence", async () => {
+    const socket = new FakeSidebandSocket();
+    startRealtimeServerControl({
+      apiKey: "sk-server-secret",
+      callId: "rtc_api_error_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      socketFactory: () => socket
+    });
+
+    socket.emit("message", JSON.stringify({
+      type: "error",
+      error: {
+        code: "invalid_request_error",
+        message: "response.create rejected"
+      }
+    }));
+
+    const response = await handleRealtimeEvidenceRequest(
+      evidenceRequest("rtc_api_error_123456")
+    );
+    const body = await response.json();
+    const parsed = RealtimeEvidenceSnapshotSchema.parse(body);
+
+    expect(parsed.realtime_events).toContainEqual(expect.objectContaining({
+      event_type: "error",
+      label: "error: invalid_request_error: response.create rejected",
+      severity: "error"
+    }));
+  });
+
   it("rejects browser mutation attempts", async () => {
     const response = await handleRealtimeEvidenceMutationRequest();
     const body = await response.json();

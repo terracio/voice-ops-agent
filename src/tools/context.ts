@@ -17,6 +17,7 @@ export const ToolExecutionContextSchema = z.object({
   last_user_message: z.string(),
   identity_status: ToolIdentityStatusSchema,
   resolved_customer_id: z.string().min(1).optional(),
+  last_user_turn_at: DateTimeStringSchema.optional(),
   current_time: DateTimeStringSchema.optional(),
   reference_time: DateTimeStringSchema.optional()
 }).strict();
@@ -33,6 +34,7 @@ export const TOOL_EXECUTION_CONTEXT_KEYS = [
   "last_user_message",
   "identity_status",
   "resolved_customer_id",
+  "last_user_turn_at",
   "current_time",
   "reference_time"
 ] as const satisfies readonly (keyof ToolExecutionContext)[];

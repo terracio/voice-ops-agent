@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildRealtimeToolContext,
+  applyRealtimeTranscriptEventToSessionState,
   createRealtimeAgentSdkTools,
   createRealtimeSessionState,
   createRealtimeToolContextBase
@@ -107,6 +108,45 @@ describe("Realtime session identity state", () => {
         policy_id: "P001_IDENTITY_UNCERTAIN"
       }
     });
+  });
+
+  it("uses the latest completed user transcript as tool context", () => {
+    const sessionState = createRealtimeSessionState();
+    const base = createRealtimeToolContextBase({
+      lastUserMessage: "Browser realtime session.",
+      now: () => new Date("2026-05-13T09:00:00+02:00"),
+      runId: "run_realtime_confirmation_test",
+      sessionId: "session_realtime_confirmation_test",
+      userTurnId: "fallback_turn"
+    });
+
+    applyRealtimeTranscriptEventToSessionState({
+      event: {
+        delta: "Confirm pause",
+        item_id: "item_confirm",
+        type: "conversation.item.input_audio_transcription.delta"
+      },
+      fallbackTurnId: "fallback_turn",
+      now: () => new Date("2026-05-13T09:01:00+02:00"),
+      state: sessionState
+    });
+    applyRealtimeTranscriptEventToSessionState({
+      event: {
+        item_id: "item_confirm",
+        transcript: "Confirm pause for May 18th, 2026.",
+        type: "conversation.item.input_audio_transcription.completed"
+      },
+      fallbackTurnId: "fallback_turn",
+      now: () => new Date("2026-05-13T09:02:00+02:00"),
+      state: sessionState
+    });
+
+    expect(buildRealtimeToolContext({ base, state: sessionState }))
+      .toMatchObject({
+        current_user_turn_id: "item_confirm",
+        last_user_turn_at: "2026-05-13T07:02:00.000Z",
+        last_user_message: "Confirm pause for May 18th, 2026."
+      });
   });
 });
 

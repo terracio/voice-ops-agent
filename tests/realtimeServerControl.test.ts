@@ -175,13 +175,17 @@ describe("Realtime server sideband control", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const sent = readSent(socket);
-    expect(sent.filter((item) => {
+    const responseCreates = sent.filter((item) => {
       return (
         typeof item === "object" &&
         item !== null &&
         (item as { type?: unknown }).type === "response.create"
       );
-    })).toHaveLength(1);
+    });
+    expect(responseCreates).toEqual([{
+      type: "response.create",
+      response: { output_modalities: ["audio"] }
+    }]);
     const output = sent.find((item): item is {
       item: { output: string; type: string };
       type: string;
@@ -209,7 +213,7 @@ describe("Realtime server sideband control", () => {
     });
   });
 
-  it("waits for finalized function-call arguments before execution", async () => {
+  it("waits for response completion before executing function calls", async () => {
     const socket = new FakeSidebandSocket();
     startRealtimeServerControl({
       apiKey: "sk-server-secret",
@@ -227,10 +231,12 @@ describe("Realtime server sideband control", () => {
         arguments: ""
       }
     }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(readSent(socket)).toEqual([]);
-
+    socket.emit("message", JSON.stringify({
+      type: "response.function_call_arguments.done",
+      name: "lookup_customer",
+      call_id: "call_lookup_customer_added",
+      arguments: JSON.stringify({ customer_id: "cus_001" })
+    }));
     socket.emit("message", JSON.stringify({
       type: "response.output_item.done",
       item: {
@@ -238,6 +244,21 @@ describe("Realtime server sideband control", () => {
         name: "lookup_customer",
         call_id: "call_lookup_customer_added",
         arguments: JSON.stringify({ customer_id: "cus_001" })
+      }
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(readSent(socket)).toEqual([]);
+
+    socket.emit("message", JSON.stringify({
+      type: "response.done",
+      response: {
+        output: [{
+          type: "function_call",
+          name: "lookup_customer",
+          call_id: "call_lookup_customer_added",
+          arguments: JSON.stringify({ customer_id: "cus_001" })
+        }]
       }
     }));
     await new Promise((resolve) => setTimeout(resolve, 0));

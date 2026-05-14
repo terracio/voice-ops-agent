@@ -10,6 +10,7 @@ import {
   isExplicitConfirmation,
   nonActionableItems,
   ok,
+  requireConfirmationTurnAfterPreview,
   requireOwnedChangeSet,
   requireResolvedCustomer,
   timeFromContext,
@@ -154,6 +155,12 @@ export const captureConfirmationTool = defineTool({
         message: "Confirmation must come from an explicit current user turn."
       });
     }
+
+    const turnIssue = requireConfirmationTurnAfterPreview(
+      ownership.data,
+      context
+    );
+    if (turnIssue) return turnIssue;
 
     return captureServerConfirmation({
       run_id: context.run_id,

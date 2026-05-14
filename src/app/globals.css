@@ -174,7 +174,6 @@ button { font: inherit; }
 .audio-output,
 .customer-context {
   display: flex;
-  align-items: center;
   gap: 16px;
   border: 1px solid #d8dee8;
   border-radius: 8px;
@@ -182,6 +181,8 @@ button { font: inherit; }
   color: #4b5565;
 }
 
+.audio-output,
+.customer-context { align-items: center; }
 .remote-audio { display: none; }
 
 .call-controls {
