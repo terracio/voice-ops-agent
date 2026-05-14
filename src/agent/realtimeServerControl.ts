@@ -3,24 +3,15 @@ import { z } from "zod";
 import type { ToolRegistry } from "../tools/registry";
 import type { ToolResult } from "../domain/schema";
 import { createMealPlanToolRegistry } from "../tools/mealplanRegistry";
-import {
-  applyRealtimeToolResultToSessionState,
-  buildRealtimeToolContext,
-  createRealtimeSessionState,
-  createRealtimeToolContextBase
-} from "./realtimeSessionState";
-import {
-  createServerRealtimeSessionUpdate,
-  type ServerRealtimeSessionUpdate
-} from "./realtimeBrowserSession";
+import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./realtimeSessionState";
+import { createServerRealtimeSessionUpdate } from "./realtimeBrowserSession";
 import { mealPlanRealtimeTools } from "./realtimeTools";
+import { beginRealtimeEvidenceRun, finishRealtimeEvidenceRun, recordRealtimeEvidenceEvent, recordRealtimeToolResult, recordRealtimeToolStart, recordRealtimeTransportEvidence } from "../evidence";
 
 export const OPENAI_REALTIME_SIDEBAND_URL =
   "wss://api.openai.com/v1/realtime";
 
-export const RealtimeCallIdSchema = z
-  .string()
-  .regex(/^rtc_[A-Za-z0-9_-]{6,}$/);
+export const RealtimeCallIdSchema = z.string().regex(/^rtc_[A-Za-z0-9_-]{6,}$/);
 
 export type RealtimeServerControlStatus = "connecting";
 
@@ -42,10 +33,7 @@ export type RealtimeSidebandSocket = {
   send: (data: string) => void;
 };
 
-export type RealtimeSidebandSocketFactory = (
-  url: string,
-  options: { headers: Record<string, string> }
-) => RealtimeSidebandSocket;
+export type RealtimeSidebandSocketFactory = (url: string, options: { headers: Record<string, string> }) => RealtimeSidebandSocket;
 
 type FunctionCall = {
   arguments: unknown;
@@ -72,10 +60,7 @@ export class RealtimeServerControlError extends Error {
   }
 }
 
-function defaultSocketFactory(
-  url: string,
-  options: { headers: Record<string, string> }
-): RealtimeSidebandSocket {
+function defaultSocketFactory(url: string, options: { headers: Record<string, string> }): RealtimeSidebandSocket {
   return new WebSocket(url, options);
 }
 
@@ -160,13 +145,6 @@ function extractFunctionCalls(event: unknown): FunctionCall[] {
     });
 }
 
-function sendSessionUpdate(
-  socket: RealtimeSidebandSocket,
-  update: ServerRealtimeSessionUpdate
-): void {
-  socket.send(JSON.stringify(update));
-}
-
 function controlResponse(control: Pick<ActiveControl, "call_id" | "control_id">): RealtimeServerControlResponse {
   return {
     call_id: control.call_id,
@@ -190,24 +168,28 @@ function clearActiveControl(callId: string, socket: RealtimeSidebandSocket): voi
 async function executeFunctionCall(options: {
   call: FunctionCall;
   registry: ToolRegistry;
-  socket: RealtimeSidebandSocket;
   toolContext: ReturnType<typeof buildRealtimeToolContext>;
 }): Promise<ToolResult<unknown>> {
-  const result = await options.registry.execute(options.call.name, {
+  return options.registry.execute(options.call.name, {
     modelArgs: normalizeToolInput(options.call.arguments),
     context: options.toolContext
   });
+}
 
-  options.socket.send(JSON.stringify({
+function sendFunctionCallResult(
+  socket: RealtimeSidebandSocket,
+  callId: string,
+  result: ToolResult<unknown>
+): void {
+  socket.send(JSON.stringify({
     type: "conversation.item.create",
     item: {
       type: "function_call_output",
-      call_id: options.call.call_id,
+      call_id: callId,
       output: JSON.stringify(result)
     }
   }));
-  options.socket.send(JSON.stringify({ type: "response.create" }));
-  return result;
+  socket.send(JSON.stringify({ type: "response.create" }));
 }
 
 export function startRealtimeServerControl(options: {
@@ -230,10 +212,11 @@ export function startRealtimeServerControl(options: {
   const processedFunctionCallIds = new Set<string>();
   const sessionState = createRealtimeSessionState();
   const now = options.now ?? (() => new Date());
+  const runId = `browser_${callId}`;
   const toolContextBase = createRealtimeToolContextBase({
     lastUserMessage: "Browser realtime session.",
     now,
-    runId: `browser_${callId}`,
+    runId,
     sessionId: callId,
     userTurnId: `${callId}_turn`
   });
@@ -252,36 +235,88 @@ export function startRealtimeServerControl(options: {
     );
   }
 
+  beginRealtimeEvidenceRun({ callId, runId, now });
   socket.on("open", () => {
-    sendSessionUpdate(socket, createServerRealtimeSessionUpdate());
+    recordRealtimeEvidenceEvent({
+      callId,
+      eventType: "sideband.open",
+      label: "Realtime sideband opened",
+      now
+    });
+    socket.send(JSON.stringify(createServerRealtimeSessionUpdate()));
   });
   socket.on("error", () => {
+    recordRealtimeEvidenceEvent({
+      callId,
+      eventType: "sideband.error",
+      label: "Realtime sideband error",
+      now,
+      severity: "error"
+    });
+    finishRealtimeEvidenceRun({ callId, now, status: "error" });
     clearActiveControl(callId, socket);
   });
   socket.on("close", () => {
+    recordRealtimeEvidenceEvent({
+      callId,
+      eventType: "sideband.close",
+      label: "Realtime sideband closed",
+      now
+    });
+    finishRealtimeEvidenceRun({ callId, now, status: "ended" });
     clearActiveControl(callId, socket);
   });
   socket.on("message", (rawMessage) => {
     const parsed = parseRealtimeSocketMessage(rawMessage);
+    recordRealtimeTransportEvidence({ callId, event: parsed, now });
     for (const call of extractFunctionCalls(parsed)) {
       if (processedFunctionCallIds.has(call.call_id)) {
         continue;
       }
       processedFunctionCallIds.add(call.call_id);
+      const modelArgs = normalizeToolInput(call.arguments);
+      const risk = registry.get(call.name)?.risk ?? "read";
+      recordRealtimeToolStart({
+        callId,
+        input: modelArgs,
+        now,
+        risk,
+        toolCallId: call.call_id,
+        toolName: call.name
+      });
 
       const toolContext = buildRealtimeToolContext({
         base: toolContextBase,
         state: sessionState
       });
-      void executeFunctionCall({ call, registry, socket, toolContext }).then(
+      void executeFunctionCall({ call, registry, toolContext }).then(
         (result) => {
+          recordRealtimeToolResult({
+            callId,
+            input: modelArgs,
+            now,
+            result,
+            risk,
+            runId,
+            toolCallId: call.call_id,
+            toolName: call.name
+          });
           applyRealtimeToolResultToSessionState({
             result,
             state: sessionState,
             toolName: call.name
           });
+          sendFunctionCallResult(socket, call.call_id, result);
         }
-      );
+      ).catch(() => {
+        recordRealtimeEvidenceEvent({
+          callId,
+          eventType: "tool.execution_error",
+          label: "Realtime tool execution failed",
+          now,
+          severity: "error"
+        });
+      });
     }
   });
 
@@ -300,12 +335,7 @@ export function getRealtimeServerControl(callId: string): ActiveControl | undefi
 }
 
 function parseRealtimeSocketMessage(rawMessage: unknown): unknown {
-  const text =
-    typeof rawMessage === "string"
-      ? rawMessage
-      : rawMessage instanceof Buffer
-        ? rawMessage.toString("utf8")
-        : undefined;
+  const text = typeof rawMessage === "string" ? rawMessage : rawMessage instanceof Buffer ? rawMessage.toString("utf8") : undefined;
   if (!text) return rawMessage;
   try {
     return JSON.parse(text);

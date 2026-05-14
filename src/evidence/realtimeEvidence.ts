@@ -12,6 +12,10 @@ import {
 
 export const REALTIME_EVIDENCE_SCHEMA_VERSION = "realtime_evidence.v1";
 
+export const RealtimeEvidenceCallIdSchema = z
+  .string()
+  .regex(/^rtc_[A-Za-z0-9_-]{6,}$/);
+
 export const EvidenceSourceRefSchema = z.object({
   audit_event_id: z.string().min(1).optional(),
   change_set_id: z.string().min(1).optional(),
@@ -229,7 +233,7 @@ export const EvidenceLimitationSchema = z.object({
 
 export const RealtimeEvidenceSnapshotSchema = z.object({
   audit_events: z.array(AuditEvidenceItemSchema).default([]),
-  call_id: z.string().regex(/^rtc_[A-Za-z0-9_-]{6,}$/),
+  call_id: RealtimeEvidenceCallIdSchema,
   change_sets: z.array(ChangeSetEvidenceItemSchema).default([]),
   confirmations: z.array(ConfirmationEvidenceItemSchema).default([]),
   diffs: z.array(ChangeSetDiffEvidenceItemSchema).default([]),
