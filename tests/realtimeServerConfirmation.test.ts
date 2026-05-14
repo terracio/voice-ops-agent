@@ -54,10 +54,18 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "preview_change_set", "call_preview", {
       change_set_id: "cs_realtime_confirm"
     });
+    expect(functionOutputs(socket).at(-1)).toMatchObject({
+      ok: true,
+      data: {
+        confirmation_challenge: {
+          phrase: "Confirm pause delivery."
+        }
+      }
+    });
     now = new Date("2026-05-11T10:02:00Z");
     socket.emit("message", JSON.stringify({
       item_id: "item_confirm_turn",
-      transcript: "Confirm pause for May 18th, 2026.",
+      transcript: "Confirm pause delivery.",
       type: "conversation.item.input_audio_transcription.completed"
     }));
     await emitFunctionCall(socket, "capture_confirmation", "call_confirm", {
@@ -71,8 +79,53 @@ describe("Realtime server confirmation context", () => {
       ok: true,
       data: {
         change_set_id: "cs_realtime_confirm",
+        confirmation_source: "realtime_user_turn",
         source_user_turn_id: "item_confirm_turn",
-        transcript_excerpt: "Confirm pause for May 18th, 2026."
+        transcript_excerpt: "Confirm pause delivery."
+      }
+    });
+  });
+
+  it("rejects generic yes for Realtime confirmations after preview", async () => {
+    const socket = new FakeSidebandSocket();
+    let now = new Date("2026-05-11T10:00:00Z");
+    startRealtimeServerControl({
+      apiKey: "sk-server-secret",
+      callId: "rtc_generic_confirm_123456",
+      now: () => now,
+      socketFactory: () => socket
+    });
+
+    await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
+      customer_id: "CUS_001"
+    });
+    await emitFunctionCall(socket, "create_change_set", "call_create", {
+      change_set_id: "cs_generic_confirm",
+      operations: [{
+        type: "pause_dates",
+        dates: ["2026-05-18"],
+        reason: "customer_requested"
+      }]
+    });
+    now = new Date("2026-05-11T10:01:00Z");
+    await emitFunctionCall(socket, "preview_change_set", "call_preview", {
+      change_set_id: "cs_generic_confirm"
+    });
+    now = new Date("2026-05-11T10:02:00Z");
+    socket.emit("message", JSON.stringify({
+      item_id: "item_generic_yes",
+      transcript: "Yes.",
+      type: "conversation.item.input_audio_transcription.completed"
+    }));
+    await emitFunctionCall(socket, "capture_confirmation", "call_confirm", {
+      change_set_id: "cs_generic_confirm"
+    });
+
+    expect(functionOutputs(socket).at(-1)).toMatchObject({
+      ok: false,
+      error: {
+        code: "CONFIRMATION_NOT_EXPLICIT",
+        message: "Confirmation must match the server confirmation phrase: \"Confirm pause delivery.\""
       }
     });
   });

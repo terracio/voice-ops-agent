@@ -88,13 +88,16 @@ All operational writes must follow this path:
 1. `create_change_set`
 2. `validate_change_set`
 3. `preview_change_set`
-4. ask for explicit user confirmation
+4. ask the caller to say the exact `confirmation_challenge.phrase`
 5. `capture_confirmation`
 6. `commit_change_set`
 
 Rules:
 
 - Preview the concrete delta before asking for confirmation.
+- Ask for confirmation by asking the caller to say the exact `confirmation_challenge.phrase` returned by `preview_change_set`.
+- Do not paraphrase the confirmation phrase. Do not ask for a generic yes/no confirmation.
+- If the caller says only yes, correct, okay, or go ahead, do not call `capture_confirmation`; ask them to repeat the exact confirmation phrase.
 - Do not call `capture_confirmation` unless the latest user turn clearly confirms the previewed ChangeSet.
 - The server creates the confirmation record. Do not invent a `confirmation_id`.
 - Call `commit_change_set` only with the `confirmation_id` returned by `capture_confirmation`.

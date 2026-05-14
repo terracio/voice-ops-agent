@@ -43,6 +43,10 @@ export const PreviewChangeSetToolInputSchema = z.object({
 }).strict();
 
 export const PreviewChangeSetToolOutputSchema = ChangeSetPreviewSchema.extend({
+  confirmation_challenge: z.object({
+    phrase: z.string().min(1),
+    instruction: z.string().min(1)
+  }).strict(),
   non_actionable_items: z.array(z.string().min(1)),
   requires_confirmation: z.literal(true)
 }).strict();

@@ -6,10 +6,13 @@ import {
 } from "../domain/changeSet";
 import * as db from "../domain/db";
 import {
+  confirmationChallengeForChangeSet,
   confirmationSourceForContext,
   isExplicitConfirmation,
+  matchesConfirmationChallenge,
   nonActionableItems,
   ok,
+  requiresConfirmationChallenge,
   requireConfirmationTurnAfterPreview,
   requireOwnedChangeSet,
   requireResolvedCustomer,
@@ -124,6 +127,9 @@ export const previewChangeSetTool = defineTool({
 
     return ok({
       ...result.data,
+      confirmation_challenge: confirmationChallengeForChangeSet(
+        ownership.data
+      ),
       non_actionable_items: nonActionableItems(ownership.data),
       requires_confirmation: true
     }, result.audit_event_ids);
@@ -161,6 +167,17 @@ export const captureConfirmationTool = defineTool({
       context
     );
     if (turnIssue) return turnIssue;
+
+    const challenge = confirmationChallengeForChangeSet(ownership.data);
+    if (
+      requiresConfirmationChallenge(context) &&
+      !matchesConfirmationChallenge(transcript, challenge.phrase)
+    ) {
+      return failedToolResult({
+        code: "CONFIRMATION_NOT_EXPLICIT",
+        message: `Confirmation must match the server confirmation phrase: "${challenge.phrase}"`
+      });
+    }
 
     return captureServerConfirmation({
       run_id: context.run_id,

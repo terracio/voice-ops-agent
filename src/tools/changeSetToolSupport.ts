@@ -13,6 +13,7 @@ import { failedToolResult } from "./types";
 import {
   ValidateChangeSetToolOutputSchema,
   type CreateChangeSetToolInput,
+  type PreviewChangeSetToolOutput,
   type ValidateChangeSetToolOutput
 } from "./changeSetToolSchemas";
 
@@ -179,6 +180,30 @@ export function isExplicitConfirmation(message: string): boolean {
   return /^(yes|yep|yeah|correct|confirmed|i confirm|that is correct|looks good|go ahead)([,. ]+(confirm|please do|those changes|the changes|it|that|this))*[.!]?$/.test(normalized);
 }
 
+export function confirmationChallengeForChangeSet(
+  changeSet: ChangeSet
+): PreviewChangeSetToolOutput["confirmation_challenge"] {
+  const phrase = `Confirm ${confirmationChallengeSubject(changeSet)}.`;
+  return {
+    phrase,
+    instruction: `Ask the caller to say exactly: "${phrase}"`
+  };
+}
+
+export function matchesConfirmationChallenge(
+  message: string,
+  phrase: string
+): boolean {
+  return confirmationPhraseKey(message) === confirmationPhraseKey(phrase);
+}
+
+export function requiresConfirmationChallenge(
+  context: ToolExecutionContext
+): boolean {
+  const source = confirmationSourceForContext(context);
+  return source === "realtime_user_turn" || source === "model_eval_user_turn";
+}
+
 export function requireConfirmationTurnAfterPreview(
   changeSet: ChangeSet,
   context: ToolExecutionContext
@@ -203,7 +228,9 @@ export function confirmationSourceForContext(
   context: ToolExecutionContext
 ): "scripted_user_turn" | "debug_user_turn" | "realtime_user_turn" | "model_eval_user_turn" {
   if (context.session_id.includes("eval")) return "model_eval_user_turn";
-  if (context.session_id.includes("realtime")) return "realtime_user_turn";
+  if (context.session_id.includes("realtime") || context.session_id.startsWith("rtc_")) {
+    return "realtime_user_turn";
+  }
   if (context.session_id.includes("script")) return "scripted_user_turn";
   return "debug_user_turn";
 }
@@ -214,4 +241,27 @@ export function timeFromContext(context: ToolExecutionContext): string {
 
 export function ok<T>(data: T, audit_event_ids: string[]): ToolResult<T> {
   return { ok: true, data, audit_event_ids };
+}
+
+function confirmationChallengeSubject(changeSet: ChangeSet): string {
+  if (changeSet.operations.length > 1) return "meal plan changes";
+
+  const [operation] = changeSet.operations;
+  if (!operation) return "meal plan changes";
+  if (operation.type === "pause_dates") return "pause delivery";
+  if (operation.type === "resume_dates") return "resume delivery";
+  if (operation.type === "create_payment_followup") {
+    return "payment follow-up";
+  }
+  return "meal preference change";
+}
+
+function confirmationPhraseKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[-_]/g, " ")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
