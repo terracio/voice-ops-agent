@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createBrowserRealtimeSessionConfig,
   createRealtimeTracingConfig,
@@ -8,7 +8,17 @@ import {
 } from "../src/agent";
 import { mealPlanRealtimeTools } from "../src/agent/realtimeTools";
 
+const originalNoiseReduction = process.env.MEALPLAN_REALTIME_NOISE_REDUCTION;
+
 describe("Realtime browser session boundary", () => {
+  afterEach(() => {
+    if (originalNoiseReduction === undefined) {
+      delete process.env.MEALPLAN_REALTIME_NOISE_REDUCTION;
+    } else {
+      process.env.MEALPLAN_REALTIME_NOISE_REDUCTION = originalNoiseReduction;
+    }
+  });
+
   it("builds a server-mediated browser session config with tools attached", () => {
     const config = createBrowserRealtimeSessionConfig({
       model: "gpt-realtime-2"
@@ -21,6 +31,9 @@ describe("Realtime browser session boundary", () => {
         model: "gpt-realtime-2",
         audio: {
           input: {
+            noise_reduction: {
+              type: "far_field"
+            },
             transcription: {
               language: "en",
               model: "gpt-4o-mini-transcribe"
@@ -65,6 +78,9 @@ describe("Realtime browser session boundary", () => {
         type: "realtime",
         audio: {
           input: {
+            noise_reduction: {
+              type: "far_field"
+            },
             transcription: {
               language: "en",
               model: "gpt-4o-mini-transcribe"
@@ -82,6 +98,22 @@ describe("Realtime browser session boundary", () => {
       "lookup_customer"
     );
     expect(update.session).not.toHaveProperty("tracing");
+  });
+
+  it("allows headset-oriented near-field noise reduction by env", () => {
+    process.env.MEALPLAN_REALTIME_NOISE_REDUCTION = "near_field";
+
+    expect(createServerRealtimeSessionUpdate()).toMatchObject({
+      session: {
+        audio: {
+          input: {
+            noise_reduction: {
+              type: "near_field"
+            }
+          }
+        }
+      }
+    });
   });
 
   it("keeps browser Realtime trace metadata stable for Platform inspection", () => {

@@ -58,6 +58,13 @@ describe("MealPlan realtime agent contract", () => {
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/do not invent a `confirmation_id`/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/unclear audio/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/escalate_to_human/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(
+      /lookup_customer` is allowed before separate identifier confirmation/i
+    );
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/TOOL_INVALID_ARGS/i);
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(
+      /not as an account-system outage/i
+    );
   });
 
   it("keeps ambiguous-date and medical-risk prompt guardrails explicit", () => {

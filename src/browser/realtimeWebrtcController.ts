@@ -50,6 +50,14 @@ const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
   "waiting-for-confirmation"
 ]);
 
+export const REALTIME_MIC_CONSTRAINTS: MediaStreamConstraints = {
+  audio: {
+    autoGainControl: { ideal: true },
+    echoCancellation: { ideal: true },
+    noiseSuppression: { ideal: true }
+  }
+};
+
 class RealtimeStartCancelledError extends Error {
   constructor() {
     super("Realtime WebRTC session start was cancelled.");
@@ -127,9 +135,9 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
     this.setState("connecting");
 
     try {
-      const mediaStream = await this.resolveMediaDevices().getUserMedia({
-        audio: true
-      });
+      const mediaStream = await this.resolveMediaDevices().getUserMedia(
+        REALTIME_MIC_CONSTRAINTS
+      );
       this.localStream = mediaStream;
       this.assertStartCurrent(generation);
       this.setMuted(this.mutedValue);

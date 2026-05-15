@@ -13,6 +13,7 @@ export const OPENAI_REALTIME_CALLS_URL =
 
 const DEFAULT_BROWSER_VOICE = "alloy";
 const DEFAULT_INPUT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
+const DEFAULT_NOISE_REDUCTION_TYPE = "far_field";
 const DEFAULT_SAFETY_IDENTIFIER = "mealplan-voiceops-local-demo";
 const REALTIME_TRACE_GROUP_ID = "mealplan-voiceops-browser";
 const REALTIME_TRACE_WORKFLOW_NAME = "MealPlan VoiceOps Browser Realtime";
@@ -28,6 +29,7 @@ type SdpFetchLike = (
 
 export type RealtimeBrowserSessionEnv = RealtimeModelEnv & {
   MEALPLAN_REALTIME_SAFETY_IDENTIFIER?: string;
+  MEALPLAN_REALTIME_NOISE_REDUCTION?: string;
   OPENAI_API_KEY?: string;
 };
 
@@ -110,8 +112,15 @@ export function createServerRealtimeSessionUpdate(): ServerRealtimeSessionUpdate
 }
 
 function createRealtimeAudioConfig() {
+  const noiseReductionType = resolveNoiseReductionType({
+    MEALPLAN_REALTIME_NOISE_REDUCTION:
+      process.env.MEALPLAN_REALTIME_NOISE_REDUCTION
+  });
   return {
     input: {
+      noise_reduction: noiseReductionType
+        ? { type: noiseReductionType }
+        : null,
       transcription: {
         language: "en",
         model: DEFAULT_INPUT_TRANSCRIPTION_MODEL
@@ -121,6 +130,19 @@ function createRealtimeAudioConfig() {
       voice: DEFAULT_BROWSER_VOICE
     }
   };
+}
+
+function resolveNoiseReductionType(
+  env: { MEALPLAN_REALTIME_NOISE_REDUCTION?: string | undefined }
+) {
+  const configured = env.MEALPLAN_REALTIME_NOISE_REDUCTION?.trim();
+  if (configured === "near_field" || configured === "far_field") {
+    return configured;
+  }
+  if (configured === "off" || configured === "none" || configured === "disabled") {
+    return null;
+  }
+  return DEFAULT_NOISE_REDUCTION_TYPE;
 }
 
 function resolveSafetyIdentifier(env: RealtimeBrowserSessionEnv): string {
