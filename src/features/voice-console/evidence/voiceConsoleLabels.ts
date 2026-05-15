@@ -1,4 +1,4 @@
-import type { VoiceConsoleState } from "./voiceConsoleController";
+import type { VoiceConsoleState } from "../state/voiceConsoleController";
 
 export function toStatusLabel(
   status: VoiceConsoleState["sessionStatus"]

@@ -12,7 +12,7 @@ import {
   markRealtimeError,
   markRealtimeState,
   markRealtimeStartRequested
-} from "../src/features/voice-console/voiceConsoleRealtimeState";
+} from "../src/features/voice-console/state/voiceConsoleRealtimeState";
 
 describe("voice console UI shell", () => {
   it("renders the required operational console regions", () => {
@@ -160,17 +160,17 @@ describe("voice console UI shell", () => {
   it("keeps browser code out of server-only domain and tool modules", () => {
     const browserFiles = [
       "src/app/page.tsx",
-      "src/features/voice-console/VoiceConsole.tsx",
-      "src/features/voice-console/voiceConsoleController.ts",
-      "src/features/voice-console/voiceConsoleIcons.tsx",
-      "src/features/voice-console/voiceConsoleLabels.ts",
-      "src/features/voice-console/voiceConsoleRealtimeState.ts",
-      "src/features/voice-console/useVoiceConsoleRealtime.ts",
-      "src/features/voice-console/useRealtimeEvidence.ts",
-      "src/features/voice-console/VoiceEvidencePanels.tsx",
-      "src/features/voice-console/VoiceConsolePrimitives.tsx",
-      "src/features/voice-console/voiceConsoleEvidence.ts",
-      "src/features/voice-console/voiceConsoleTranscript.ts"
+      "src/features/voice-console/components/VoiceConsole.tsx",
+      "src/features/voice-console/components/VoiceConsolePrimitives.tsx",
+      "src/features/voice-console/components/VoiceEvidencePanels.tsx",
+      "src/features/voice-console/components/voiceConsoleIcons.tsx",
+      "src/features/voice-console/evidence/voiceConsoleEvidence.ts",
+      "src/features/voice-console/evidence/voiceConsoleLabels.ts",
+      "src/features/voice-console/evidence/voiceConsoleTranscript.ts",
+      "src/features/voice-console/hooks/useRealtimeEvidence.ts",
+      "src/features/voice-console/hooks/useVoiceConsoleRealtime.ts",
+      "src/features/voice-console/state/voiceConsoleController.ts",
+      "src/features/voice-console/state/voiceConsoleRealtimeState.ts"
     ];
 
     for (const file of browserFiles) {

@@ -11,13 +11,13 @@ import {
   createRealtimeWebrtcController,
   type RealtimeWebrtcController,
   type RealtimeWebrtcControllerEvent
-} from "../../realtime/browser/webrtcController";
+} from "../../../realtime/browser/webrtcController";
 import {
   applyVoiceConsoleAction,
   createInitialVoiceConsoleState,
   type VoiceConsoleAction,
   type VoiceConsoleController
-} from "./voiceConsoleController";
+} from "../state/voiceConsoleController";
 import {
   markRealtimeCallId,
   markRealtimeError,
@@ -25,7 +25,7 @@ import {
   markRealtimeRemoteAudio,
   markRealtimeStartRequested,
   markRealtimeState
-} from "./voiceConsoleRealtimeState";
+} from "../state/voiceConsoleRealtimeState";
 
 type RealtimeControllerFactory = (options: {
   remoteAudioElement?: HTMLAudioElement;

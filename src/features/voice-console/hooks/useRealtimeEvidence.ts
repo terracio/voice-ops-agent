@@ -7,7 +7,7 @@ import {
   evidenceLoadingState,
   toVoiceConsoleEvidenceState,
   type VoiceConsoleEvidenceState
-} from "./voiceConsoleEvidence";
+} from "../evidence/voiceConsoleEvidence";
 
 const DEFAULT_EVIDENCE_ENDPOINT = "/api/realtime/evidence";
 const DEFAULT_POLL_INTERVAL_MS = 1000;

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./voiceConsoleIcons";
-import type { VoiceConsoleAction, VoiceConsoleState } from "./voiceConsoleController";
+import type { VoiceConsoleAction, VoiceConsoleState } from "../state/voiceConsoleController";
 
 export function Panel({
   title,

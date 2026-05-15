@@ -11,23 +11,23 @@ import {
   TechItem,
   type VoiceConsoleViewActionHandler
 } from "./VoiceConsolePrimitives";
-import { useRealtimeEvidence } from "./useRealtimeEvidence";
-import { useVoiceConsoleRealtime } from "./useVoiceConsoleRealtime";
+import { useRealtimeEvidence } from "../hooks/useRealtimeEvidence";
+import { useVoiceConsoleRealtime } from "../hooks/useVoiceConsoleRealtime";
 import {
   toHandoffLabel,
   toModeLabel,
   toPermissionLabel,
   toStatusLabel
-} from "./voiceConsoleLabels";
+} from "../evidence/voiceConsoleLabels";
 import {
   type VoiceConsoleController,
   type VoiceConsoleState
-} from "./voiceConsoleController";
+} from "../state/voiceConsoleController";
 import {
   EMPTY_VOICE_CONSOLE_EVIDENCE,
   type VoiceConsoleEvidenceState
-} from "./voiceConsoleEvidence";
-import { buildVoiceTranscriptState } from "./voiceConsoleTranscript";
+} from "../evidence/voiceConsoleEvidence";
+import { buildVoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
 
 type VoiceConsoleProps = {
   controller?: VoiceConsoleController;

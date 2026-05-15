@@ -1,4 +1,4 @@
-import type { RealtimeWebrtcControllerState } from "../../realtime/browser/webrtcController";
+import type { RealtimeWebrtcControllerState } from "../../../realtime/browser/webrtcController";
 import type {
   ActivityEvent,
   ActivityTone,

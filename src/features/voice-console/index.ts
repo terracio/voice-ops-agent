@@ -1,4 +1,4 @@
-export { VoiceConsole, VoiceConsoleView } from "./VoiceConsole";
+export { VoiceConsole, VoiceConsoleView } from "./components/VoiceConsole";
 export {
   applyVoiceConsoleAction,
   createInitialVoiceConsoleState,
@@ -6,4 +6,4 @@ export {
   type VoiceConsoleAction,
   type VoiceConsoleController,
   type VoiceConsoleState
-} from "./voiceConsoleController";
+} from "./state/voiceConsoleController";

@@ -5,11 +5,11 @@ import {
   formatEvidenceStatus,
   type EvidenceToolItem,
   type VoiceConsoleEvidenceState
-} from "./voiceConsoleEvidence";
+} from "../evidence/voiceConsoleEvidence";
 import {
   normalizeTranscriptTurns,
   type VoiceTranscriptTurn
-} from "./voiceConsoleTranscript";
+} from "../evidence/voiceConsoleTranscript";
 
 type VoiceEvidencePanelsProps = {
   evidence?: VoiceConsoleEvidenceState;
