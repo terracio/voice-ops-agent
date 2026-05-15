@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { mealPlanModelTools } from "../tools/mealplanRegistry";
+import { mealPlanModelTools } from "../../tools/mealplanRegistry";
 
 export const DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2";
 export const DEFAULT_OPENAI_REALTIME_REASONING_EFFORT = "low";
@@ -14,8 +14,9 @@ const REALTIME_TOOL_LIST_PLACEHOLDER = "{{REALTIME_TOOL_LIST}}";
 export const MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH = join(
   process.cwd(),
   "src",
-  "agent",
-  "realtimeInstructions.md"
+  "realtime",
+  "config",
+  "instructions.md"
 );
 
 export type RealtimeModelEnv = {

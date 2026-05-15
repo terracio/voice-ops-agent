@@ -3,12 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   OOB_TRANSCRIPTION_INSTRUCTIONS,
-  OOB_TRANSCRIPTION_INSTRUCTIONS_SOURCE_PATH,
+  OOB_TRANSCRIPTION_INSTRUCTIONS_SOURCE_PATH
+} from "../src/realtime/config/outOfBandTranscription";
+import { runRealtimeAgentSmoke } from "../src/realtime/runner/runner";
+import {
   REALTIME_RUNNER_TRANSPORT,
-  runRealtimeAgentSmoke,
   type RealtimeRunnerResult,
   type RealtimeSessionLike
-} from "../src/agent";
+} from "../src/realtime/runner/types";
 import { loadRealtimeEvalCase } from "../src/evals/realtime/caseLoader";
 import { writeRealtimeReports } from "../src/evals/realtime/reporting";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
@@ -82,7 +84,7 @@ class FakeOobSession implements RealtimeSessionLike {
 describe("Realtime out-of-band transcription diagnostics", () => {
   it("loads the strict transcription prompt from markdown", () => {
     expect(OOB_TRANSCRIPTION_INSTRUCTIONS_SOURCE_PATH).toMatch(
-      /src\/agent\/realtimeOutOfBandTranscription\.md$/
+      /src\/realtime\/config\/outOfBandTranscription\.md$/
     );
     expect(OOB_TRANSCRIPTION_INSTRUCTIONS).toContain(
       "Transcribe the latest referenced user audio item"

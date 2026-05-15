@@ -1,4 +1,4 @@
-import type { RealtimeSessionLike } from "./realtimeRunnerTypes";
+import type { RealtimeSessionLike } from "./types";
 
 export type Pcm16AudioStreamOptions = {
   chunkDurationMs?: number;

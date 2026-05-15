@@ -1,8 +1,8 @@
-import { runRealtimeAgentSmoke } from "../agent/realtimeRunner";
+import { runRealtimeAgentSmoke } from "../realtime/runner/runner";
 import {
   loadOpenAIServerEnv,
   resolveOpenAIRealtimeCredentials
-} from "../agent/realtimeRunnerSupport";
+} from "../realtime/runner/support";
 import { resetDb } from "../domain/db";
 import {
   applyWalkProfileContract,

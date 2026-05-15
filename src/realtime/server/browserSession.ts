@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { buildRealtimeSidebandUrlFromLocation } from "./realtimeSidebandUrl";
+import { buildRealtimeSidebandUrlFromLocation } from "./sidebandUrl";
 import {
   DEFAULT_OPENAI_REALTIME_REASONING_EFFORT,
   MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
   resolveOpenAIRealtimeModel,
   type RealtimeModelEnv
-} from "./realtimeInstructions";
-import { mealPlanRealtimeTools, type RealtimeFunctionTool } from "./realtimeTools";
+} from "../config/instructions";
+import { mealPlanRealtimeTools, type RealtimeFunctionTool } from "../config/tools";
 
 export const OPENAI_REALTIME_CALLS_URL =
   "https://api.openai.com/v1/realtime/calls";
@@ -64,7 +64,7 @@ export function createRealtimeTracingConfig(options: {
       prompt_sha256: createHash("sha256")
         .update(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS)
         .digest("hex"),
-      prompt_source: "src/agent/realtimeInstructions.md",
+      prompt_source: "src/realtime/config/instructions.md",
       surface: "browser-demo",
       tool_count: String(mealPlanRealtimeTools.length)
     }

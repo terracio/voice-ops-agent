@@ -2,17 +2,17 @@ import { readFileSync } from "node:fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { VoiceConsoleView } from "../src/app/VoiceConsole";
 import {
   applyVoiceConsoleAction,
-  createInitialVoiceConsoleState
-} from "../src/app/voiceConsoleController";
+  createInitialVoiceConsoleState,
+  VoiceConsoleView
+} from "../src/features/voice-console";
 import {
   markRealtimeCallId,
   markRealtimeError,
   markRealtimeState,
   markRealtimeStartRequested
-} from "../src/app/voiceConsoleRealtimeState";
+} from "../src/features/voice-console/voiceConsoleRealtimeState";
 
 describe("voice console UI shell", () => {
   it("renders the required operational console regions", () => {
@@ -160,17 +160,17 @@ describe("voice console UI shell", () => {
   it("keeps browser code out of server-only domain and tool modules", () => {
     const browserFiles = [
       "src/app/page.tsx",
-      "src/app/VoiceConsole.tsx",
-      "src/app/voiceConsoleController.ts",
-      "src/app/voiceConsoleIcons.tsx",
-      "src/app/voiceConsoleLabels.ts",
-      "src/app/voiceConsoleRealtimeState.ts",
-      "src/app/useVoiceConsoleRealtime.ts",
-      "src/app/useRealtimeEvidence.ts",
-      "src/app/VoiceEvidencePanels.tsx",
-      "src/app/VoiceConsolePrimitives.tsx",
-      "src/app/voiceConsoleEvidence.ts",
-      "src/app/voiceConsoleTranscript.ts"
+      "src/features/voice-console/VoiceConsole.tsx",
+      "src/features/voice-console/voiceConsoleController.ts",
+      "src/features/voice-console/voiceConsoleIcons.tsx",
+      "src/features/voice-console/voiceConsoleLabels.ts",
+      "src/features/voice-console/voiceConsoleRealtimeState.ts",
+      "src/features/voice-console/useVoiceConsoleRealtime.ts",
+      "src/features/voice-console/useRealtimeEvidence.ts",
+      "src/features/voice-console/VoiceEvidencePanels.tsx",
+      "src/features/voice-console/VoiceConsolePrimitives.tsx",
+      "src/features/voice-console/voiceConsoleEvidence.ts",
+      "src/features/voice-console/voiceConsoleTranscript.ts"
     ];
 
     for (const file of browserFiles) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { waitForRealtimeDataChannelOpen } from "../src/browser/realtimeDataChannel";
+import { waitForRealtimeDataChannelOpen } from "../src/realtime/browser/dataChannel";
 
 class FakeDataChannel {
   onclose: ((event: Event) => void) | null = null;

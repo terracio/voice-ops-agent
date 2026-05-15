@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildVoiceTranscriptState,
   normalizeTranscriptTurns
-} from "../src/app/voiceConsoleTranscript";
-import type { EvidenceTranscriptItem } from "../src/app/voiceConsoleEvidence";
+} from "../src/features/voice-console/voiceConsoleTranscript";
+import type { EvidenceTranscriptItem } from "../src/features/voice-console/voiceConsoleEvidence";
 
 function transcript(
   overrides: Partial<EvidenceTranscriptItem>

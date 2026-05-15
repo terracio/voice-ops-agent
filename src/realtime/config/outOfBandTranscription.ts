@@ -4,11 +4,11 @@ import type {
   RealtimeTraceEvent,
   RealtimeOutOfBandTranscription,
   RealtimeSessionLike
-} from "./realtimeRunnerTypes";
+} from "../runner/types";
 
 const OOB_TRANSCRIPTION_PURPOSE = "oob_realtime_transcription";
 const oobTranscriptionSourceUrl = new URL(
-  "./realtimeOutOfBandTranscription.md",
+  "./outOfBandTranscription.md",
   import.meta.url
 );
 

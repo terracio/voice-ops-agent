@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleRealtimeControlRequest } from "../src/app/api/realtime/control/handler";
-import type { RealtimeSidebandSocket } from "../src/agent";
+import type { RealtimeSidebandSocket } from "../src/realtime/server/serverControl";
 
 class FakeSidebandSocket implements RealtimeSidebandSocket {
   readonly sent: string[] = [];

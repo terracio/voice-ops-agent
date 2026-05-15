@@ -1,4 +1,7 @@
-import type { RealtimeRunnerResult, RealtimeToolCallTrace } from "../src/agent";
+import type {
+  RealtimeRunnerResult,
+  RealtimeToolCallTrace
+} from "../src/realtime/runner/types";
 import type { AuditEvent } from "../src/domain/schema";
 import { getSeedScenario } from "../src/domain/seed";
 import {

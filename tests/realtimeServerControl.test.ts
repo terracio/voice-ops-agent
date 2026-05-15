@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getRealtimeServerControl,
-  OPENAI_REALTIME_SIDEBAND_URL,
   startRealtimeServerControl,
   type RealtimeSidebandSocket
-} from "../src/agent";
+} from "../src/realtime/server/serverControl";
+import { OPENAI_REALTIME_SIDEBAND_URL } from "../src/realtime/server/sidebandUrl";
 import { resetDb } from "../src/domain/db";
-import { mealPlanRealtimeTools } from "../src/agent/realtimeTools";
+import { mealPlanRealtimeTools } from "../src/realtime/config/tools";
 
 class FakeSidebandSocket implements RealtimeSidebandSocket {
   readonly sent: string[] = [];

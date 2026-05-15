@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type {
   RealtimeRunnerResult,
   RealtimeTranscriptFragment
-} from "../../agent/realtimeRunnerTypes";
+} from "../../realtime/runner/types";
 import {
   writeRealtimeAudioArtifacts,
   type RealtimeAudioArtifacts

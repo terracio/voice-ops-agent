@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildRealtimeToolContext,
   applyRealtimeTranscriptEventToSessionState,
-  createRealtimeAgentSdkTools,
   createRealtimeSessionState,
   createRealtimeToolContextBase
-} from "../src/agent";
+} from "../src/realtime/server/sessionState";
+import { createRealtimeAgentSdkTools } from "../src/realtime/runner/runner";
 import { resetDb } from "../src/domain/db";
 import { createMealPlanToolRegistry } from "../src/tools";
 

@@ -1,13 +1,13 @@
 import type { RealtimeAgent } from "@openai/agents/realtime";
-import type { CustomerState } from "../domain/db";
+import type { CustomerState } from "../../domain/db";
 import type {
   AuditEvent,
   KitchenExportDelta,
   PaymentFollowup
-} from "../domain/schema";
-import type { ToolExecutionContext } from "../tools/context";
-import type { ToolRegistry } from "../tools/registry";
-import type { RealtimeModelEnv } from "./realtimeInstructions";
+} from "../../domain/schema";
+import type { ToolExecutionContext } from "../../tools/context";
+import type { ToolRegistry } from "../../tools/registry";
+import type { RealtimeModelEnv } from "../config/instructions";
 
 export const REALTIME_RUNNER_TRANSPORT = "agents-sdk-websocket";
 

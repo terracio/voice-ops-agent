@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createRealtimeWebrtcController,
   REALTIME_MIC_CONSTRAINTS
-} from "../src/browser/realtimeWebrtcController";
+} from "../src/realtime/browser/webrtcController";
 
 class FakeTrack {
   enabled = true;

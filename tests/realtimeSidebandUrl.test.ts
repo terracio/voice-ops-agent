@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRealtimeSidebandUrlFromLocation,
   resolveRealtimeSidebandUrl
-} from "../src/agent/realtimeSidebandUrl";
+} from "../src/realtime/server/sidebandUrl";
 
 describe("Realtime sideband URL handoff", () => {
   it("derives a sideband URL from the SDP Location host", () => {

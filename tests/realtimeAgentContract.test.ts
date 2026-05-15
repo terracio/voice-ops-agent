@@ -6,15 +6,15 @@ import {
   MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
   MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH,
   MEALPLAN_REALTIME_TOOL_NAMES,
-  mealPlanRealtimeTools,
   resolveOpenAIRealtimeModel
-} from "../src/agent";
+} from "../src/realtime/config/instructions";
+import { mealPlanRealtimeTools } from "../src/realtime/config/tools";
 import { mealPlanModelTools } from "../src/tools";
 
 describe("MealPlan realtime agent contract", () => {
   it("loads a Realtime-specific prompt from Markdown", () => {
     expect(MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH).toMatch(
-      /src\/agent\/realtimeInstructions\.md$/
+      /src\/realtime\/config\/instructions\.md$/
     );
     expect(
       readFileSync(MEALPLAN_REALTIME_INSTRUCTIONS_SOURCE_PATH, "utf8")

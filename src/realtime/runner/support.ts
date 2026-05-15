@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { RealtimeModelEnv } from "./realtimeInstructions";
-import { REALTIME_RUNNER_TRANSPORT } from "./realtimeRunnerTypes";
+import type { RealtimeModelEnv } from "../config/instructions";
+import { REALTIME_RUNNER_TRANSPORT } from "./types";
 import type {
   RealtimePlatformTracing,
   RealtimeRunnerEnv,
   RealtimeRunnerResult,
   RealtimeTraceEvent
-} from "./realtimeRunnerTypes";
+} from "./types";
 
 export function timestamp(now: () => Date): string {
   return now().toISOString();

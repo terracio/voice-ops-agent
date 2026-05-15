@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { mealPlanModelTools } from "../tools/mealplanRegistry";
-import type { ToolContract, ToolDefinition, ToolSchema } from "../tools/types";
+import { mealPlanModelTools } from "../../tools/mealplanRegistry";
+import type { ToolContract, ToolDefinition, ToolSchema } from "../../tools/types";
 
 type JsonObject = Record<string, unknown>;
 

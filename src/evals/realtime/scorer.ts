@@ -1,5 +1,5 @@
 import { getSeedScenario } from "../../domain/seed";
-import type { RealtimeRunnerResult } from "../../agent";
+import type { RealtimeRunnerResult } from "../../realtime/runner/types";
 import type { RealtimeEvalCase } from "./caseLoader";
 import {
   CLARIFICATION_RE,

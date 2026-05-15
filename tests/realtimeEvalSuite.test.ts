@@ -1,7 +1,10 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REALTIME_RUNNER_TRANSPORT, type RealtimeRunnerResult } from "../src/agent";
+import {
+  REALTIME_RUNNER_TRANSPORT,
+  type RealtimeRunnerResult
+} from "../src/realtime/runner/types";
 import { loadRealtimeEvalCase } from "../src/evals/realtime/caseLoader";
 import { writeRealtimeReports } from "../src/evals/realtime/reporting";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";

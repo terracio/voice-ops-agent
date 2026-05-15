@@ -3,12 +3,14 @@ import {
   createMealPlanRealtimeAgent,
   createRealtimeAgentSdkTools,
   createRealtimeSessionFactoryOptions,
-  createRealtimeTraceCollector,
+  runRealtimeAgentSmoke
+} from "../src/realtime/runner/runner";
+import { resolveOpenAIRealtimeCredentials } from "../src/realtime/runner/support";
+import {
   REALTIME_RUNNER_TRANSPORT,
-  resolveOpenAIRealtimeCredentials,
-  runRealtimeAgentSmoke,
   type RealtimeSessionLike
-} from "../src/agent";
+} from "../src/realtime/runner/types";
+import { createRealtimeTraceCollector } from "../src/realtime/runner/trace";
 import { resetDb } from "../src/domain/db";
 import { createMealPlanToolRegistry } from "../src/tools";
 import type { ToolExecutionContext } from "../src/tools/context";

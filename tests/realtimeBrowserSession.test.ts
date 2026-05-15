@@ -5,8 +5,8 @@ import {
   exchangeBrowserRealtimeSdpOffer,
   createServerRealtimeSessionUpdate,
   OPENAI_REALTIME_CALLS_URL
-} from "../src/agent";
-import { mealPlanRealtimeTools } from "../src/agent/realtimeTools";
+} from "../src/realtime/server/browserSession";
+import { mealPlanRealtimeTools } from "../src/realtime/config/tools";
 
 const originalNoiseReduction = process.env.MEALPLAN_REALTIME_NOISE_REDUCTION;
 
@@ -51,7 +51,7 @@ describe("Realtime browser session boundary", () => {
         metadata: {
           app: "mealplan-voiceops",
           model: "gpt-realtime-2",
-          prompt_source: "src/agent/realtimeInstructions.md",
+          prompt_source: "src/realtime/config/instructions.md",
           surface: "browser-demo",
           tool_count: String(mealPlanRealtimeTools.length)
         }
@@ -125,7 +125,7 @@ describe("Realtime browser session boundary", () => {
       metadata: {
         app: "mealplan-voiceops",
         model: "gpt-realtime-2",
-        prompt_source: "src/agent/realtimeInstructions.md",
+        prompt_source: "src/realtime/config/instructions.md",
         surface: "browser-demo",
         tool_count: String(mealPlanRealtimeTools.length)
       }

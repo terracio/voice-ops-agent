@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { exchangeBrowserRealtimeSdpOffer } from "../../../../agent/realtimeBrowserSession";
+import { exchangeBrowserRealtimeSdpOffer } from "../../../../realtime/server/browserSession";
 import {
   startRealtimeServerControl,
   type RealtimeSidebandSocketFactory
-} from "../../../../agent/realtimeServerControl";
+} from "../../../../realtime/server/serverControl";
 
 export type RealtimeCallRouteOptions = {
   fetchImpl?: Parameters<typeof exchangeBrowserRealtimeSdpOffer>[0]["fetchImpl"];

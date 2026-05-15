@@ -88,14 +88,22 @@ Responsibilities:
 
 ```text
 src/app/
-  Browser demo UI, App Router routes, evidence panels, transcript rendering.
+  App Router pages and API handlers.
 
-src/browser/
+src/features/voice-console/
+  Browser demo UI, transcript panels, evidence panels, realtime hooks, styles.
+
+src/realtime/browser/
   WebRTC controller, data-channel parsing, browser realtime events, mic constraints.
 
-src/agent/
-  Realtime prompt, browser session config, sideband control, SDK runner,
-  audio streaming, tracing, realtime tool adapter.
+src/realtime/config/
+  Realtime instructions, tool schemas, and out-of-band transcription prompt.
+
+src/realtime/server/
+  Browser session setup, sideband control, session state, tracing metadata.
+
+src/realtime/runner/
+  SDK smoke/eval runner, audio streaming, timing, traces, runner types.
 
 src/tools/
   Provider-neutral tool registry, Zod schemas, tool context, tool results.

@@ -11,7 +11,7 @@ import {
   createRealtimeWebrtcController,
   type RealtimeWebrtcController,
   type RealtimeWebrtcControllerEvent
-} from "../browser/realtimeWebrtcController";
+} from "../../realtime/browser/webrtcController";
 import {
   applyVoiceConsoleAction,
   createInitialVoiceConsoleState,

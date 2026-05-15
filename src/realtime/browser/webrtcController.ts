@@ -8,8 +8,8 @@ import {
   type RealtimeWebrtcControllerEvent,
   type RealtimeWebrtcControllerListener,
   type RealtimeWebrtcControllerState
-} from "./realtimeWebrtcEvents";
-import { waitForRealtimeDataChannelOpen } from "./realtimeDataChannel";
+} from "./webrtcEvents";
+import { waitForRealtimeDataChannelOpen } from "./dataChannel";
 
 export {
   DEFAULT_REALTIME_CALL_ENDPOINT,
@@ -19,7 +19,7 @@ export {
   type RealtimeWebrtcControllerEvent,
   type RealtimeWebrtcControllerListener,
   type RealtimeWebrtcControllerState
-} from "./realtimeWebrtcEvents";
+} from "./webrtcEvents";
 
 export type RealtimeWebrtcController = {
   readonly callId: string | undefined;

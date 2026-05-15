@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   startRealtimeServerControl,
   type RealtimeSidebandSocket
-} from "../src/agent";
+} from "../src/realtime/server/serverControl";
 import { resetDb } from "../src/domain/db";
 
 class FakeSidebandSocket implements RealtimeSidebandSocket {

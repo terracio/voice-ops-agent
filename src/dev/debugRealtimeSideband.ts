@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import WebSocket from "ws";
-import {
-  RealtimeCallIdSchema,
-  resolveRealtimeSidebandUrl
-} from "../agent";
+import { RealtimeCallIdSchema } from "../realtime/server/serverControl";
+import { resolveRealtimeSidebandUrl } from "../realtime/server/sidebandUrl";
 
 type Args = {
   callId?: string;

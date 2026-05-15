@@ -1,7 +1,7 @@
 import type {
   RealtimeRunnerStatus,
   RealtimeSessionLike
-} from "./realtimeRunnerTypes";
+} from "./types";
 
 export type RealtimeTurnCompletionOptions = {
   quietMs?: number;

@@ -1,4 +1,4 @@
-import type { RealtimeRunnerResult } from "../../agent";
+import type { RealtimeRunnerResult } from "../../realtime/runner/types";
 import { PolicyIdSchema, type PolicyIdValue } from "../../domain/schema";
 import type {
   RealtimeCrawlFailureType,

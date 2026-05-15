@@ -1,13 +1,13 @@
 import { createRequire } from "node:module";
 import { z } from "zod";
-import type { ToolRegistry } from "../tools/registry";
-import type { ToolResult } from "../domain/schema";
-import { createMealPlanToolRegistry } from "../tools/mealplanRegistry";
-import { applyRealtimeToolResultToSessionState, applyRealtimeTranscriptEventToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./realtimeSessionState";
-import { createServerRealtimeSessionUpdate } from "./realtimeBrowserSession";
-import { resolveRealtimeSidebandUrl } from "./realtimeSidebandUrl";
-import { mealPlanRealtimeTools } from "./realtimeTools";
-import { beginRealtimeEvidenceRun, finishRealtimeEvidenceRun, recordRealtimeEvidenceEvent, recordRealtimeToolResult, recordRealtimeToolStart, recordRealtimeTransportEvidence } from "../evidence";
+import type { ToolRegistry } from "../../tools/registry";
+import type { ToolResult } from "../../domain/schema";
+import { createMealPlanToolRegistry } from "../../tools/mealplanRegistry";
+import { applyRealtimeToolResultToSessionState, applyRealtimeTranscriptEventToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase } from "./sessionState";
+import { createServerRealtimeSessionUpdate } from "./browserSession";
+import { resolveRealtimeSidebandUrl } from "./sidebandUrl";
+import { mealPlanRealtimeTools } from "../config/tools";
+import { beginRealtimeEvidenceRun, finishRealtimeEvidenceRun, recordRealtimeEvidenceEvent, recordRealtimeToolResult, recordRealtimeToolStart, recordRealtimeTransportEvidence } from "../../evidence";
 
 export const RealtimeCallIdSchema = z.string().regex(/^rtc_[A-Za-z0-9_-]{6,}$/);
 

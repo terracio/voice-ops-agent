@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { startRealtimeServerControl, type RealtimeSidebandSocket } from "../src/agent";
+import {
+  startRealtimeServerControl,
+  type RealtimeSidebandSocket
+} from "../src/realtime/server/serverControl";
 import {
   handleRealtimeEvidenceMutationRequest,
   handleRealtimeEvidenceRequest

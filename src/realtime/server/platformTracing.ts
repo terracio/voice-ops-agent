@@ -2,7 +2,7 @@ import {
   REALTIME_RUNNER_TRANSPORT,
   type RealtimePlatformTracing,
   type RealtimeRunnerEnv
-} from "./realtimeRunnerTypes";
+} from "../runner/types";
 
 export const DEFAULT_REALTIME_WORKFLOW_NAME =
   "MealPlan VoiceOps Realtime Eval";

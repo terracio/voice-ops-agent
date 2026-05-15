@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { waitForRealtimeTurnComplete } from "../src/agent/realtimeRunnerTiming";
-import type { RealtimeSessionLike } from "../src/agent/realtimeRunnerTypes";
+import { waitForRealtimeTurnComplete } from "../src/realtime/runner/timing";
+import type { RealtimeSessionLike } from "../src/realtime/runner/types";
 
 class TimingSession implements RealtimeSessionLike {
   readonly close = vi.fn();

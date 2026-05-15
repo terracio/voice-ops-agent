@@ -1,23 +1,23 @@
 import { RealtimeAgent, RealtimeSession, type FunctionTool } from "@openai/agents/realtime";
-import type { ToolExecutionContext } from "../tools/context";
-import { createMealPlanToolRegistry, mealPlanModelTools } from "../tools/mealplanRegistry";
-import type { ToolRegistry } from "../tools/registry";
-import { DEFAULT_OPENAI_REALTIME_REASONING_EFFORT, MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, resolveOpenAIRealtimeModel } from "./realtimeInstructions";
-import { streamPcm16AudioToRealtimeSession } from "./realtimeAudioStream";
+import type { ToolExecutionContext } from "../../tools/context";
+import { createMealPlanToolRegistry, mealPlanModelTools } from "../../tools/mealplanRegistry";
+import type { ToolRegistry } from "../../tools/registry";
+import { DEFAULT_OPENAI_REALTIME_REASONING_EFFORT, MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, resolveOpenAIRealtimeModel } from "../config/instructions";
+import { streamPcm16AudioToRealtimeSession } from "./audioStream";
 import {
   createRealtimePlatformTracing,
   DEFAULT_REALTIME_WORKFLOW_NAME
-} from "./realtimePlatformTracing";
-import { findLatestUserAudioItemId, runRealtimeOutOfBandTranscription } from "./realtimeOutOfBandTranscription";
-import { waitForRealtimeTurnComplete } from "./realtimeRunnerTiming";
+} from "../server/platformTracing";
+import { findLatestUserAudioItemId, runRealtimeOutOfBandTranscription } from "../config/outOfBandTranscription";
+import { waitForRealtimeTurnComplete } from "./timing";
 import {
   createPcm16Silence,
   resolveOpenAIRealtimeCredentials,
   sanitizeRealtimePayload,
   skippedRealtimeRunnerResult
-} from "./realtimeRunnerSupport";
-import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase, type RealtimeSessionState } from "./realtimeSessionState";
-import { createRealtimeTraceCollector, type RealtimeTraceCollector } from "./realtimeTrace";
+} from "./support";
+import { applyRealtimeToolResultToSessionState, buildRealtimeToolContext, createRealtimeSessionState, createRealtimeToolContextBase, type RealtimeSessionState } from "../server/sessionState";
+import { createRealtimeTraceCollector, type RealtimeTraceCollector } from "./trace";
 import {
   REALTIME_RUNNER_TRANSPORT,
   type RealtimeRunnerEnv,
@@ -26,8 +26,8 @@ import {
   type RealtimeSessionLike,
   type RealtimeToolContext,
   type RunRealtimeAgentSmokeOptions
-} from "./realtimeRunnerTypes";
-import { mealPlanRealtimeTools } from "./realtimeTools";
+} from "./types";
+import { mealPlanRealtimeTools } from "../config/tools";
 
 function normalizeToolInput(input: unknown): unknown {
   if (typeof input !== "string") return input;

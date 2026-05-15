@@ -3,7 +3,7 @@ import {
   RealtimeServerControlError,
   startRealtimeServerControl,
   type RealtimeSidebandSocketFactory
-} from "../../../../agent/realtimeServerControl";
+} from "../../../../realtime/server/serverControl";
 
 export type RealtimeControlRouteOptions = {
   socketFactory?: RealtimeSidebandSocketFactory;
