@@ -3,6 +3,8 @@
 coverage/
 node_modules/
 reports/
+PLAN.md
+TASKS.md
 *.tsbuildinfo
 *.log
 .DS_Store

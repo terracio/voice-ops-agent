@@ -204,7 +204,7 @@ If a file approaches the limit, split by responsibility. Good split points:
 - tool schema vs tool implementation,
 - test harness vs assertions.
 
-Docs such as `README.md`, `SPEC.md`, and `PLAN.md` are exempt.
+Project docs such as `README.md`, `SPEC.md`, `AGENTS.md`, and internal planning docs are exempt.
 
 ## Do Not Build
 

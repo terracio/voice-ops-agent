@@ -206,7 +206,6 @@ Realtime evals require server-side OpenAI credentials.
 ## Docs
 
 - [`SPEC.md`](SPEC.md): product and engineering spec
-- [`PLAN.md`](PLAN.md): implementation waves and tickets
 - [`AGENTS.md`](AGENTS.md): repo rules and safety constraints
 - [`docs/architecture.md`](docs/architecture.md): architecture and runtime boundaries
 - [`docs/guardrails.md`](docs/guardrails.md): policies, ChangeSets, and confirmation rules

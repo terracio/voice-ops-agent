@@ -7,7 +7,7 @@
 
 This document defines what MealPlan VoiceOps must do and which safety guarantees it must preserve. It is not an implementation plan.
 
-Implementation sequencing belongs in `PLAN.md`. Reviewer-facing narrative belongs in `README.md`. Agent working rules belong in `AGENTS.md`.
+Reviewer-facing narrative belongs in `README.md`. Agent working rules belong in `AGENTS.md`. Implementation sequencing is intentionally kept out of this public spec.
 
 ## Background Problem
 
