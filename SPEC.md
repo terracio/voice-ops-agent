@@ -114,6 +114,42 @@ read state
 
 Until commit succeeds, customer operational state MUST NOT change.
 
+## Platform and Stack Requirements
+
+MealPlan VoiceOps MUST use a TypeScript-first stack.
+
+Required platform choices:
+
+| Area | Requirement |
+|---|---|
+| Web runtime | The browser demo MUST use Next.js App Router, React, and TypeScript. |
+| Live voice runtime | The live browser path MUST use OpenAI [Realtime API](https://developers.openai.com/api/docs/guides/realtime) with `gpt-realtime-2` over [WebRTC](https://developers.openai.com/api/docs/guides/realtime-webrtc). |
+| Server control path | Trusted tool execution MUST use [server-side sideband control](https://developers.openai.com/api/docs/guides/realtime-server-controls). |
+| Realtime eval runner | Automated realtime smoke/eval runs MAY use the OpenAI [Agents SDK voice-agent primitives](https://developers.openai.com/api/docs/guides/voice-agents) as a harness wrapper, but MUST preserve the same tool, policy, audit, and evidence contracts as the live Realtime API path. |
+| Tool and state contracts | Tool inputs, tool outputs, domain entities, eval cases, and evidence payloads MUST be validated with Zod or equivalent typed schemas. |
+| Realtime case format | Realtime eval cases MAY use YAML for readable case definitions. |
+| Tests and evals | Unit/integration tests SHOULD use Vitest. Eval runners SHOULD be executable TypeScript scripts. |
+| Secrets | `OPENAI_API_KEY` MUST remain server-side and MUST NOT be exposed to browser code. |
+
+Implementation MAY change libraries in the future, but it MUST preserve the runtime boundaries and safety guarantees defined in this spec.
+
+### Realtime API vs Agents SDK Decision
+
+The live browser path MUST use the OpenAI [Realtime API](https://developers.openai.com/api/docs/guides/realtime) directly unless this decision is explicitly revisited.
+
+This is not because the OpenAI [Agents SDK](https://developers.openai.com/api/docs/libraries#use-the-agents-sdk) lacks voice-agent capabilities. The SDK is a valid browser voice-agent path and can provide code-first orchestration for agents, tools, guardrails, handoffs, and tracing.
+
+MealPlan VoiceOps uses the lower-level Realtime API for the live browser path because the project needs direct ownership of the session boundary, sideband connection, raw event stream, and evidence model.
+
+| Area | Agents SDK support | Why the live path uses the lower-level Realtime API |
+|---|---|---|
+| Server-side tool authority | The SDK can orchestrate tools and guardrails. | The application needs explicit ownership of the sideband call ID, WebSocket, tool execution, idempotency, confirmation records, and audit writes. |
+| Evidence and debugging | SDK tracing is useful. | The project needs its own evidence store for raw realtime events, transcript fragments, tool calls, sideband status, final state, audio artifacts, and eval reports. |
+| Architecture clarity | The SDK can express a voice agent more compactly. | The direct API path makes the trust boundary visible: browser handles voice, server handles tools, policy, state, confirmations, and audit. |
+| Provider-neutral domain layer | The SDK can be used carefully with external domain services. | The lower-level path reduces the chance that tool, policy, or ChangeSet semantics become coupled to SDK-specific agent objects. |
+
+Automated realtime smoke/eval runners MAY use OpenAI [Agents SDK realtime primitives](https://developers.openai.com/api/docs/guides/voice-agents) as a harness wrapper. They MUST still call the same typed tool registry and preserve the same policy, audit, confirmation, and evidence contracts as the live browser path.
+
 ## Architecture
 
 MealPlan VoiceOps MUST separate the conversation surface from operational authority.
@@ -132,6 +168,45 @@ The required runtime components are:
 | Eval harnesses | Score scripted and realtime behavior against expected outcomes. |
 
 Browser sessions, scripted evals, realtime evals, and smoke runners MUST reuse the same tool registry and domain policy layer.
+
+### Browser and Sideband Runtime Flow
+
+The browser and server MUST connect to the same realtime session through separate control paths.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Browser as Browser voice console
+    participant CallAPI as POST /api/realtime/call
+    participant RT as OpenAI Realtime session
+    participant Sideband as Server sideband control
+    participant Registry as Typed tool registry
+    participant Domain as Domain services
+    participant Policy as Policy supervisor
+    participant Evidence as Evidence store
+
+    Caller->>Browser: Speaks into microphone
+    Browser->>CallAPI: Sends WebRTC SDP offer
+    CallAPI->>RT: Creates Realtime call with server credentials
+    RT-->>CallAPI: Returns SDP answer and call id
+    CallAPI-->>Browser: Returns SDP answer and call id
+    Browser->>RT: Streams caller audio over WebRTC
+    RT-->>Browser: Streams assistant audio
+    Sideband->>RT: Attaches to call id with server credentials
+    Sideband->>RT: Sends instructions and tool definitions
+    RT->>Sideband: Emits function call
+    Sideband->>Registry: Executes named tool
+    Registry->>Domain: Reads/previews/commits through domain services
+    Domain->>Policy: Enforces deterministic guardrails
+    Policy-->>Domain: Allow, block, clarify, or escalate
+    Domain-->>Registry: Structured result and audit event ids
+    Registry-->>Sideband: ToolResult envelope
+    Sideband-->>RT: Function-call output
+    Sideband->>Evidence: Captures transcript, tool, policy, and status events
+    Browser->>Evidence: Polls visible call evidence by call id
+```
+
+The browser MAY display evidence, but operational truth MUST come from tool results, domain state, policy decisions, confirmations, and audit events.
 
 ## Agents
 
@@ -198,6 +273,25 @@ Preview tools MAY create pending state, but MUST NOT mutate final customer state
 Write tools MUST require confirmed identity, a valid pending ChangeSet when applicable, policy pass, explicit confirmation, and state-version validation.
 
 Side-effect tools MUST run only after the state transition that justifies them, unless the side effect is escalation-only.
+
+### Agent-Callable Tool Inventory
+
+The realtime agent SHOULD receive only the model-facing operational tools.
+
+| Tool | Risk | Requirement |
+|---|---|---|
+| `lookup_customer` | `read` | Find customer candidates from customer ID, name, phone, or other allowed lookup hint. Must return uncertainty when identity is not exact. |
+| `get_customer_state` | `read` | Read the confirmed customer's plan, service dates, allergies, preferences, payment summary, and state version. |
+| `resolve_service_dates` | `read` | Convert caller date language into exact service dates using customer state and a fixed reference date. Must flag ambiguity and non-scheduled days. |
+| `get_payment_status` | `read` | Read payment status for follow-up planning only. Must never settle, charge, or mark payment paid. |
+| `create_change_set` | `preview` | Create a pending ChangeSet for valid proposed operations. Must require confirmed identity and policy validation. |
+| `validate_change_set` | `preview` | Re-run policy validation for a pending ChangeSet. Must not mutate customer state. |
+| `preview_change_set` | `preview` | Produce before/after deltas and the confirmation challenge for a pending ChangeSet. Must not mutate customer state. |
+| `capture_confirmation` | `write` | Create the server confirmation record from the current explicit user turn for the same ChangeSet. |
+| `commit_change_set` | `write` | Commit a previewed ChangeSet only with valid server confirmation, policy pass, and state-version match. |
+| `escalate_to_human` | `escalation` | Create an audited human escalation without mutating customer state. |
+
+Internal side effects such as kitchen deltas and payment follow-up materialization MUST NOT be exposed as standalone model-facing tools. They are created by domain services after the committed ChangeSet justifies them.
 
 ## Operational State
 

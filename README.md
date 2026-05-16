@@ -120,6 +120,20 @@ Detailed docs are listed at the end.
 
 ---
 
+## Tech Stack
+
+| Layer | Stack |
+|---|---|
+| Web app | Next.js App Router, React, TypeScript |
+| Live realtime voice | OpenAI [Realtime API](https://developers.openai.com/api/docs/guides/realtime) with `gpt-realtime-2`, browser [WebRTC](https://developers.openai.com/api/docs/guides/realtime-webrtc), server [sideband WebSocket](https://developers.openai.com/api/docs/guides/realtime-server-controls) |
+| Realtime eval runner | OpenAI [Agents SDK](https://developers.openai.com/api/docs/guides/voice-agents) realtime primitives for scripted smoke/eval harnesses |
+| Tool contracts | Zod schemas and typed tool result envelopes |
+| Domain state | Resettable in-memory mock DB and deterministic domain services |
+| Evals | Vitest, TypeScript eval scripts, YAML realtime cases, generated/degraded audio artifacts |
+| Tooling | pnpm, ESLint, TypeScript |
+
+---
+
 ## How To Run
 
 Install:
@@ -139,6 +153,8 @@ Requires:
 ```bash
 OPENAI_API_KEY=...
 OPENAI_REALTIME_MODEL=gpt-realtime-2
+# Optional. Defaults to far_field. Also supports near_field, off, none, or disabled.
+MEALPLAN_REALTIME_NOISE_REDUCTION=far_field
 ```
 
 Run tests:
@@ -166,6 +182,8 @@ pnpm eval:realtime -- --stage walk --walk-profile walk_uncertain_noise_v1
 ```
 
 Realtime evals require server-side OpenAI credentials.
+
+Live browser audio settings are documented in [`docs/architecture.md`](docs/architecture.md). Realtime eval chunking, replay, and Walk noise profiles are documented in [`docs/eval-design.md`](docs/eval-design.md).
 
 ---
 

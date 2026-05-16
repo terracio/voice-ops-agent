@@ -38,47 +38,51 @@ Do not bypass this flow to make a demo or eval pass.
 ## Repository Map
 
 ```text
-src/app/
-  Next.js App Router pages and API handlers.
-
-src/features/voice-console/
-  Browser demo feature.
-  components/ renders the UI.
-  hooks/ owns React integration with realtime/evidence polling.
-  state/ owns local console state transitions.
-  evidence/ formats transcript and tool evidence for display.
-  styles/ owns feature CSS.
-
-src/realtime/browser/
-  Browser-side WebRTC controller, data-channel parsing, mic constraints, browser realtime events.
-
-src/realtime/config/
-  Realtime instructions, realtime tool schemas, out-of-band transcription prompt.
-
-src/realtime/server/
-  Server-created Realtime calls, sideband control, session state, tracing metadata.
-
-src/realtime/runner/
-  SDK smoke/eval runner, audio streaming, timing, trace capture, runner types.
-
-src/tools/
-  Provider-neutral typed tool registry and tool context.
-
-src/domain/
-  Schemas, seed data, mock DB, policies, date resolver, ChangeSet lifecycle, side effects.
-
-src/audit/
-  Audit event creation and querying.
-
-src/evidence/
-  Realtime evidence store and event builders.
-
-src/evals/
-  Scripted and realtime eval cases, scorers, reports, audio profiles, artifacts.
-
-docs/
-  Architecture, guardrails, eval design, demo walkthrough.
+.
+├── src/
+│   ├── app/
+│   │   └── Next.js App Router pages and API handlers.
+│   ├── features/
+│   │   └── voice-console/
+│   │       ├── components/  UI rendering and icons.
+│   │       ├── hooks/       React integration with realtime and evidence polling.
+│   │       ├── state/       Local console state transitions.
+│   │       ├── evidence/    Transcript and tool-evidence formatting.
+│   │       └── styles/      Feature CSS.
+│   ├── realtime/
+│   │   ├── browser/         WebRTC controller, data channel, mic constraints.
+│   │   ├── config/          Realtime instructions, tools, transcription prompt.
+│   │   ├── server/          Realtime call setup, sideband control, tracing.
+│   │   └── runner/          Smoke/eval runner, audio streaming, traces.
+│   ├── tools/               Provider-neutral typed tool registry.
+│   ├── domain/              Schemas, mock DB, policies, dates, ChangeSets.
+│   ├── audit/               Audit event creation and querying.
+│   ├── evidence/            Realtime evidence store and event builders.
+│   └── evals/               Scripted/realtime cases, scorers, reports, audio.
+├── docs/                    Architecture, guardrails, eval design, demo script.
+├── tests/                   Unit, integration, UI, realtime, and eval tests.
+├── README.md                Reviewer-facing overview and run commands.
+├── SPEC.md                  Product and system requirements.
+└── AGENTS.md                Coding-agent onboarding and working rules.
 ```
+
+## Current Stack
+
+Use the existing stack unless the user explicitly asks for a migration.
+
+| Area | Stack |
+|---|---|
+| Language | TypeScript |
+| Web app | Next.js App Router, React |
+| Live realtime voice | OpenAI [Realtime API](https://developers.openai.com/api/docs/guides/realtime) with `gpt-realtime-2` |
+| Browser transport | [WebRTC](https://developers.openai.com/api/docs/guides/realtime-webrtc) plus Realtime data-channel events |
+| Server control | Realtime [sideband WebSocket](https://developers.openai.com/api/docs/guides/realtime-server-controls) using server credentials |
+| Realtime eval runner | [`@openai/agents`](https://developers.openai.com/api/docs/guides/voice-agents) realtime `RealtimeAgent` / `RealtimeSession` for smoke/eval harnesses only |
+| Tool contracts | Zod schemas and typed `ToolResult` envelopes |
+| Realtime cases | YAML case definitions |
+| Tests | Vitest |
+| Scripts | `tsx` TypeScript entrypoints |
+| Package manager | pnpm |
 
 ## Runtime Boundary
 
