@@ -5,14 +5,6 @@ input:
   mode: audio
   text: "Can you check my meals for this week?"
 audio:
-  source: openai_tts
-  fixture_mode: generated_on_demand
-  stable_for_gating: false
-  model: gpt-4o-mini-tts
-  voice: alloy
-  response_format: pcm
-  sample_rate_hz: 24000
-  chunk_duration_ms: 20
   expected_duration_ms: 2600
   instructions: "Speak clearly at a normal contact-center pace."
 expected:

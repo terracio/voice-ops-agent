@@ -1,13 +1,11 @@
 import { RealtimeAgent, RealtimeSession, type FunctionTool } from "@openai/agents/realtime";
 import type { ToolExecutionContext } from "../../tools/context";
-import { createMealPlanToolRegistry, mealPlanModelTools } from "../../tools/mealplanRegistry";
+import { createMealPlanToolRegistry } from "../../tools/mealplanRegistry";
 import type { ToolRegistry } from "../../tools/registry";
 import { DEFAULT_OPENAI_REALTIME_REASONING_EFFORT, MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, resolveOpenAIRealtimeModel } from "../config/instructions";
+import { REALTIME_RUNTIME_CONFIG } from "../config/runtimeConfig";
 import { streamPcm16AudioToRealtimeSession } from "./audioStream";
-import {
-  createRealtimePlatformTracing,
-  DEFAULT_REALTIME_WORKFLOW_NAME
-} from "../server/platformTracing";
+import { createRealtimePlatformTracing, DEFAULT_REALTIME_WORKFLOW_NAME } from "../server/platformTracing";
 import { findLatestUserAudioItemId, runRealtimeOutOfBandTranscription } from "../config/outOfBandTranscription";
 import { waitForRealtimeTurnComplete } from "./timing";
 import {
@@ -115,7 +113,7 @@ export function createMealPlanRealtimeAgent(options: {
     name: "MealPlan VoiceOps",
     instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
     tools: createRealtimeAgentSdkTools(options),
-    voice: "alloy"
+    voice: REALTIME_RUNTIME_CONFIG.shared.voice
   });
 }
 
@@ -138,16 +136,20 @@ export function createRealtimeSessionFactoryOptions(options: {
     groupId: tracingDisabled ? undefined : options.traceGroupId,
     traceMetadata: tracingDisabled ? undefined : options.traceMetadata,
     config: {
-      outputModalities: options.outputModalities ?? ["text"],
+      outputModalities: options.outputModalities ??
+        [...REALTIME_RUNTIME_CONFIG.evalReplay.outputModalities],
       audio: {
         input: {
-          format: { type: "audio/pcm", rate: 24_000 },
-          transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
-          turnDetection: null
+          format: {
+            type: REALTIME_RUNTIME_CONFIG.evalReplay.inputAudio.format,
+            rate: REALTIME_RUNTIME_CONFIG.evalReplay.inputAudio.sampleRateHz
+          },
+          transcription: REALTIME_RUNTIME_CONFIG.shared.inputTranscription,
+          turnDetection: REALTIME_RUNTIME_CONFIG.evalReplay.turnDetection
         }
       },
       reasoning: { effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT },
-      parallelToolCalls: false
+      parallelToolCalls: REALTIME_RUNTIME_CONFIG.shared.parallelToolCalls
     }
   };
 }
@@ -274,13 +276,13 @@ export async function runRealtimeAgentSmoke(
   collector.recordEvent({
     source: "runner",
     type: "connect_start",
-      payload: {
-        model,
-        platform_tracing_enabled: platformTracing.enabled,
-        transport: REALTIME_RUNNER_TRANSPORT,
-        tool_count: mealPlanModelTools.length
-      }
-    });
+    payload: {
+      model,
+      platform_tracing_enabled: platformTracing.enabled,
+      transport: REALTIME_RUNNER_TRANSPORT,
+      tool_count: mealPlanRealtimeTools.length
+    }
+  });
 
   try {
     await session.connect({ apiKey: credentials.apiKey });
@@ -289,7 +291,7 @@ export async function runRealtimeAgentSmoke(
     const terminalEvent = waitForRealtimeTurnComplete({
       session,
       quietMs: options.quietMs,
-      timeoutMs: options.timeoutMs ?? 20_000
+      timeoutMs: options.timeoutMs ?? REALTIME_RUNTIME_CONFIG.evalReplay.timeoutMs
     });
     if (options.inputText) {
       session.sendMessage(options.inputText);

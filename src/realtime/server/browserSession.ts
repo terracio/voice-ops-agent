@@ -6,17 +6,16 @@ import {
   resolveOpenAIRealtimeModel,
   type RealtimeModelEnv
 } from "../config/instructions";
+import {
+  REALTIME_RUNTIME_CONFIG,
+  type RealtimeNoiseReductionEnv,
+  resolveRealtimeNoiseReductionType,
+  resolveRealtimeSafetyIdentifier
+} from "../config/runtimeConfig";
 import { mealPlanRealtimeTools, type RealtimeFunctionTool } from "../config/tools";
 
 export const OPENAI_REALTIME_CALLS_URL =
-  "https://api.openai.com/v1/realtime/calls";
-
-const DEFAULT_BROWSER_VOICE = "alloy";
-const DEFAULT_INPUT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
-const DEFAULT_NOISE_REDUCTION_TYPE = "far_field";
-const DEFAULT_SAFETY_IDENTIFIER = "mealplan-voiceops-local-demo";
-const REALTIME_TRACE_GROUP_ID = "mealplan-voiceops-browser";
-const REALTIME_TRACE_WORKFLOW_NAME = "MealPlan VoiceOps Browser Realtime";
+  REALTIME_RUNTIME_CONFIG.browser.callsUrl;
 
 type SdpFetchLike = (
   input: string,
@@ -56,8 +55,8 @@ export function createRealtimeTracingConfig(options: {
   model: string;
 }): Record<string, unknown> {
   return {
-    workflow_name: REALTIME_TRACE_WORKFLOW_NAME,
-    group_id: REALTIME_TRACE_GROUP_ID,
+    workflow_name: REALTIME_RUNTIME_CONFIG.browser.tracing.workflowName,
+    group_id: REALTIME_RUNTIME_CONFIG.browser.tracing.groupId,
     metadata: {
       app: "mealplan-voiceops",
       model: options.model,
@@ -72,6 +71,7 @@ export function createRealtimeTracingConfig(options: {
 }
 
 export function createBrowserRealtimeSessionConfig(options: {
+  env?: RealtimeNoiseReductionEnv;
   model: string;
 }): Record<string, unknown> {
   return {
@@ -79,41 +79,44 @@ export function createBrowserRealtimeSessionConfig(options: {
       type: "realtime",
       model: options.model,
       instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
-      audio: createRealtimeAudioConfig(),
+      audio: createRealtimeAudioConfig(options.env),
       reasoning: {
         effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT
       },
       tracing: createRealtimeTracingConfig({ model: options.model }),
       tools: mealPlanRealtimeTools,
-      parallel_tool_calls: false
+      parallel_tool_calls: REALTIME_RUNTIME_CONFIG.shared.parallelToolCalls
     }
   };
 }
 
 export function createBrowserRealtimeCallSession(options: {
+  env?: RealtimeNoiseReductionEnv;
   model: string;
 }): Record<string, unknown> {
   const config = createBrowserRealtimeSessionConfig(options);
   return config.session as Record<string, unknown>;
 }
 
-export function createServerRealtimeSessionUpdate(): ServerRealtimeSessionUpdate {
+export function createServerRealtimeSessionUpdate(
+  env?: RealtimeNoiseReductionEnv
+): ServerRealtimeSessionUpdate {
   return {
     type: "session.update",
     session: {
       type: "realtime",
       instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
-      audio: createRealtimeAudioConfig(),
+      audio: createRealtimeAudioConfig(env),
       tools: mealPlanRealtimeTools,
       reasoning: { effort: DEFAULT_OPENAI_REALTIME_REASONING_EFFORT },
-      parallel_tool_calls: false
+      parallel_tool_calls: REALTIME_RUNTIME_CONFIG.shared.parallelToolCalls
     }
   };
 }
 
-function createRealtimeAudioConfig() {
-  const noiseReductionType = resolveNoiseReductionType({
-    MEALPLAN_REALTIME_NOISE_REDUCTION:
+function createRealtimeAudioConfig(env?: RealtimeNoiseReductionEnv) {
+  const noiseReductionType = resolveRealtimeNoiseReductionType({
+    MEALPLAN_REALTIME_NOISE_REDUCTION: env?.MEALPLAN_REALTIME_NOISE_REDUCTION ??
       process.env.MEALPLAN_REALTIME_NOISE_REDUCTION
   });
   return {
@@ -122,34 +125,14 @@ function createRealtimeAudioConfig() {
         ? { type: noiseReductionType }
         : null,
       transcription: {
-        language: "en",
-        model: DEFAULT_INPUT_TRANSCRIPTION_MODEL
+        language: REALTIME_RUNTIME_CONFIG.shared.inputTranscription.language,
+        model: REALTIME_RUNTIME_CONFIG.shared.inputTranscription.model
       }
     },
     output: {
-      voice: DEFAULT_BROWSER_VOICE
+      voice: REALTIME_RUNTIME_CONFIG.shared.voice
     }
   };
-}
-
-function resolveNoiseReductionType(
-  env: { MEALPLAN_REALTIME_NOISE_REDUCTION?: string | undefined }
-) {
-  const configured = env.MEALPLAN_REALTIME_NOISE_REDUCTION?.trim();
-  if (configured === "near_field" || configured === "far_field") {
-    return configured;
-  }
-  if (configured === "off" || configured === "none" || configured === "disabled") {
-    return null;
-  }
-  return DEFAULT_NOISE_REDUCTION_TYPE;
-}
-
-function resolveSafetyIdentifier(env: RealtimeBrowserSessionEnv): string {
-  const configured = env.MEALPLAN_REALTIME_SAFETY_IDENTIFIER?.trim();
-  return configured && configured.length > 0
-    ? configured
-    : DEFAULT_SAFETY_IDENTIFIER;
 }
 
 function resolveApiKey(env: RealtimeBrowserSessionEnv): string {
@@ -175,13 +158,16 @@ export async function exchangeBrowserRealtimeSdpOffer(options: {
   const apiKey = resolveApiKey(env);
   const form = new FormData();
   form.set("sdp", options.offerSdp);
-  form.set("session", JSON.stringify(createBrowserRealtimeCallSession({ model })));
+  form.set("session", JSON.stringify(createBrowserRealtimeCallSession({
+    env,
+    model
+  })));
 
   const response = await (options.fetchImpl ?? fetch)(OPENAI_REALTIME_CALLS_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "OpenAI-Safety-Identifier": resolveSafetyIdentifier(env)
+      "OpenAI-Safety-Identifier": resolveRealtimeSafetyIdentifier(env)
     },
     body: form
   });

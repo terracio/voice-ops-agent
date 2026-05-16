@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { RealtimeModelEnv } from "../config/instructions";
+import { REALTIME_RUNTIME_CONFIG } from "../config/runtimeConfig";
 import { REALTIME_RUNNER_TRANSPORT } from "./types";
 import type {
   RealtimePlatformTracing,
@@ -71,8 +72,10 @@ export function createPcm16Silence(options: {
   durationMs?: number;
   sampleRate?: number;
 } = {}): ArrayBuffer {
-  const sampleRate = options.sampleRate ?? 24_000;
-  const durationMs = options.durationMs ?? 300;
+  const sampleRate = options.sampleRate ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.inputAudio.sampleRateHz;
+  const durationMs = options.durationMs ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.fallbackSilenceDurationMs;
   const sampleCount = Math.max(1, Math.ceil((sampleRate * durationMs) / 1000));
   return new ArrayBuffer(sampleCount * 2);
 }

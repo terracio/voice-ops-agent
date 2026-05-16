@@ -154,6 +154,8 @@ This is the only path where the application chooses an audio chunk size. In the 
 
 The 20 ms chunk size is not a correctness claim by itself. It is a practical replay cadence that keeps the eval path close to streamed audio instead of sending one large blob.
 
+These eval replay defaults live in `src/realtime/config/runtimeConfig.ts` alongside the browser realtime defaults, so model, voice, chunking, timeout, and Walk-profile tuning stay visible in one place.
+
 ## Crawl, Walk, Run
 
 The realtime eval ladder follows the Crawl, Walk, Run pattern from the OpenAI Realtime Eval Guide.

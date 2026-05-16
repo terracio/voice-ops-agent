@@ -51,7 +51,7 @@ Do not bypass this flow to make a demo or eval pass.
 │   │       └── styles/      Feature CSS.
 │   ├── realtime/
 │   │   ├── browser/         WebRTC controller, data channel, mic constraints.
-│   │   ├── config/          Realtime instructions, tools, transcription prompt.
+│   │   ├── config/          Realtime instructions, runtime defaults, tools, transcription prompt.
 │   │   ├── server/          Realtime call setup, sideband control, tracing.
 │   │   └── runner/          Smoke/eval runner, audio streaming, traces.
 │   ├── tools/               Provider-neutral typed tool registry.

@@ -10,6 +10,7 @@ import {
   type RealtimeWebrtcControllerState
 } from "./webrtcEvents";
 import { waitForRealtimeDataChannelOpen } from "./dataChannel";
+import { REALTIME_RUNTIME_CONFIG } from "../config/runtimeConfig";
 
 export {
   DEFAULT_REALTIME_CALL_ENDPOINT,
@@ -51,11 +52,7 @@ const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
 ]);
 
 export const REALTIME_MIC_CONSTRAINTS: MediaStreamConstraints = {
-  audio: {
-    autoGainControl: { ideal: true },
-    echoCancellation: { ideal: true },
-    noiseSuppression: { ideal: true }
-  }
+  ...REALTIME_RUNTIME_CONFIG.browser.mediaConstraints
 };
 
 class RealtimeStartCancelledError extends Error {

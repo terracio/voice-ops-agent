@@ -116,6 +116,14 @@ describe("Realtime browser session boundary", () => {
     });
   });
 
+  it("allows disabling OpenAI input noise reduction by env", () => {
+    const update = createServerRealtimeSessionUpdate({
+      MEALPLAN_REALTIME_NOISE_REDUCTION: "off"
+    });
+
+    expect(update.session.audio.input.noise_reduction).toBeNull();
+  });
+
   it("keeps browser Realtime trace metadata stable for Platform inspection", () => {
     const tracing = createRealtimeTracingConfig({ model: "gpt-realtime-2" });
 

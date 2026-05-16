@@ -1,3 +1,5 @@
+import { REALTIME_RUNTIME_CONFIG } from "../../realtime/config/runtimeConfig";
+
 export type OpenAiSpeechPcmOptions = {
   apiKey: string;
   input: string;
@@ -21,7 +23,7 @@ export async function synthesizeOpenAiSpeechPcm(
       voice: options.voice,
       input: options.input,
       instructions: options.instructions,
-      response_format: "pcm",
+      response_format: REALTIME_RUNTIME_CONFIG.evalReplay.tts.responseFormat,
       speed: options.speed
     })
   });

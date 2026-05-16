@@ -183,7 +183,7 @@ pnpm eval:realtime -- --stage walk --walk-profile walk_uncertain_noise_v1
 
 Realtime evals require server-side OpenAI credentials.
 
-Live browser audio settings are documented in [`docs/architecture.md`](docs/architecture.md). Realtime eval chunking, replay, and Walk noise profiles are documented in [`docs/eval-design.md`](docs/eval-design.md).
+Runtime defaults live in [`src/realtime/config/runtimeConfig.ts`](src/realtime/config/runtimeConfig.ts). Live browser audio settings are documented in [`docs/architecture.md`](docs/architecture.md). Realtime eval chunking, replay, and Walk noise profiles are documented in [`docs/eval-design.md`](docs/eval-design.md).
 
 ---
 

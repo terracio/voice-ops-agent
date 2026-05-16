@@ -5,14 +5,6 @@ input:
   mode: audio
   text: "I confirm customer ID C U S underscore zero zero one is correct. Please pause one of my deliveries sometime soon."
 audio:
-  source: openai_tts
-  fixture_mode: generated_on_demand
-  stable_for_gating: false
-  model: gpt-4o-mini-tts
-  voice: alloy
-  response_format: pcm
-  sample_rate_hz: 24000
-  chunk_duration_ms: 20
   expected_duration_ms: 7800
   instructions: "Speak clearly at a normal contact-center pace. Read letters and digits distinctly."
 expected:

@@ -123,6 +123,8 @@ The browser demo uses the browser as the audio surface and the Realtime API as t
 
 The browser audio settings reduce local echo and room noise, but they do not eliminate all leakage. Headphones are still recommended during live testing.
 
+Runtime defaults for model, voice, input transcription, browser audio cleanup, API noise reduction, eval replay, and Walk profiles are centralized in `src/realtime/config/runtimeConfig.ts`.
+
 If we need to tune live turn detection later, the Realtime API exposes `turn_detection` settings. For `server_vad`, the relevant knobs are `threshold`, `prefix_padding_ms`, `silence_duration_ms`, `create_response`, and `interrupt_response`. The API also supports `semantic_vad` with an `eagerness` setting. MealPlan VoiceOps currently documents this as an intentional default, not a tuned VAD profile.
 
 ## Trust Boundary
@@ -217,7 +219,7 @@ Realtime transcripts are diagnostic evidence. They are not operational write aut
 │   │       └── styles/      Feature CSS.
 │   ├── realtime/
 │   │   ├── browser/         WebRTC controller, data channel, mic constraints.
-│   │   ├── config/          Realtime instructions, tools, transcription prompt.
+│   │   ├── config/          Realtime instructions, runtime defaults, tools, transcription prompt.
 │   │   ├── server/          Realtime call setup, sideband control, tracing.
 │   │   └── runner/          Smoke/eval runner, audio streaming, traces.
 │   ├── tools/               Provider-neutral typed tool registry.

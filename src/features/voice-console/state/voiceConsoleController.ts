@@ -1,3 +1,5 @@
+import { REALTIME_RUNTIME_CONFIG } from "../../../realtime/config/runtimeConfig";
+
 export type SessionStatus = "disconnected" | "connecting" | "connected";
 export type AgentMode =
   | "idle"
@@ -58,7 +60,7 @@ export function createInitialVoiceConsoleState(
 ): VoiceConsoleState {
   return {
     sessionLabel: "Local demo",
-    model: "gpt-realtime-2",
+    model: REALTIME_RUNTIME_CONFIG.shared.defaultModel,
     sessionStatus: "disconnected",
     agentMode: "idle",
     assistantAudioLabel: "No audio playing",

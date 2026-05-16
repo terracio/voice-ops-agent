@@ -3,6 +3,7 @@ import {
   loadOpenAIServerEnv,
   resolveOpenAIRealtimeCredentials
 } from "../realtime/runner/support";
+import { REALTIME_RUNTIME_CONFIG } from "../realtime/config/runtimeConfig";
 import { resetDb } from "../domain/db";
 import {
   applyWalkProfileContract,
@@ -121,8 +122,8 @@ async function runRealtimeEvalCase(options: {
     audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,
     inputText: preparedInput.inputText,
     outOfBandTranscription: options.oobTranscription,
-    quietMs: 1_000,
-    timeoutMs: 20_000,
+    quietMs: REALTIME_RUNTIME_CONFIG.evalReplay.quietMs,
+    timeoutMs: REALTIME_RUNTIME_CONFIG.evalReplay.timeoutMs,
     traceGroupId: `realtime_${safePathSegment(options.stage)}_${options.runStamp}`,
     traceMetadata: {
       case_id: options.caseId,

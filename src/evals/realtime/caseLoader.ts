@@ -5,6 +5,10 @@ import { parse } from "yaml";
 import { z } from "zod";
 import { PolicyIdSchema } from "../../domain/schema";
 import {
+  DEFAULT_REALTIME_EVAL_AUDIO_CONFIG,
+  DEFAULT_WALK_ROBUSTNESS_PROFILE
+} from "../../realtime/config/runtimeConfig";
+import {
   WALK_AUDIO_PROFILE_NAMES,
   type WalkAudioProfileName
 } from "./walkAudioProfiles";
@@ -15,14 +19,26 @@ const WalkAudioProfileSchema = z.object({
 }).strict();
 
 const RealtimeAudioConfigSchema = z.object({
-  source: z.literal("openai_tts").default("openai_tts"),
-  fixture_mode: z.literal("generated_on_demand").default("generated_on_demand"),
-  stable_for_gating: z.literal(false).default(false),
-  model: z.string().min(1).default("gpt-4o-mini-tts"),
-  voice: z.string().min(1).default("alloy"),
-  response_format: z.literal("pcm").default("pcm"),
-  sample_rate_hz: z.literal(24_000).default(24_000),
-  chunk_duration_ms: z.number().int().positive().default(20),
+  source: z.literal(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.source).default(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.source
+  ),
+  fixture_mode: z.literal(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.fixture_mode
+  ).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.fixture_mode),
+  stable_for_gating: z.literal(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.stable_for_gating
+  ).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.stable_for_gating),
+  model: z.string().min(1).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.model),
+  voice: z.string().min(1).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.voice),
+  response_format: z.literal(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.response_format
+  ).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.response_format),
+  sample_rate_hz: z.literal(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.sample_rate_hz
+  ).default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.sample_rate_hz),
+  chunk_duration_ms: z.number().int().positive().default(
+    DEFAULT_REALTIME_EVAL_AUDIO_CONFIG.chunk_duration_ms
+  ),
   expected_duration_ms: z.number().int().positive().optional(),
   instructions: z.string().min(1).optional(),
   speed: z.number().positive().optional(),
@@ -82,16 +98,7 @@ export const RealtimeEvalCaseSchema = z.object({
   stage: z.enum(["crawl", "walk", "run"]),
   seed_id: z.string().min(1).default("maya_default"),
   input: RealtimeCaseInputSchema,
-  audio: RealtimeAudioConfigSchema.default({
-    source: "openai_tts",
-    fixture_mode: "generated_on_demand",
-    stable_for_gating: false,
-    model: "gpt-4o-mini-tts",
-    voice: "alloy",
-    response_format: "pcm",
-    sample_rate_hz: 24_000,
-    chunk_duration_ms: 20
-  }),
+  audio: RealtimeAudioConfigSchema.default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG),
   expected: RealtimeExpectedSchema
 }).strict();
 
@@ -110,11 +117,6 @@ export const REALTIME_CRAWL_CONTRACT_CASE_IDS = [
 export const REALTIME_WALK_ROBUSTNESS_CASE_IDS = [
   ...REALTIME_CRAWL_CONTRACT_CASE_IDS
 ] as const;
-
-const WALK_ROBUSTNESS_PROFILE = {
-  name: "walk_phone_noise_v1",
-  seed: 1701
-} as const;
 
 const UNCERTAIN_AUDIO_FORBIDDEN_TOOLS = [
   "lookup_customer",
@@ -172,7 +174,7 @@ export function loadRealtimeEvalCase(options: {
       stage: "walk",
       audio: {
         ...parsed.audio,
-        walk_profile: WALK_ROBUSTNESS_PROFILE
+        walk_profile: DEFAULT_WALK_ROBUSTNESS_PROFILE
       },
       expected: deriveWalkRobustnessExpected(parsed)
     });

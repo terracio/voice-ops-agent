@@ -1,4 +1,5 @@
 import type { RealtimeSessionLike } from "./types";
+import { REALTIME_RUNTIME_CONFIG } from "../config/runtimeConfig";
 
 export type Pcm16AudioStreamOptions = {
   chunkDurationMs?: number;
@@ -14,8 +15,10 @@ export type Pcm16AudioStreamSummary = {
 };
 
 export function pcm16BytesPerChunk(options: Pcm16AudioStreamOptions = {}): number {
-  const sampleRateHz = options.sampleRateHz ?? 24_000;
-  const chunkDurationMs = options.chunkDurationMs ?? 20;
+  const sampleRateHz = options.sampleRateHz ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.inputAudio.sampleRateHz;
+  const chunkDurationMs = options.chunkDurationMs ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.chunkDurationMs;
   const bytes = Math.max(2, Math.round((sampleRateHz * 2 * chunkDurationMs) / 1000));
   return bytes % 2 === 0 ? bytes : bytes + 1;
 }
@@ -39,8 +42,10 @@ export function streamPcm16AudioToRealtimeSession(
   audio: ArrayBuffer,
   options: Pcm16AudioStreamOptions = {}
 ): Pcm16AudioStreamSummary {
-  const sampleRateHz = options.sampleRateHz ?? 24_000;
-  const chunkDurationMs = options.chunkDurationMs ?? 20;
+  const sampleRateHz = options.sampleRateHz ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.inputAudio.sampleRateHz;
+  const chunkDurationMs = options.chunkDurationMs ??
+    REALTIME_RUNTIME_CONFIG.evalReplay.chunkDurationMs;
   const bytesPerChunk = pcm16BytesPerChunk({ chunkDurationMs, sampleRateHz });
   const chunks = splitPcm16AudioChunks(audio, { chunkDurationMs, sampleRateHz });
 
