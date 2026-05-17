@@ -10,7 +10,9 @@ import {
 import { resetDb } from "../src/domain/db";
 import {
   beginRealtimeEvidenceRun,
+  issueRealtimeEvidenceSession,
   RealtimeEvidenceSnapshotSchema,
+  resetRealtimeEvidenceSessionStore,
   resetRealtimeEvidenceStore
 } from "../src/evidence";
 
@@ -35,18 +37,27 @@ class FakeSidebandSocket implements RealtimeSidebandSocket {
   }
 }
 
-function evidenceRequest(callId?: string): Request {
+function evidenceRequest(options: { callId?: string; evidenceToken?: string } = {}): Request {
   const url = new URL("http://localhost/api/realtime/evidence");
-  if (callId) url.searchParams.set("call_id", callId);
-  return new Request(url);
+  if (options.callId) url.searchParams.set("call_id", options.callId);
+  const headers = new Headers();
+  if (options.evidenceToken) {
+    headers.set("Cookie", `realtime_evidence_session=${encodeURIComponent(options.evidenceToken)}`);
+  }
+  return new Request(url, { headers });
 }
 
 describe("GET /api/realtime/evidence", () => {
   beforeEach(() => {
     resetDb();
     resetRealtimeEvidenceStore();
+    resetRealtimeEvidenceSessionStore();
     vi.restoreAllMocks();
   });
+
+  function createSession(callId: string): string {
+    return issueRealtimeEvidenceSession({ callId });
+  }
 
   it("rejects missing call IDs", async () => {
     const response = await handleRealtimeEvidenceRequest(evidenceRequest());
@@ -59,7 +70,10 @@ describe("GET /api/realtime/evidence", () => {
 
   it("returns 404 for unknown calls", async () => {
     const response = await handleRealtimeEvidenceRequest(
-      evidenceRequest("rtc_unknown_123456")
+      evidenceRequest({
+        callId: "rtc_unknown_123456",
+        evidenceToken: createSession("rtc_unknown_123456")
+      })
     );
     const body = await response.json();
 
@@ -121,7 +135,10 @@ describe("GET /api/realtime/evidence", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const response = await handleRealtimeEvidenceRequest(
-      evidenceRequest("rtc_evidence_123456")
+      evidenceRequest({
+        callId: "rtc_evidence_123456",
+        evidenceToken: createSession("rtc_evidence_123456")
+      })
     );
     const body = await response.json();
     const parsed = RealtimeEvidenceSnapshotSchema.parse(body);
@@ -156,7 +173,10 @@ describe("GET /api/realtime/evidence", () => {
     socket.emit("close");
 
     const response = await handleRealtimeEvidenceRequest(
-      evidenceRequest("rtc_error_123456")
+      evidenceRequest({
+        callId: "rtc_error_123456",
+        evidenceToken: createSession("rtc_error_123456")
+      })
     );
     const body = await response.json();
     const parsed = RealtimeEvidenceSnapshotSchema.parse(body);
@@ -189,7 +209,10 @@ describe("GET /api/realtime/evidence", () => {
     }));
 
     const response = await handleRealtimeEvidenceRequest(
-      evidenceRequest("rtc_api_error_123456")
+      evidenceRequest({
+        callId: "rtc_api_error_123456",
+        evidenceToken: createSession("rtc_api_error_123456")
+      })
     );
     const body = await response.json();
     const parsed = RealtimeEvidenceSnapshotSchema.parse(body);
@@ -208,5 +231,78 @@ describe("GET /api/realtime/evidence", () => {
     expect(response.status).toBe(405);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(body.error).toBe("evidence_is_read_only");
+  });
+
+  it("rejects evidence reads without the active call cookie", async () => {
+    beginRealtimeEvidenceRun({
+      callId: "rtc_cookie_required_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      runId: "browser_rtc_cookie_required_123456"
+    });
+
+    const response = await handleRealtimeEvidenceRequest(
+      evidenceRequest({ callId: "rtc_cookie_required_123456" })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("missing_realtime_session");
+  });
+
+  it("rejects evidence reads when the cookie call differs", async () => {
+    beginRealtimeEvidenceRun({
+      callId: "rtc_cookie_bound_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      runId: "browser_rtc_cookie_bound_123456"
+    });
+
+    const response = await handleRealtimeEvidenceRequest(
+      evidenceRequest({
+        callId: "rtc_cookie_bound_123456",
+        evidenceToken: createSession("rtc_other_123456")
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("forbidden_realtime_evidence_access");
+  });
+
+  it("rejects forged cookie values that reuse public call IDs", async () => {
+    beginRealtimeEvidenceRun({
+      callId: "rtc_forged_cookie_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      runId: "browser_rtc_forged_cookie_123456"
+    });
+
+    const response = await handleRealtimeEvidenceRequest(
+      evidenceRequest({
+        callId: "rtc_forged_cookie_123456",
+        evidenceToken: "rtc_forged_cookie_123456"
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("forbidden_realtime_evidence_access");
+  });
+
+  it("allows evidence reads with server-issued evidence tokens", async () => {
+    beginRealtimeEvidenceRun({
+      callId: "rtc_valid_token_123456",
+      now: () => new Date("2026-05-14T09:00:00.000Z"),
+      runId: "browser_rtc_valid_token_123456"
+    });
+
+    const response = await handleRealtimeEvidenceRequest(
+      evidenceRequest({
+        callId: "rtc_valid_token_123456",
+        evidenceToken: createSession("rtc_valid_token_123456")
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(RealtimeEvidenceSnapshotSchema.safeParse(body).success).toBe(true);
   });
 });
