@@ -71,6 +71,15 @@ function defaultUrgency(reason: EscalationReason): EscalationUrgency {
   return policyIdsByReason[reason].length > 0 ? "urgent" : "routine";
 }
 
+function escalationUrgency(
+  reason: EscalationReason,
+  requestedUrgency: EscalationUrgency | undefined
+): EscalationUrgency {
+  return policyIdsByReason[reason].length > 0
+    ? defaultUrgency(reason)
+    : requestedUrgency ?? defaultUrgency(reason);
+}
+
 export const escalateToHumanTool = defineTool({
   name: "escalate_to_human",
   description: "Create an audited human escalation without mutating customer state.",
@@ -85,7 +94,7 @@ export const escalateToHumanTool = defineTool({
   execute(args: EscalateToHumanInput, context): ToolResult<EscalateToHumanOutput> {
     const policy_ids = policyIdsByReason[args.reason];
     const customer_id = customerIdFromContext(context);
-    const urgency = args.urgency ?? defaultUrgency(args.reason);
+    const urgency = escalationUrgency(args.reason, args.urgency);
     const audit = appendAuditEvent(
       createEscalationAuditEvent({
         run_id: context.run_id,

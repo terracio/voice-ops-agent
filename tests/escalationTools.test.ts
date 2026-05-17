@@ -120,6 +120,33 @@ describe("escalation tools", () => {
     });
   });
 
+  it("does not allow the model to downgrade policy-linked urgency", async () => {
+    const result = expectData<EscalateToHumanOutput>(
+      await registry().execute("escalate_to_human", {
+        modelArgs: {
+          reason: "allergy_risk",
+          summary: "Customer mentioned a possible allergy reaction.",
+          urgency: "routine"
+        },
+        context
+      })
+    );
+
+    expect(result).toMatchObject({
+      escalation_reason: "allergy_risk",
+      urgency: "urgent",
+      policy_ids: [PolicyId.MEDICAL_RISK_ESCALATION_REQUIRED]
+    });
+    expect(db.listAuditEvents()[0]).toMatchObject({
+      actor: "policy",
+      details: {
+        escalation_reason: "allergy_risk",
+        urgency: "urgent",
+        policy_ids: [PolicyId.MEDICAL_RISK_ESCALATION_REQUIRED]
+      }
+    });
+  });
+
   it("does not allow the model to provide a customer identity", async () => {
     await expect(
       registry().execute("escalate_to_human", {
