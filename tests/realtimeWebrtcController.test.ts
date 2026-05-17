@@ -70,7 +70,12 @@ describe("Realtime WebRTC browser controller", () => {
 
     const sent = pc.dataChannel.sentMessages.map((message) =>
       JSON.parse(message) as {
-        response?: { instructions?: string; output_modalities?: string[] };
+        response?: {
+          instructions?: string;
+          output_modalities?: string[];
+          tool_choice?: string;
+          tools?: unknown[];
+        };
         type?: string;
       }
     );
@@ -78,8 +83,10 @@ describe("Realtime WebRTC browser controller", () => {
     expect(sent[0]).toEqual({
       response: {
         instructions:
-          "Greet the caller as MealPlan, ask how you can help today, and do not call tools.",
-        output_modalities: ["audio"]
+          "Greet the caller as MealPlan, then ask how you can help today.",
+        output_modalities: ["audio"],
+        tool_choice: "none",
+        tools: []
       },
       type: "response.create"
     });

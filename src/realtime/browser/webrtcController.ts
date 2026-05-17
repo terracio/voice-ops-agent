@@ -54,8 +54,10 @@ const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
 const INITIAL_GREETING_EVENT = {
   response: {
     instructions:
-      "Greet the caller as MealPlan, ask how you can help today, and do not call tools.",
-    output_modalities: ["audio"]
+      "Greet the caller as MealPlan, then ask how you can help today.",
+    output_modalities: ["audio"],
+    tool_choice: "none",
+    tools: []
   },
   type: "response.create"
 };
