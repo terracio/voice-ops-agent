@@ -26,7 +26,7 @@ describe("realtime report redaction", () => {
       env_file_status: "loaded",
       preparedInput: {
         input_mode: "text",
-        input_text: "Caller requested account help.",
+        input_text: `Caller requested account help. ${sensitive}`,
         audio_metadata: { source: "test" }
       },
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),

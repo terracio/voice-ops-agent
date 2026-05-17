@@ -100,6 +100,9 @@ export function writeRealtimeReports(options: {
     sampleRateHz: options.realtimeCase.audio.sample_rate_hz
   });
   const redactedResult = redactResultForReport(options.result);
+  const redactedInputText = options.preparedInput.input_text
+    ? "[redacted]"
+    : options.preparedInput.input_text;
 
   const eventLines = redactedResult.trace
     .map((event, index) =>
@@ -133,7 +136,7 @@ export function writeRealtimeReports(options: {
         stage: options.stage,
         seed_id: options.realtimeCase.seed_id,
         input_mode: options.preparedInput.input_mode,
-        input_text: options.preparedInput.input_text,
+        input_text: redactedInputText,
         audio_metadata: options.preparedInput.audio_metadata,
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
@@ -174,7 +177,7 @@ export function writeRealtimeReports(options: {
       "",
       "## Fixture",
       "",
-      `Input text: ${options.preparedInput.input_text}`,
+      `Input text: ${redactedInputText ?? ""}`,
       options.preparedInput.audio_metadata
         ? `Audio: ${JSON.stringify(options.preparedInput.audio_metadata)}`
         : "Audio: not used",
