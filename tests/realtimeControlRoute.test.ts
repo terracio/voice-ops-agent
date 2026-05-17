@@ -24,10 +24,12 @@ class FakeSidebandSocket implements RealtimeSidebandSocket {
 }
 
 const originalApiKey = process.env.OPENAI_API_KEY;
+const originalRouteToken = process.env.MEALPLAN_REALTIME_ROUTE_TOKEN;
 
-function jsonRequest(body: unknown): Request {
+function jsonRequest(body: unknown, token = "test-route-token"): Request {
   return new Request("http://localhost/api/realtime/control", {
     method: "POST",
+    headers: { "x-mealplan-realtime-token": token },
     body: JSON.stringify(body)
   });
 }
@@ -39,11 +41,31 @@ describe("POST /api/realtime/control", () => {
     } else {
       process.env.OPENAI_API_KEY = originalApiKey;
     }
+    if (originalRouteToken === undefined) {
+      delete process.env.MEALPLAN_REALTIME_ROUTE_TOKEN;
+    } else {
+      process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = originalRouteToken;
+    }
     vi.restoreAllMocks();
+  });
+
+  it("rejects requests with missing route token", async () => {
+    process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
+
+    const response = await handleRealtimeControlRequest(
+      new Request("http://localhost/api/realtime/control", {
+        method: "POST",
+        body: JSON.stringify({ call_id: "rtc_test_123456" })
+      })
+    );
+
+    expect(response.status).toBe(401);
   });
 
   it("rejects invalid call IDs without opening a socket", async () => {
     process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
     const socketFactory = vi.fn(() => new FakeSidebandSocket());
 
     const response = await handleRealtimeControlRequest(
@@ -59,6 +81,7 @@ describe("POST /api/realtime/control", () => {
 
   it("returns a clear server error when OPENAI_API_KEY is missing", async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
     const socketFactory = vi.fn(() => new FakeSidebandSocket());
 
     const response = await handleRealtimeControlRequest(
@@ -74,6 +97,7 @@ describe("POST /api/realtime/control", () => {
 
   it("starts server controls without returning tools or API keys", async () => {
     process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
     const socket = new FakeSidebandSocket();
     const socketFactory = vi.fn(() => socket);
 

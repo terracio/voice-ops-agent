@@ -18,6 +18,7 @@ class FakeSidebandSocket implements RealtimeSidebandSocket {
 }
 
 const originalApiKey = process.env.OPENAI_API_KEY;
+const originalRouteToken = process.env.MEALPLAN_REALTIME_ROUTE_TOKEN;
 
 describe("POST /api/realtime/call", () => {
   afterEach(() => {
@@ -26,11 +27,34 @@ describe("POST /api/realtime/call", () => {
     } else {
       process.env.OPENAI_API_KEY = originalApiKey;
     }
+    if (originalRouteToken === undefined) {
+      delete process.env.MEALPLAN_REALTIME_ROUTE_TOKEN;
+    } else {
+      process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = originalRouteToken;
+    }
     vi.restoreAllMocks();
+  });
+
+  it("rejects requests with invalid route token", async () => {
+    process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
+
+    const response = await handleRealtimeCallRequest(
+      new Request("http://localhost/api/realtime/call", {
+        body: "v=0\r\ns=offer",
+        headers: { "x-mealplan-realtime-token": "wrong" },
+        method: "POST"
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("realtime_route_unauthorized");
   });
 
   it("creates a server-owned Realtime call and starts sideband control", async () => {
     process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
     const socket = new FakeSidebandSocket();
     const socketFactory = vi.fn(() => socket);
     const fetchImpl = vi.fn(async () => new Response("v=0\r\ns=answer", {
@@ -44,6 +68,7 @@ describe("POST /api/realtime/call", () => {
     const response = await handleRealtimeCallRequest(
       new Request("http://localhost/api/realtime/call", {
         body: "v=0\r\ns=offer",
+        headers: { "x-mealplan-realtime-token": "test-route-token" },
         method: "POST"
       }),
       { fetchImpl, socketFactory }
@@ -61,11 +86,13 @@ describe("POST /api/realtime/call", () => {
 
   it("fails before calling OpenAI when the API key is missing", async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.MEALPLAN_REALTIME_ROUTE_TOKEN = "test-route-token";
     const fetchImpl = vi.fn();
 
     const response = await handleRealtimeCallRequest(
       new Request("http://localhost/api/realtime/call", {
         body: "v=0\r\ns=offer",
+        headers: { "x-mealplan-realtime-token": "test-route-token" },
         method: "POST"
       }),
       { fetchImpl }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireRealtimeRouteToken } from "../routeAuth";
 import { exchangeBrowserRealtimeSdpOffer } from "../../../../realtime/server/browserSession";
 import {
   startRealtimeServerControl,
@@ -14,6 +15,11 @@ export async function handleRealtimeCallRequest(
   request: Request,
   options: RealtimeCallRouteOptions = {}
 ) {
+  const authFailure = requireRealtimeRouteToken(request);
+  if (authFailure) {
+    return authFailure;
+  }
+
   try {
     const offerSdp = await request.text();
     const exchange = await exchangeBrowserRealtimeSdpOffer({
