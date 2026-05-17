@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConfirmationIntentResultSchema } from "./confirmationIntent";
 
 export const DateStringSchema = z
   .string()
@@ -210,7 +211,8 @@ export const ConfirmationSchema = z.object({
   confirmation_type: z.enum([
     "explicit_yes",
     "explicit_correction_then_yes"
-  ])
+  ]),
+  confirmation_intent: ConfirmationIntentResultSchema.optional()
 }).superRefine((confirmation, ctx) => {
   if (
     Date.parse(confirmation.confirmed_at) <=

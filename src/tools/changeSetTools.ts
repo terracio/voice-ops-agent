@@ -8,10 +8,8 @@ import * as db from "../domain/db";
 import {
   confirmationChallengeForChangeSet,
   confirmationSourceForContext,
-  isExplicitConfirmation,
   nonActionableItems,
   ok,
-  requiresTranscriptConfirmation,
   requireConfirmationTurnAfterPreview,
   requireOwnedChangeSet,
   requireResolvedCustomer,
@@ -155,16 +153,6 @@ export const captureConfirmationTool = defineTool({
     if (!ownership.ok) return ownership;
 
     const transcript = context.last_user_message.trim();
-    if (
-      requiresTranscriptConfirmation(context) &&
-      !isExplicitConfirmation(transcript)
-    ) {
-      return failedToolResult({
-        code: "CONFIRMATION_NOT_EXPLICIT",
-        message: "Confirmation must come from an explicit current user turn."
-      });
-    }
-
     const turnIssue = requireConfirmationTurnAfterPreview(
       ownership.data,
       context

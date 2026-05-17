@@ -83,12 +83,61 @@ describe("Realtime server confirmation context", () => {
         change_set_id: "cs_realtime_confirm",
         confirmation_source: "realtime_user_turn",
         source_user_turn_id: "item_confirm_turn",
-        transcript_excerpt: "Confirm pause delivery."
+        transcript_excerpt: "Confirm pause delivery.",
+        confirmation_intent: {
+          intent: "confirm",
+          method: "exact_challenge",
+          matched_signals: ["exact_challenge"],
+          rejected_signals: []
+        }
       }
     });
   });
 
-  it("allows Realtime confirmation when diagnostic transcript mishears the challenge", async () => {
+  it("rejects Realtime confirmation when the user negates the change", async () => {
+    const socket = new FakeSidebandSocket();
+    let now = new Date("2026-05-11T10:00:00Z");
+    startRealtimeServerControl({
+      apiKey: "sk-server-secret",
+      callId: "rtc_denied_confirm_123456",
+      now: () => now,
+      socketFactory: () => socket
+    });
+
+    await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
+      customer_id: "CUS_001"
+    });
+    await confirmIdentity(socket, "denied");
+    await resolveMonday(socket, "denied");
+    await emitFunctionCall(socket, "create_change_set", "call_create", {
+      change_set_id: "cs_denied_confirm",
+      operations: [{
+        type: "pause_dates",
+        dates: ["2026-05-18"],
+        reason: "customer_requested"
+      }]
+    });
+    now = new Date("2026-05-11T10:01:00Z");
+    await emitFunctionCall(socket, "preview_change_set", "call_preview", {
+      change_set_id: "cs_denied_confirm"
+    });
+    now = new Date("2026-05-11T10:02:00Z");
+    socket.emit("message", JSON.stringify({
+      item_id: "item_denied_confirm",
+      transcript: "No, do not change it.",
+      type: "conversation.item.input_audio_transcription.completed"
+    }));
+    await emitFunctionCall(socket, "capture_confirmation", "call_confirm", {
+      change_set_id: "cs_denied_confirm"
+    });
+
+    expect(functionOutputs(socket).at(-1)).toMatchObject({
+      ok: false,
+      error: { code: "CONFIRMATION_NOT_EXPLICIT" }
+    });
+  });
+
+  it("rejects Realtime confirmation when diagnostic transcript mishears the challenge", async () => {
     const socket = new FakeSidebandSocket();
     let now = new Date("2026-05-11T10:00:00Z");
     startRealtimeServerControl({
@@ -126,12 +175,8 @@ describe("Realtime server confirmation context", () => {
     });
 
     expect(functionOutputs(socket).at(-1)).toMatchObject({
-      ok: true,
-      data: {
-        change_set_id: "cs_misheard_confirm",
-        source_user_turn_id: "item_misheard_confirm",
-        transcript_excerpt: "Confirm past delivery."
-      }
+      ok: false,
+      error: { code: "CONFIRMATION_NOT_EXPLICIT" }
     });
   });
 

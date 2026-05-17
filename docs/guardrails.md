@@ -70,6 +70,7 @@ Instead, `capture_confirmation` may create a confirmation record only after a pr
 `commit_change_set` consumes the server-created `confirmation_id`. It does not accept a model claim that the user approved the write.
 
 The confirmation record stores a transcript excerpt for evidence. That transcript text is diagnostic evidence, not general write authority.
+Before the server creates that record, it runs the same local deterministic confirmation-intent classifier for every source, including Realtime turns. Only `confirm` captures; deny, correction, uncertain, mixed-language, long, noisy, or ambiguous text fails closed. Successful records include the classifier evidence under `confirmation_intent`.
 
 ## Identity Boundary
 

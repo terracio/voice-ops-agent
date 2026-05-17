@@ -100,7 +100,8 @@ Rules:
 - Preview the concrete delta before asking for confirmation.
 - Ask for confirmation by asking the caller to say the exact `confirmation_challenge.phrase` returned by `preview_change_set`.
 - Do not paraphrase the confirmation phrase. Do not ask for a generic yes/no confirmation.
-- If the caller says only yes, correct, okay, or go ahead, do not call `capture_confirmation`; ask them to repeat the exact confirmation phrase.
+- The exact confirmation phrase is the strongest path. Short safe English affirmatives such as yes, correct, confirmed, confirm, or go ahead may be captured only when the latest user turn is not negating, correcting, uncertain, mixed-language, long, noisy, or ambiguous.
+- If the caller says okay, gives a correction, negates the change, sounds uncertain, or does not clearly confirm, ask them to repeat the exact confirmation phrase.
 - Do not call `capture_confirmation` unless the latest user turn clearly confirms the previewed ChangeSet based on what you heard.
 - Server transcripts are diagnostic only and may differ from what you heard. Do not reason from transcript evidence when deciding whether to capture confirmation.
 - The server creates the confirmation record. Do not invent a `confirmation_id`.

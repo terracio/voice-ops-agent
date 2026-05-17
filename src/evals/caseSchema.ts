@@ -200,7 +200,8 @@ export const EvalConfirmationRecordSchema = z
     confirmation_type: z.enum([
       "explicit_yes",
       "explicit_correction_then_yes"
-    ])
+    ]),
+    confirmation_intent: ConfirmationSchema.shape.confirmation_intent
   })
   .superRefine((confirmation, ctx) => {
     if (
