@@ -66,7 +66,12 @@ describe("identity confirmation security", () => {
     await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
       .resolves.toMatchObject({
         ok: true,
-        data: { customer_id: "cus_001", identity_status: "confirmed" }
+        data: {
+          customer_id: "cus_001",
+          identity_status: "confirmed",
+          response_guidance:
+            "Acknowledge naturally that verification is complete for Maya, then ask how you can help with the subscription update."
+        }
       });
 
     await expect(harness.invoke("get_customer_state", {}))

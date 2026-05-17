@@ -52,6 +52,7 @@ export const ConfirmCustomerIdentityOutputSchema = z.object({
   name: z.string().min(1),
   phone_last4: z.string().min(1),
   confirmed_from_turn_id: z.string().min(1),
+  response_guidance: z.string().min(1),
   policy_ids: z.array(PolicyIdSchema),
   write_blocked: z.literal(false)
 }).strict();

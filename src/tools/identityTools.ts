@@ -256,6 +256,8 @@ export const confirmCustomerIdentityTool = defineTool({
         name: candidate.name,
         phone_last4: candidate.phone_last4,
         confirmed_from_turn_id: context.current_user_turn_id,
+        response_guidance:
+          `Acknowledge naturally that verification is complete for ${candidate.name}, then ask how you can help with the subscription update.`,
         policy_ids: [],
         write_blocked: false
       }),
