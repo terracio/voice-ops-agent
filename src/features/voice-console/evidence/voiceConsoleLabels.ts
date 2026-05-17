@@ -4,10 +4,10 @@ export function toStatusLabel(
   status: VoiceConsoleState["sessionStatus"]
 ): string {
   if (status === "connected") {
-    return "Connected";
+    return "Agent ready";
   }
   if (status === "connecting") {
-    return "Connecting";
+    return "Calling MealPlan";
   }
   return "Disconnected";
 }

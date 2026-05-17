@@ -88,8 +88,8 @@ export function applyVoiceConsoleAction(
         id: `already-started-${at}`,
         at,
         tone: "info",
-        title: "Session already running",
-        detail: "Realtime controls are already attached",
+        title: "Call already active",
+        detail: "Realtime controls are already attached to this call",
         label: "INFO"
       });
     }
@@ -99,7 +99,7 @@ export function applyVoiceConsoleAction(
         ...state,
         sessionStatus: "connected",
         agentMode: "listening",
-        assistantAudioLabel: "Listening for caller audio",
+        assistantAudioLabel: "Agent ready for caller audio",
         microphonePermission: "granted",
         isMuted: false,
         inputLevel: 44,
@@ -111,7 +111,7 @@ export function applyVoiceConsoleAction(
         id: `session-started-${at}`,
         at,
         tone: "success",
-        title: "Session started",
+        title: "Call connected",
         detail: "Browser audio and server sideband are ready",
         label: "LIVE"
       }
@@ -124,7 +124,7 @@ export function applyVoiceConsoleAction(
         id: `already-stopped-${at}`,
         at,
         tone: "info",
-        title: "Session already stopped",
+        title: "Call already ended",
         detail: "No active realtime call is attached",
         label: "INFO"
       });
@@ -146,9 +146,9 @@ export function applyVoiceConsoleAction(
         id: `session-stopped-${at}`,
         at,
         tone: "pending",
-        title: "Session stopped",
-        detail: "Audio stopped; evidence remains available until reset",
-        label: "PENDING"
+        title: "Hang-up complete",
+        detail: "Audio stopped; transcript and evidence remain until reset",
+        label: "HANG UP"
       }
     );
   }
@@ -159,8 +159,8 @@ export function applyVoiceConsoleAction(
         id: `mute-unavailable-${at}`,
         at,
         tone: "info",
-        title: "Session not connected",
-        detail: "Start a session before changing microphone state",
+        title: "Call not connected",
+        detail: "Place a call before changing microphone state",
         label: "INFO"
       });
     }
@@ -229,8 +229,8 @@ function seedActivityEvents(at: string): ActivityEvent[] {
       id: "ready-to-start",
       at,
       tone: "ready",
-      title: "Ready to start",
-      detail: "System initialized and ready for session",
+      title: "Ready to call",
+      detail: "System initialized and ready for a phone-style call",
       label: "READY"
     },
     {
@@ -238,7 +238,7 @@ function seedActivityEvents(at: string): ActivityEvent[] {
       at,
       tone: "pending",
       title: "Microphone not requested",
-      detail: "Start the session to request microphone access",
+      detail: "Click Call to request microphone access",
       label: "PENDING"
     },
     {
@@ -246,7 +246,7 @@ function seedActivityEvents(at: string): ActivityEvent[] {
       at,
       tone: "pending",
       title: "Server sideband not attached",
-      detail: "Control handoff pending after session start",
+      detail: "Control handoff pending until the call connects",
       label: "PENDING"
     },
     {
@@ -261,8 +261,8 @@ function seedActivityEvents(at: string): ActivityEvent[] {
       id: "session-not-started",
       at,
       tone: "info",
-      title: "Session not started",
-      detail: "Click Start to begin a realtime session",
+      title: "Call not started",
+      detail: "Click Call to ring MealPlan",
       label: "INFO"
     }
   ];

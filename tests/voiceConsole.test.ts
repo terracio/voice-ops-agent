@@ -10,6 +10,7 @@ import {
 import {
   markRealtimeCallId,
   markRealtimeError,
+  markRealtimeGreetingRequested,
   markRealtimeState,
   markRealtimeStartRequested
 } from "../src/features/voice-console/state/voiceConsoleRealtimeState";
@@ -31,6 +32,10 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Disconnected");
     expect(html).toContain("Agent");
     expect(html).toContain("Caller");
+    expect(html).toContain("Call");
+    expect(html).toContain("Hang up");
+    expect(html).not.toContain("Start session");
+    expect(html).not.toContain("Stop session");
     expect(html).toContain("Live activity");
     expect(html).toContain("Estimated cost");
     expect(html).toContain("Transcript evidence");
@@ -179,7 +184,7 @@ describe("voice console UI shell", () => {
 
     expect(unavailableMute.isMuted).toBe(true);
     expect(unavailableMute.inputLevel).toBe(12);
-    expect(unavailableMute.events[0]?.title).toBe("Session not connected");
+    expect(unavailableMute.events[0]?.title).toBe("Call not connected");
 
     const started = applyVoiceConsoleAction(initial, {
       type: "start",
@@ -192,7 +197,7 @@ describe("voice console UI shell", () => {
     expect(started.controlHandoff).toBe("attached");
     expect(started.serverCallSetup).toBe("created");
     expect(started.callId).toMatch(/^local-call-/);
-    expect(started.events[0]?.title).toBe("Session started");
+    expect(started.events[0]?.title).toBe("Call connected");
 
     const muted = applyVoiceConsoleAction(started, {
       type: "toggleMute",
@@ -212,10 +217,17 @@ describe("voice console UI shell", () => {
     expect(stopped.agentMode).toBe("idle");
     expect(stopped.callId).toBe(started.callId);
     expect(stopped.controlHandoff).toBe("pending");
-    expect(stopped.events[0]?.title).toBe("Session stopped");
+    expect(stopped.events[0]?.title).toBe("Hang-up complete");
     expect(stopped.events[0]?.detail).toBe(
-      "Audio stopped; evidence remains available until reset"
+      "Audio stopped; transcript and evidence remain until reset"
     );
+
+    const reset = applyVoiceConsoleAction(stopped, {
+      type: "reset",
+      at: "10:53:00"
+    });
+    expect(reset.callId).toBeNull();
+    expect(reset.events[0]?.title).toBe("Console reset");
   });
 
   it("keeps browser code out of server-only domain and tool modules", () => {
@@ -231,7 +243,8 @@ describe("voice console UI shell", () => {
       "src/features/voice-console/hooks/useRealtimeEvidence.ts",
       "src/features/voice-console/hooks/useVoiceConsoleRealtime.ts",
       "src/features/voice-console/state/voiceConsoleController.ts",
-      "src/features/voice-console/state/voiceConsoleRealtimeState.ts"
+      "src/features/voice-console/state/voiceConsoleRealtimeState.ts",
+      "src/realtime/browser/ringback.ts"
     ];
 
     for (const file of browserFiles) {
@@ -256,14 +269,22 @@ describe("voice console UI shell", () => {
     });
 
     expect(starting.sessionStatus).toBe("connecting");
+    expect(starting.assistantAudioLabel).toBe("Ringing MealPlan");
+    expect(starting.events[0]?.title).toBe("Call requested");
     expect(starting.controlHandoff).toBe("pending");
     expect(callCreated.callId).toBe("rtc_test_123");
     expect(callCreated.serverCallSetup).toBe("created");
+    const greetingRequested = markRealtimeGreetingRequested(
+      callCreated,
+      "10:52:01"
+    );
+    expect(greetingRequested.events[0]?.title).toBe("Initial greeting requested");
     expect(listening.sessionStatus).toBe("connected");
     expect(listening.agentMode).toBe("listening");
     expect(listening.microphonePermission).toBe("granted");
     expect(listening.controlHandoff).toBe("attached");
-    expect(listening.events[0]?.title).toBe("Session listening");
+    expect(listening.assistantAudioLabel).toBe("Agent ready for caller audio");
+    expect(listening.events[0]?.title).toBe("Call connected");
 
     const toolRunning = markRealtimeState(listening, {
       at: "10:52:03",
@@ -282,7 +303,7 @@ describe("voice console UI shell", () => {
 
     expect(ended.sessionStatus).toBe("disconnected");
     expect(ended.callId).toBe("rtc_test_123");
-    expect(ended.events[0]?.title).toBe("Session ended");
+    expect(ended.events[0]?.title).toBe("Call ended");
   });
 
   it("deduplicates same-second realtime error events for stable React keys", () => {
@@ -316,7 +337,7 @@ describe("voice console UI shell", () => {
     expect(detailedError.microphonePermission).toBe("denied");
     expect(detailedError.events[0]).toMatchObject({
       detail:
-        "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Start again.",
+        "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Call again.",
       title: "Realtime session failed"
     });
     expect(

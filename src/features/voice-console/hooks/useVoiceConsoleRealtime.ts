@@ -13,6 +13,11 @@ import {
   type RealtimeWebrtcControllerEvent
 } from "../../../realtime/browser/webrtcController";
 import {
+  createBrowserRingbackTone,
+  type RingbackTone,
+  type RingbackToneFactory
+} from "../../../realtime/browser/ringback";
+import {
   applyVoiceConsoleAction,
   createInitialVoiceConsoleState,
   type VoiceConsoleAction,
@@ -21,6 +26,7 @@ import {
 import {
   markRealtimeCallId,
   markRealtimeError,
+  markRealtimeGreetingRequested,
   markRealtimeMuted,
   markRealtimeRemoteAudio,
   markRealtimeStartRequested,
@@ -33,30 +39,44 @@ type RealtimeControllerFactory = (options: {
 
 type UseVoiceConsoleRealtimeOptions = {
   controller?: VoiceConsoleController;
+  ringbackFactory?: RingbackToneFactory;
   realtimeFactory?: RealtimeControllerFactory;
   remoteAudioRef: RefObject<HTMLAudioElement | null>;
 };
 
 export function useVoiceConsoleRealtime({
   controller,
+  ringbackFactory = createBrowserRingbackTone,
   realtimeFactory = createRealtimeWebrtcController,
   remoteAudioRef
 }: UseVoiceConsoleRealtimeOptions) {
   const [state, setState] = useState(() =>
     controller?.getInitialState() ?? createInitialVoiceConsoleState()
   );
+  const ringbackRef = useRef<RingbackTone | null>(null);
   const realtimeRef = useRef<RealtimeWebrtcController | null>(null);
 
   useEffect(() => {
     return () => {
+      ringbackRef.current?.stop();
       realtimeRef.current?.stop();
     };
+  }, []);
+
+  const getRingbackTone = useCallback(() => {
+    if (!ringbackRef.current) ringbackRef.current = ringbackFactory();
+    return ringbackRef.current;
+  }, [ringbackFactory]);
+
+  const stopRingback = useCallback(() => {
+    ringbackRef.current?.stop();
   }, []);
 
   const handleRealtimeEvent = useCallback(
     (event: RealtimeWebrtcControllerEvent) => {
       const at = currentClockTime();
       if (event.type === "state") {
+        if (stopsRingback(event.state)) stopRingback();
         setState((current) =>
           markRealtimeState(current, {
             at,
@@ -66,6 +86,8 @@ export function useVoiceConsoleRealtime({
         );
       } else if (event.type === "call-id") {
         setState((current) => markRealtimeCallId(current, event.callId, at));
+      } else if (event.type === "greeting-requested") {
+        setState((current) => markRealtimeGreetingRequested(current, at));
       } else if (event.type === "muted") {
         setState((current) => markRealtimeMuted(current, event.muted, at));
       } else if (event.type === "remote-stream") {
@@ -74,7 +96,7 @@ export function useVoiceConsoleRealtime({
         setState((current) => markRealtimeError(current, event.error.message, at));
       }
     },
-    []
+    [stopRingback]
   );
 
   const getRealtimeController = useCallback(() => {
@@ -101,9 +123,11 @@ export function useVoiceConsoleRealtime({
         setState((current) => markRealtimeStartRequested(current, at));
         const runtime = getRealtimeController();
         if (!isStartable(runtime.state)) return;
+        getRingbackTone().start();
         try {
           await runtime.start();
         } catch (error) {
+          stopRingback();
           const message =
             error instanceof Error ? error.message : "Unable to start session.";
           if (
@@ -117,6 +141,7 @@ export function useVoiceConsoleRealtime({
       }
 
       if (action.type === "stop") {
+        stopRingback();
         realtimeRef.current?.stop();
         setState((current) =>
           applyVoiceConsoleAction(current, { ...action, at })
@@ -130,6 +155,7 @@ export function useVoiceConsoleRealtime({
       }
 
       if (action.type === "reset") {
+        stopRingback();
         realtimeRef.current?.reset();
         setState((current) =>
           applyVoiceConsoleAction(current, { ...action, at })
@@ -139,7 +165,7 @@ export function useVoiceConsoleRealtime({
 
       setState((current) => applyVoiceConsoleAction(current, { ...action, at }));
     },
-    [controller, getRealtimeController]
+    [controller, getRealtimeController, getRingbackTone, stopRingback]
   );
 
   return { onAction, state };
@@ -147,6 +173,15 @@ export function useVoiceConsoleRealtime({
 
 function isStartable(state: RealtimeWebrtcController["state"]): boolean {
   return state === "idle" || state === "ended" || state === "error";
+}
+
+function stopsRingback(state: RealtimeWebrtcController["state"]): boolean {
+  return (
+    state === "listening" ||
+    state === "speaking" ||
+    state === "ended" ||
+    state === "error"
+  );
 }
 
 function currentClockTime(): string {

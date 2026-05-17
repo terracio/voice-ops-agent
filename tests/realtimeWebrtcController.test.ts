@@ -56,6 +56,66 @@ describe("Realtime WebRTC browser controller", () => {
     });
   });
 
+  it("requests exactly one initial audio greeting after the data channel opens", async () => {
+    const { controller, pc } = createHarness();
+    const greetingEvents: string[] = [];
+    controller.subscribe((event) => {
+      if (event.type === "greeting-requested") greetingEvents.push(event.type);
+    });
+
+    await controller.start();
+    pc.dataChannel.onmessage?.({
+      data: JSON.stringify({ type: "response.done" })
+    } as MessageEvent<string>);
+
+    const sent = pc.dataChannel.sentMessages.map((message) =>
+      JSON.parse(message) as {
+        response?: {
+          instructions?: string;
+          output_modalities?: string[];
+          tool_choice?: string;
+          tools?: unknown[];
+        };
+        type?: string;
+      }
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({
+      response: {
+        instructions:
+          "Greet the caller as MealPlan, then ask how you can help today.",
+        output_modalities: ["audio"],
+        tool_choice: "none",
+        tools: []
+      },
+      type: "response.create"
+    });
+    expect(greetingEvents).toEqual(["greeting-requested"]);
+  });
+
+  it("keeps startup connected when the optional initial greeting send fails", async () => {
+    const { controller, localTrack, pc } = createHarness({
+      dataChannelSendError: new Error("greeting send failed")
+    });
+    const greetingEvents: string[] = [];
+    const states: string[] = [];
+    controller.subscribe((event) => {
+      if (event.type === "greeting-requested") greetingEvents.push(event.type);
+      if (event.type === "state") states.push(event.state);
+    });
+
+    await controller.start();
+
+    expect(states).toEqual(["connecting", "listening"]);
+    expect(controller.state).toBe("listening");
+    expect(controller.callId).toBe("rtc_test_123");
+    expect(greetingEvents).toEqual([]);
+    expect(pc.dataChannel.sentMessages).toEqual([]);
+    expect(localTrack.stopped).toBe(false);
+    expect(pc.closed).toBe(false);
+    expect(pc.dataChannel.closed).toBe(false);
+  });
+
   it("cleans up when the server SDP response misses a call id", async () => {
     const { controller, fetchImpl, localTrack, pc } = createHarness({
       location: "/v1/realtime/calls/nope"
@@ -136,8 +196,25 @@ describe("Realtime WebRTC browser controller", () => {
 
     await expect(startPromise).rejects.toThrow("start was cancelled");
     expect(controller.state).toBe("ended");
+    expect(pc.dataChannel.sentMessages).toEqual([]);
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
+  });
+
+  it("does not request a greeting when the data channel fails before opening", async () => {
+    const { controller, fetchImpl, pc } = createHarness({
+      dataChannelReadyState: "connecting"
+    });
+
+    const startPromise = controller.start();
+    for (let step = 0; step < 5 && fetchImpl.mock.calls.length === 0; step += 1) {
+      await Promise.resolve();
+    }
+    pc.dataChannel.onerror?.({} as Event);
+
+    await expect(startPromise).rejects.toThrow("before opening");
+    expect(controller.state).toBe("error");
+    expect(pc.dataChannel.sentMessages).toEqual([]);
   });
 
   it("mutes local audio tracks without closing the active session", async () => {

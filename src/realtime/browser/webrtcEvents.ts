@@ -18,6 +18,7 @@ export type RealtimeWebrtcControllerEvent =
       type: "state";
     }
   | { callId: string; type: "call-id" }
+  | { type: "greeting-requested" }
   | { message: unknown; type: "message" }
   | { error: Error; type: "error" }
   | { muted: boolean; type: "muted" }

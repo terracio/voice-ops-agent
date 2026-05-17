@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 export type IconName =
   | "brand"
   | "headset"
+  | "phone"
+  | "phone-off"
   | "play"
   | "stop"
   | "mic"
@@ -78,6 +80,18 @@ function iconPath(name: IconName): ReactNode {
         <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
         <path d="M4 13v4a2 2 0 0 0 2 2h2v-8H6a2 2 0 0 0-2 2z" />
         <path d="M20 13v4a2 2 0 0 1-2 2h-2v-8h2a2 2 0 0 1 2 2z" />
+      </>
+    ),
+    phone: (
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.34 1.9.63 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.2a2 2 0 0 1 2.11-.45c.91.29 1.85.5 2.81.63A2 2 0 0 1 22 16.92z" />
+    ),
+    "phone-off": (
+      <>
+        <path d="m2 2 20 20" />
+        <path d="M14.5 17.5a16 16 0 0 1-8-8" />
+        <path d="M6.5 2.3h.6a2 2 0 0 1 2 1.72c.1.74.25 1.47.45 2.18" />
+        <path d="M19.9 21.9a19.86 19.86 0 0 1-8.71-3.05 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2" />
+        <path d="M16.2 14.26c.42-.1.86-.1 1.27 0 .91.29 1.85.5 2.81.63A2 2 0 0 1 22 16.92v3a2 2 0 0 1-.56 1.39" />
       </>
     ),
     play: <path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />,

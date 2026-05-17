@@ -33,7 +33,7 @@ Use Chrome or another browser with microphone permission support. Use headphones
 
 ## What To Show First
 
-Before starting a call, orient the reviewer:
+Before placing a call, orient the reviewer:
 
 - The left side is the voice console.
 - The browser captures caller audio and plays assistant audio over WebRTC.
@@ -42,14 +42,25 @@ Before starting a call, orient the reviewer:
 - The browser never receives the OpenAI API key or operational tools.
 - The evidence panels show transcript evidence, tool calls, sideband state, and audit-facing events.
 
-After pressing **Start**, point out:
+After pressing **Call**, point out:
 
+- the local browser ringback while the call is connecting,
 - microphone permission state,
 - call id,
 - control handoff status,
+- the agent's initial greeting once the Realtime data channel is ready,
 - live transcript panels,
 - tool timeline,
 - customer context panel.
+
+The ringback is local browser UI audio only. It is not model audio and should not
+appear as transcript or evidence. The initial agent greeting is requested by the
+application with a single Realtime `response.create` event after the data channel
+opens; the app does not create a synthetic caller message.
+
+Press **Hang up** to end browser audio and the Realtime connection. The call id,
+transcript, tool timeline, evidence, and cost telemetry remain visible for review
+until **Reset** clears the console history.
 
 The browser demo starts from the `browser_demo` seed. That seed includes all
 demo customer archetypes so reviewers can try different account paths in the
