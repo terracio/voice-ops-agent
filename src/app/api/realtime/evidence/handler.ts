@@ -20,6 +20,23 @@ export async function handleRealtimeEvidenceRequest(request: Request) {
     );
   }
 
+  const cookieCallId = realtimeCallIdFromCookie(request.headers.get("cookie"));
+  if (!cookieCallId) {
+    return evidenceError(
+      "missing_realtime_session",
+      "Realtime evidence requires an active browser session.",
+      401
+    );
+  }
+
+  if (cookieCallId !== parsedCallId.data) {
+    return evidenceError(
+      "forbidden_realtime_evidence_access",
+      "Realtime evidence can only be read for the active call.",
+      403
+    );
+  }
+
   const snapshot = getRealtimeEvidenceSnapshot(parsedCallId.data);
   if (!snapshot) {
     return evidenceError(
@@ -30,6 +47,22 @@ export async function handleRealtimeEvidenceRequest(request: Request) {
   }
 
   return NextResponse.json(snapshot, { headers: NO_STORE_HEADERS });
+}
+
+function realtimeCallIdFromCookie(cookieHeader: string | null): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const fragment of cookieHeader.split(";")) {
+    const [rawName, ...rawValue] = fragment.trim().split("=");
+    if (rawName !== "realtime_call_id") continue;
+    const value = rawValue.join("=");
+    if (!value) return undefined;
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 export async function handleRealtimeEvidenceMutationRequest() {

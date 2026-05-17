@@ -32,6 +32,7 @@ export async function handleRealtimeCallRequest(
         "Cache-Control": "no-store",
         "Content-Type": "application/sdp",
         "Location": exchange.location,
+        "Set-Cookie": `realtime_call_id=${encodeURIComponent(exchange.call_id)}; Path=/; HttpOnly; SameSite=Strict; Secure`,
         "X-Realtime-Call-Id": exchange.call_id
       }
     });
