@@ -113,7 +113,7 @@ export function writeRealtimeReports(options: {
   const transcriptLines = readableTranscriptFragments(
     options.result.transcript_fragments
   )
-    .map((fragment, index) => `${index + 1}. ${fragment.role}: ${fragment.text}`)
+    .map((fragment, index) => `${index + 1}. ${fragment.role}: [redacted]`)
     .join("\n");
   const audioArtifactLines = audioArtifacts
     ? renderAudioArtifactLines(audioArtifacts)
@@ -121,6 +121,8 @@ export function writeRealtimeReports(options: {
   const oobLines = renderOutOfBandTranscription(
     options.result.out_of_band_transcription
   );
+
+  const redactedResult = redactResultForReport(options.result);
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
   writeFileSync(
@@ -139,7 +141,7 @@ export function writeRealtimeReports(options: {
         scoring: options.scoring,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
-        ...options.result
+        ...redactedResult
       },
       null,
       2
@@ -213,6 +215,44 @@ export function writeRealtimeReports(options: {
     json_path: jsonPath,
     markdown_path: markdownPath,
     trace_path: tracePath
+  };
+}
+
+function redactResultForReport(result: RealtimeRunnerResult): RealtimeRunnerResult {
+  return {
+    ...result,
+    audit_events: result.audit_events.map((event) => ({
+      ...event,
+      customer_id: event.customer_id ? "[redacted]" : event.customer_id
+    })),
+    final_state: {
+      ...result.final_state,
+      customer_states: result.final_state.customer_states.map((state) => ({
+        ...state,
+        customer: {
+          ...state.customer,
+          allergies: [],
+          customizations: {
+            ...state.customer.customizations,
+            dislikes: [],
+            protein_preferences: []
+          },
+          name: "[redacted]",
+          payment_last_checked_at: undefined,
+          phone: "[redacted]"
+        },
+        service_dates: []
+      }))
+    },
+    tool_calls: result.tool_calls.map((toolCall) => ({
+      ...toolCall,
+      input: "[redacted]",
+      output: "[redacted]"
+    })),
+    transcript_fragments: result.transcript_fragments.map((fragment) => ({
+      ...fragment,
+      text: "[redacted]"
+    }))
   };
 }
 
