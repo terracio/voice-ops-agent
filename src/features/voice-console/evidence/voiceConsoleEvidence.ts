@@ -30,7 +30,30 @@ export type EvidenceRealtimeItem = {
   severity: "error" | "info" | "warning";
 };
 
+export type EvidenceCostLineItem = {
+  amountLabel: string;
+  amountUsd?: number;
+  category: "input_transcription" | "speech_to_speech";
+  id: string;
+  label: string;
+  quantityLabel: string;
+};
+
+export type EvidenceCostTelemetry = {
+  estimateStatus: "available" | "partial" | "unavailable";
+  flags: string[];
+  lineItems: EvidenceCostLineItem[];
+  model: string;
+  pricingLastVerifiedAt: string;
+  sourceEventCount: number;
+  totalLabel?: string;
+  totalUsd?: number;
+  transcriptionModel: string;
+  unavailableReasons: string[];
+};
+
 export type VoiceConsoleEvidenceState = {
+  cost?: EvidenceCostTelemetry;
   errorMessage?: string;
   events: EvidenceRealtimeItem[];
   lastUpdated?: string;
@@ -59,6 +82,7 @@ export function toVoiceConsoleEvidenceState(
 ): VoiceConsoleEvidenceState {
   const record = isRecord(payload) ? payload : {};
   return {
+    cost: toCostTelemetry(record.cost_telemetry),
     events: arrayValue(record.realtime_events).map(toRealtimeItem),
     lastUpdated: displayTime(record.generated_at),
     status: "ready",
@@ -114,6 +138,37 @@ function toRealtimeItem(value: unknown, index: number): EvidenceRealtimeItem {
   };
 }
 
+function toCostTelemetry(value: unknown): EvidenceCostTelemetry | undefined {
+  const item = isRecord(value) ? value : undefined;
+  if (!item) return undefined;
+  const totalUsd = numberValue(item.total_usd);
+  return {
+    estimateStatus: costStatus(item.estimate_status),
+    flags: arrayValue(item.flags).flatMap(stringArrayItem),
+    lineItems: arrayValue(item.line_items).map(toCostLineItem),
+    model: stringValue(item.model) ?? "unknown",
+    pricingLastVerifiedAt: stringValue(item.pricing_last_verified_at) ?? "unknown",
+    sourceEventCount: numberValue(item.source_event_count) ?? 0,
+    totalLabel: totalUsd === undefined ? undefined : formatUsd(totalUsd),
+    totalUsd,
+    transcriptionModel: stringValue(item.transcription_model) ?? "unknown",
+    unavailableReasons: arrayValue(item.unavailable_reasons).flatMap(stringArrayItem)
+  };
+}
+
+function toCostLineItem(value: unknown, index: number): EvidenceCostLineItem {
+  const item = isRecord(value) ? value : {};
+  const amountUsd = numberValue(item.amount_usd);
+  return {
+    amountLabel: amountUsd === undefined ? "unavailable" : formatUsd(amountUsd),
+    amountUsd,
+    category: costCategory(item.category),
+    id: stringValue(item.code) ?? `cost-${index}`,
+    label: stringValue(item.label) ?? "Usage",
+    quantityLabel: quantityLabel(item.quantity, item.unit)
+  };
+}
+
 function displayTime(value: unknown): string {
   const raw = stringValue(value);
   if (!raw) return "--:--:--";
@@ -149,8 +204,21 @@ function severityValue(value: unknown): EvidenceRealtimeItem["severity"] {
   return value === "warning" || value === "error" ? value : "info";
 }
 
+function costStatus(value: unknown): EvidenceCostTelemetry["estimateStatus"] {
+  return value === "available" || value === "partial" ? value : "unavailable";
+}
+
+function costCategory(value: unknown): EvidenceCostLineItem["category"] {
+  return value === "input_transcription" ? value : "speech_to_speech";
+}
+
 function arrayValue(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function stringArrayItem(value: unknown): string[] {
+  const item = stringValue(value);
+  return item ? [item] : [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -159,4 +227,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+function formatUsd(value: number): string {
+  const digits = value > 0 && value < 0.01 ? 4 : 2;
+  return `$${value.toFixed(digits)}`;
+}
+
+function quantityLabel(quantity: unknown, unit: unknown): string {
+  const value = numberValue(quantity);
+  const unitText = stringValue(unit) ?? "units";
+  if (value === undefined) return unitText;
+  if (unitText === "minutes") return `${value.toFixed(3)} min`;
+  return `${Math.round(value).toLocaleString("en-US")} tokens`;
 }

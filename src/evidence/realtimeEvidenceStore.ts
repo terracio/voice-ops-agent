@@ -1,26 +1,9 @@
 import { ChangeSetPreviewSchema } from "../domain/changeSetPreview";
 import { getAuditEventsByRunId, getChangeSet, getConfirmation } from "../domain/db";
 import type { ChangeSet, PolicyResult, ToolResult, ToolRisk } from "../domain/schema";
+import { appendRealtimeCostUsageEvent, createInitialRealtimeCostTelemetry } from "../realtime/config/costTelemetry";
 import { REALTIME_EVIDENCE_SCHEMA_VERSION, RealtimeEvidenceSnapshotSchema, type RealtimeEvidenceSnapshot, type ToolEvidenceItem } from "./realtimeEvidence";
-import {
-  applyToolResult,
-  asRecord,
-  auditEvidence,
-  changeSetEvidence,
-  confirmationEvidence,
-  diffEvidenceItems,
-  failedPolicyResult,
-  parseResultChangeSet,
-  parseResultConfirmation,
-  policyEvidence,
-  policyResultsFromAudit,
-  realtimeEventEvidence,
-  stageForTool,
-  startedToolEvidence,
-  stringValue,
-  timestamp,
-  transcriptEvidence
-} from "./realtimeEvidenceBuilders";
+import { applyToolResult, asRecord, auditEvidence, changeSetEvidence, confirmationEvidence, diffEvidenceItems, failedPolicyResult, parseResultChangeSet, parseResultConfirmation, policyEvidence, policyResultsFromAudit, realtimeEventEvidence, stageForTool, startedToolEvidence, stringValue, timestamp, transcriptEvidence } from "./realtimeEvidenceBuilders";
 import { realtimeEventLabel } from "./realtimeEventLabels";
 
 type EvidenceState = {
@@ -68,6 +51,7 @@ export function beginRealtimeEvidenceRun(options: {
     snapshot: RealtimeEvidenceSnapshotSchema.parse({
       schema_version: REALTIME_EVIDENCE_SCHEMA_VERSION,
       call_id: options.callId,
+      cost_telemetry: createInitialRealtimeCostTelemetry(),
       run_id: options.runId,
       status: "active",
       generated_at: generatedAt
@@ -151,6 +135,16 @@ export function recordRealtimeTransportEvidence(options: {
     turnId: stringValue(event.item_id) ?? stringValue(event.response_id) ?? nextId(state, "turn")
   });
   if (transcript) state.snapshot.transcript.push(transcript);
+  const costTelemetry = state.snapshot.cost_telemetry ??
+    createInitialRealtimeCostTelemetry();
+  const updatedCostTelemetry = appendRealtimeCostUsageEvent({
+    createdAt: timestamp(options.now),
+    event,
+    telemetry: costTelemetry
+  });
+  if (updatedCostTelemetry !== costTelemetry) {
+    state.snapshot.cost_telemetry = updatedCostTelemetry;
+  }
 }
 
 export function recordRealtimeToolStart(options: ToolRecordOptions): void {
