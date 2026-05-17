@@ -172,6 +172,7 @@ export function evaluateChangeSetPolicies(
     now: input.now,
     customer: state.customer,
     proposedCustomer: input.proposed_customer,
+    serviceDates: state.service_dates,
     changeSet,
     confirmation: input.confirmation,
     identity: {

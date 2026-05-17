@@ -168,7 +168,10 @@ function affectedKitchenDates(operations: MealOperation[], state: CustomerState)
   operations.forEach(({ operation }) => {
     if (operation.type !== "pause_dates" && operation.type !== "resume_dates") return;
     operation.dates.forEach((date) => {
-      if (serviceDates.has(date)) affectedDates.add(date);
+      const serviceDate = serviceDates.get(date);
+      if (serviceDate && !serviceDate.kitchen_locked && serviceDate.status !== "locked") {
+        affectedDates.add(date);
+      }
     });
   });
 

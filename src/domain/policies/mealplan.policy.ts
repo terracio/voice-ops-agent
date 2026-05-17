@@ -7,7 +7,8 @@ import {
   type Confirmation,
   type Customer,
   type PolicyIdValue,
-  type PolicyResult
+  type PolicyResult,
+  type ServiceDate
 } from "../schema";
 
 export type UnsafeStructuredOperation = {
@@ -33,6 +34,7 @@ export type MealPlanPolicyInput = {
   now: string;
   customer?: Customer;
   proposedCustomer?: Customer;
+  serviceDates?: ServiceDate[];
   changeSet?: PolicyChangeSet;
   confirmation?: Confirmation;
   identity?: {
@@ -72,7 +74,8 @@ const policyChecks: Record<PolicyIdValue, PolicyCheck> = {
   [PolicyId.MEDICAL_RISK_ESCALATION_REQUIRED]: medicalRiskPolicy,
   [PolicyId.PAYMENT_SETTLEMENT_FORBIDDEN]: paymentSettlementPolicy,
   [PolicyId.KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN]: kitchenDeltaPolicy,
-  [PolicyId.CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA]: customizationDeltaPolicy
+  [PolicyId.CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA]: customizationDeltaPolicy,
+  [PolicyId.LOCKED_SERVICE_DATE_FORBIDDEN]: lockedServiceDatePolicy
 };
 
 export function evaluateMealPlanPolicies(
@@ -96,9 +99,7 @@ export function evaluateMealPlanPolicies(
 
 export function getPolicyResult(evaluation: MealPlanPolicyEvaluation, policyId: PolicyIdValue) {
   const result = evaluation.results.find((candidate) => candidate.policy_id === policyId);
-  if (!result) {
-    throw new Error(`Missing policy result for ${policyId}.`);
-  }
+  if (!result) throw new Error(`Missing policy result for ${policyId}.`);
   return result;
 }
 
@@ -135,11 +136,7 @@ function missingPreviewPolicy(input: MealPlanPolicyInput) {
     return pass("Preview is only required before commit.");
   }
 
-  if (
-    !input.changeSet?.previewed_at ||
-    input.preview?.shown === false ||
-    input.changeSet.status === "draft"
-  ) {
+  if (!input.changeSet?.previewed_at || input.preview?.shown === false || input.changeSet.status === "draft") {
     return fail("block", "Commit requires a previewed ChangeSet.");
   }
 
@@ -239,11 +236,20 @@ function kitchenDeltaPolicy(input: MealPlanPolicyInput) {
   return pass("No kitchen delta is being created before commit.");
 }
 
+function lockedServiceDatePolicy(input: MealPlanPolicyInput) {
+  if (!isMutatingStage(input)) {
+    return pass("Locked service date policy does not apply to read-only work.");
+  }
+
+  if (lockedServiceDates(input).length > 0) {
+    return fail("escalate", "Locked kitchen service dates require human review.");
+  }
+
+  return pass("No locked kitchen service date is being changed.");
+}
+
 function customizationDeltaPolicy(input: MealPlanPolicyInput) {
-  const customizationOps: {
-    operation: PolicyOperation & { field: string };
-    index: number;
-  }[] = [];
+  const customizationOps: { operation: PolicyOperation & { field: string }; index: number }[] = [];
   operations(input).forEach((operation, index) => {
     if (isCustomizationUpdate(operation) && operation.field !== "allergies") {
       customizationOps.push({ operation, index });
@@ -278,18 +284,10 @@ function makeResult(
   return PolicyResultSchema.parse({ policy_id, ...result });
 }
 
-function pass(message: string): Omit<PolicyResult, "policy_id"> {
-  return { severity: "info", passed: true, message };
-}
-function fail(severity: "block" | "escalate", message: string): Omit<PolicyResult, "policy_id"> {
-  return { severity, passed: false, message };
-}
-function operations(input: MealPlanPolicyInput): PolicyOperation[] {
-  return input.changeSet?.operations ?? [];
-}
-function isMutatingStage(input: MealPlanPolicyInput): boolean {
-  return input.stage === "commit" || input.stage === "side_effect";
-}
+function pass(message: string): Omit<PolicyResult, "policy_id"> { return { severity: "info", passed: true, message }; }
+function fail(severity: "block" | "escalate", message: string): Omit<PolicyResult, "policy_id"> { return { severity, passed: false, message }; }
+function operations(input: MealPlanPolicyInput): PolicyOperation[] { return input.changeSet?.operations ?? []; }
+function isMutatingStage(input: MealPlanPolicyInput): boolean { return input.stage === "commit" || input.stage === "side_effect"; }
 
 function isCustomizationUpdate(
   operation: PolicyOperation
@@ -307,11 +305,7 @@ function isAllergyMutation(operation: PolicyOperation): boolean {
 }
 
 function isPaymentSettlement(operation: PolicyOperation): boolean {
-  if (
-    operation.type === "mark_payment_paid" ||
-    operation.type === "charge_card" ||
-    operation.type === "settle_payment"
-  ) {
+  if (operation.type === "mark_payment_paid" || operation.type === "charge_card" || operation.type === "settle_payment") {
     return true;
   }
 
@@ -319,10 +313,24 @@ function isPaymentSettlement(operation: PolicyOperation): boolean {
 }
 
 function isKitchenDeltaOperation(operation: PolicyOperation): boolean {
-  return (
-    operation.type === "create_kitchen_export_delta" ||
-    operation.type === "materialize_kitchen_delta"
+  return operation.type === "create_kitchen_export_delta" || operation.type === "materialize_kitchen_delta";
+}
+
+function lockedServiceDates(input: MealPlanPolicyInput): ServiceDate[] {
+  const serviceDatesByDate = new Map(
+    (input.serviceDates ?? []).map((serviceDate) => [serviceDate.service_date, serviceDate])
   );
+
+  return operations(input).flatMap((operation) => {
+    if (operation.type !== "pause_dates" && operation.type !== "resume_dates") return [];
+    const rawDates = hasKey(operation, "dates") ? (operation as { dates: unknown }).dates : [];
+    const dates = Array.isArray(rawDates) ? rawDates.filter((date): date is string => typeof date === "string") : [];
+
+    return dates
+      .map((date) => serviceDatesByDate.get(date))
+      .filter((serviceDate): serviceDate is ServiceDate =>
+        Boolean(serviceDate?.kitchen_locked || serviceDate?.status === "locked"));
+  });
 }
 
 function allergiesChanged(input: MealPlanPolicyInput): boolean {
@@ -331,17 +339,10 @@ function allergiesChanged(input: MealPlanPolicyInput): boolean {
 }
 
 function paymentStatusChanged(input: MealPlanPolicyInput): boolean {
-  return Boolean(
-    input.customer &&
-      input.proposedCustomer &&
-      input.customer.payment_status !== input.proposedCustomer.payment_status
-  );
+  return Boolean(input.customer && input.proposedCustomer &&
+    input.customer.payment_status !== input.proposedCustomer.payment_status);
 }
 
-function hasKey(value: object, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
-}
+function hasKey(value: object, key: string): boolean { return Object.prototype.hasOwnProperty.call(value, key); }
 
-function fieldValue(operation: PolicyOperation): unknown {
-  return hasKey(operation, "field") ? (operation as { field: unknown }).field : undefined;
-}
+function fieldValue(operation: PolicyOperation): unknown { return hasKey(operation, "field") ? (operation as { field: unknown }).field : undefined; }

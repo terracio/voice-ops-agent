@@ -104,6 +104,7 @@ Policy IDs are stable so tests, evals, audit logs, and UI evidence can inspect t
 | `P009_PAYMENT_SETTLEMENT_FORBIDDEN` | The agent attempted to charge, settle, or mark payment paid. | Block write. |
 | `P010_KITCHEN_DELTA_BEFORE_COMMIT_FORBIDDEN` | Kitchen side effect was attempted without committed source state. | Block side effect. |
 | `P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA` | Preference overwrite lacks a before/after delta. | Block until preview is complete. |
+| `P012_LOCKED_SERVICE_DATE_FORBIDDEN` | Pause or resume would affect a kitchen-locked service date. | Block and escalate. |
 
 Policy IDs must remain stable unless tests, eval expectations, and docs are updated together.
 
@@ -117,6 +118,7 @@ These are code-enforced constraints, not only voice-agent behavior guidelines.
 - Payment follow-ups are allowed only as ChangeSet operations.
 - Ambiguous dates cannot be written.
 - Date-changing ChangeSets require trusted server-generated date-resolution evidence.
+- Locked kitchen service dates cannot be paused or resumed by the agent.
 - Commits require preview plus server-created confirmation.
 - Stale ChangeSets cannot commit.
 - Expired ChangeSets cannot be revived.
