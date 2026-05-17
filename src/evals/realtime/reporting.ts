@@ -10,6 +10,11 @@ import {
 } from "./audioArtifacts";
 import type { RealtimeEvalCase } from "./caseLoader";
 import type { PreparedRealtimeInput } from "./input";
+import {
+  redactExpectedForReport,
+  redactResultForReport,
+  redactScoringForReport
+} from "./reportRedaction";
 import { renderRealtimeCrawlScores } from "./scorer";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
@@ -99,7 +104,14 @@ export function writeRealtimeReports(options: {
     reportDir,
     sampleRateHz: options.realtimeCase.audio.sample_rate_hz
   });
-  const eventLines = options.result.trace
+  const redactedResult = redactResultForReport(options.result);
+  const redactedExpected = redactExpectedForReport(options.realtimeCase.expected);
+  const redactedScoring = redactScoringForReport(options.scoring);
+  const redactedInputText = options.preparedInput.input_text
+    ? "[redacted]"
+    : options.preparedInput.input_text;
+
+  const eventLines = redactedResult.trace
     .map((event, index) =>
       `${index + 1}. ${event.at} ${event.source}:${event.type}`
     )
@@ -113,13 +125,13 @@ export function writeRealtimeReports(options: {
   const transcriptLines = readableTranscriptFragments(
     options.result.transcript_fragments
   )
-    .map((fragment, index) => `${index + 1}. ${fragment.role}: ${fragment.text}`)
+    .map((fragment, index) => `${index + 1}. ${fragment.role}: [redacted]`)
     .join("\n");
   const audioArtifactLines = audioArtifacts
     ? renderAudioArtifactLines(audioArtifacts)
     : "Audio artifacts: not written";
   const oobLines = renderOutOfBandTranscription(
-    options.result.out_of_band_transcription
+    redactedResult.out_of_band_transcription
   );
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
@@ -131,15 +143,15 @@ export function writeRealtimeReports(options: {
         stage: options.stage,
         seed_id: options.realtimeCase.seed_id,
         input_mode: options.preparedInput.input_mode,
-        input_text: options.preparedInput.input_text,
+        input_text: redactedInputText,
         audio_metadata: options.preparedInput.audio_metadata,
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
-        expected: options.realtimeCase.expected,
-        scoring: options.scoring,
+        expected: redactedExpected,
+        scoring: redactedScoring,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
-        ...options.result
+        ...redactedResult
       },
       null,
       2
@@ -167,12 +179,12 @@ export function writeRealtimeReports(options: {
       `Tool calls: ${options.result.tool_calls.length}`,
       `Audit events: ${options.result.audit_events.length}`,
       `Transcript fragments: ${options.result.transcript_fragments.length}`,
-      `Scoring status: ${options.scoring.status}`,
-      `Score failures: ${options.scoring.score_failures}`,
+      `Scoring status: ${redactedScoring.status}`,
+      `Score failures: ${redactedScoring.score_failures}`,
       "",
       "## Fixture",
       "",
-      `Input text: ${options.preparedInput.input_text}`,
+      `Input text: ${redactedInputText ?? ""}`,
       options.preparedInput.audio_metadata
         ? `Audio: ${JSON.stringify(options.preparedInput.audio_metadata)}`
         : "Audio: not used",
@@ -196,7 +208,7 @@ export function writeRealtimeReports(options: {
       "",
       "## Scoring",
       "",
-      renderRealtimeCrawlScores(options.scoring),
+      renderRealtimeCrawlScores(redactedScoring),
       "",
       "## Tool Calls",
       "",
