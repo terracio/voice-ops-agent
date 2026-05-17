@@ -21,6 +21,7 @@ describe("realtime report redaction", () => {
     rmSync(reportDir, { force: true, recursive: true });
 
     const sensitive = "SECRET_CUSTOMER_TOKEN_123";
+    const realtimeCase = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" });
     const paths = writeRealtimeReports({
       caseId: "maya_smoke",
       env_file_status: "loaded",
@@ -29,7 +30,17 @@ describe("realtime report redaction", () => {
         input_text: `Caller requested account help. ${sensitive}`,
         audio_metadata: { source: "test" }
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: {
+        ...realtimeCase,
+        expected: {
+          ...realtimeCase.expected,
+          transcript_hint: `Hint includes ${sensitive}`,
+          expected_final_state: {
+            ...realtimeCase.expected.expected_final_state,
+            customer_ids: [sensitive]
+          }
+        }
+      },
       result: {
         ...createResult(),
         audit_events: [{

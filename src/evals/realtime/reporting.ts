@@ -100,6 +100,7 @@ export function writeRealtimeReports(options: {
     sampleRateHz: options.realtimeCase.audio.sample_rate_hz
   });
   const redactedResult = redactResultForReport(options.result);
+  const redactedExpected = redactExpectedForReport(options.realtimeCase.expected);
   const redactedInputText = options.preparedInput.input_text
     ? "[redacted]"
     : options.preparedInput.input_text;
@@ -140,7 +141,7 @@ export function writeRealtimeReports(options: {
         audio_metadata: options.preparedInput.audio_metadata,
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
-        expected: options.realtimeCase.expected,
+        expected: redactedExpected,
         scoring: options.scoring,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
@@ -285,6 +286,20 @@ function redactResultForReport(result: RealtimeRunnerResult): RealtimeRunnerResu
             : result.out_of_band_transcription.transcript
         }
       : result.out_of_band_transcription
+  };
+}
+
+function redactExpectedForReport(
+  expected: RealtimeEvalCase["expected"]
+): RealtimeEvalCase["expected"] {
+  return {
+    ...expected,
+    transcript_hint: expected.transcript_hint ? "[redacted]" : expected.transcript_hint,
+    notes: expected.notes ? "[redacted]" : expected.notes,
+    expected_final_state: {
+      ...expected.expected_final_state,
+      customer_ids: []
+    }
   };
 }
 
