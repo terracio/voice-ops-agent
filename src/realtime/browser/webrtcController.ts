@@ -211,13 +211,16 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
 
   private bindDataChannel(dataChannel: RTCDataChannel): void {
     dataChannel.onclose = () => {
+      if (this.dataChannel !== dataChannel) return;
       if (ACTIVE_STATES.has(this.stateValue)) this.setState("ended");
     };
     dataChannel.onerror = () => {
+      if (this.dataChannel !== dataChannel) return;
       this.cleanupResources();
       this.setState("error");
     };
     dataChannel.onmessage = (event) => {
+      if (this.dataChannel !== dataChannel) return;
       const message = parseRealtimeMessageData(event.data);
       this.emit({ message, type: "message" });
       const nextState = stateFromRealtimeBrowserEvent(message);
