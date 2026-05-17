@@ -93,6 +93,29 @@ describe("Realtime WebRTC browser controller", () => {
     expect(greetingEvents).toEqual(["greeting-requested"]);
   });
 
+  it("keeps startup connected when the optional initial greeting send fails", async () => {
+    const { controller, localTrack, pc } = createHarness({
+      dataChannelSendError: new Error("greeting send failed")
+    });
+    const greetingEvents: string[] = [];
+    const states: string[] = [];
+    controller.subscribe((event) => {
+      if (event.type === "greeting-requested") greetingEvents.push(event.type);
+      if (event.type === "state") states.push(event.state);
+    });
+
+    await controller.start();
+
+    expect(states).toEqual(["connecting", "listening"]);
+    expect(controller.state).toBe("listening");
+    expect(controller.callId).toBe("rtc_test_123");
+    expect(greetingEvents).toEqual([]);
+    expect(pc.dataChannel.sentMessages).toEqual([]);
+    expect(localTrack.stopped).toBe(false);
+    expect(pc.closed).toBe(false);
+    expect(pc.dataChannel.closed).toBe(false);
+  });
+
   it("cleans up when the server SDP response misses a call id", async () => {
     const { controller, fetchImpl, localTrack, pc } = createHarness({
       location: "/v1/realtime/calls/nope"

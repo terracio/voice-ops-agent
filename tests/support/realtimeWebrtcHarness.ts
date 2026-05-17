@@ -31,7 +31,10 @@ class FakeDataChannel {
   onopen: (() => void) | null = null;
   readonly sentMessages: string[] = [];
 
-  constructor(public readyState: RTCDataChannelState = "open") {}
+  constructor(
+    public readyState: RTCDataChannelState = "open",
+    private readonly sendError?: Error
+  ) {}
 
   close() {
     this.closed = true;
@@ -40,6 +43,7 @@ class FakeDataChannel {
   }
 
   send(data: string) {
+    if (this.sendError) throw this.sendError;
     this.sentMessages.push(data);
   }
 }
@@ -52,8 +56,14 @@ export class FakePeerConnection {
   ontrack: ((event: RTCTrackEvent) => void) | null = null;
   remoteDescription?: RTCSessionDescriptionInit;
 
-  constructor(dataChannelReadyState: RTCDataChannelState = "open") {
-    this.dataChannel = new FakeDataChannel(dataChannelReadyState);
+  constructor(
+    dataChannelReadyState: RTCDataChannelState = "open",
+    dataChannelSendError?: Error
+  ) {
+    this.dataChannel = new FakeDataChannel(
+      dataChannelReadyState,
+      dataChannelSendError
+    );
   }
 
   addTrack(track: MediaStreamTrack, _stream: MediaStream) {
@@ -111,11 +121,15 @@ export function createHarness(options: {
   callOk?: boolean;
   callResponse?: Promise<Response>;
   dataChannelReadyState?: RTCDataChannelState;
+  dataChannelSendError?: Error;
   location?: string;
 } = {}) {
   const localTrack = new FakeTrack();
   const localStream = new FakeStream([localTrack]);
-  const pc = new FakePeerConnection(options.dataChannelReadyState);
+  const pc = new FakePeerConnection(
+    options.dataChannelReadyState,
+    options.dataChannelSendError
+  );
   const audioElement = { autoplay: false, srcObject: null } as HTMLAudioElement;
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);

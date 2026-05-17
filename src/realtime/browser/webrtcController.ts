@@ -322,7 +322,12 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
     if (this.dataChannel !== dataChannel || dataChannel.readyState !== "open") {
       return;
     }
-    dataChannel.send(JSON.stringify(INITIAL_GREETING_EVENT));
+    const greetingPayload = JSON.stringify(INITIAL_GREETING_EVENT);
+    try {
+      dataChannel.send(greetingPayload);
+    } catch {
+      return;
+    }
     this.emit({ type: "greeting-requested" });
   }
 
