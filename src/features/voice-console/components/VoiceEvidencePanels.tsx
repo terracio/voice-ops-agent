@@ -3,6 +3,8 @@ import { Icon } from "./voiceConsoleIcons";
 import {
   EMPTY_VOICE_CONSOLE_EVIDENCE,
   formatEvidenceStatus,
+  type EvidenceCostLineItem,
+  type EvidenceCostTelemetry,
   type EvidenceToolItem,
   type VoiceConsoleEvidenceState
 } from "../evidence/voiceConsoleEvidence";
@@ -46,6 +48,7 @@ export function VoiceEvidencePanels({
       </EvidencePanel>
 
       <EvidencePanel title="Tool timeline" note="Server-side evidence">
+        <EstimatedCost cost={evidence.cost} />
         {evidence.tools.length === 0 ? (
           <EmptyEvidence message="No server tool calls captured yet." />
         ) : (
@@ -66,6 +69,64 @@ export function VoiceEvidencePanels({
         ) : null}
       </EvidencePanel>
     </section>
+  );
+}
+
+function EstimatedCost({ cost }: { cost?: EvidenceCostTelemetry }) {
+  const speechItems = costItems(cost, "speech_to_speech");
+  const transcriptionItems = costItems(cost, "input_transcription");
+  const unavailable = !cost || cost.estimateStatus === "unavailable";
+  const reason = cost?.unavailableReasons[0] ?? "Waiting for usage details.";
+  return (
+    <section className={`estimated-cost ${cost?.estimateStatus ?? "unavailable"}`}>
+      <div className="cost-heading">
+        <div>
+          <span>Estimated cost</span>
+          <strong>{unavailable ? "Cost unavailable" : cost.totalLabel}</strong>
+        </div>
+        <small>{cost ? costLabel(cost) : "Local estimate"}</small>
+      </div>
+      <dl className="cost-models">
+        <div>
+          <dt>Model</dt>
+          <dd>{cost?.model ?? "unknown"}</dd>
+        </div>
+        <div>
+          <dt>Transcription</dt>
+          <dd>{cost?.transcriptionModel ?? "unknown"}</dd>
+        </div>
+      </dl>
+      {unavailable ? <p className="cost-note">{reason}</p> : null}
+      <CostBreakdown title="Speech-to-speech" items={speechItems} />
+      <CostBreakdown title="Transcription" items={transcriptionItems} />
+    </section>
+  );
+}
+
+function CostBreakdown({
+  items,
+  title
+}: {
+  items: EvidenceCostLineItem[];
+  title: string;
+}) {
+  return (
+    <div className="cost-breakdown">
+      <span>{title}</span>
+      {items.length === 0 ? (
+        <small>Usage unavailable</small>
+      ) : (
+        <ul>
+          {items.map((item) => (
+            <li key={item.id}>
+              <span>{item.label}</span>
+              <small>{item.quantityLabel}</small>
+              <strong>{item.amountLabel}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -146,6 +207,20 @@ function EmptyEvidence({ message }: { message: string }) {
       <span>{message}</span>
     </div>
   );
+}
+
+function costItems(
+  cost: EvidenceCostTelemetry | undefined,
+  category: EvidenceCostLineItem["category"]
+): EvidenceCostLineItem[] {
+  return cost?.lineItems.filter((item) => item.category === category) ?? [];
+}
+
+function costLabel(cost: EvidenceCostTelemetry): string {
+  const prefix = cost.estimateStatus === "partial"
+    ? "Partial local estimate"
+    : "Local estimate";
+  return `${prefix} · ${cost.sourceEventCount} events · ${cost.pricingLastVerifiedAt}`;
 }
 
 function slug(value: string): string {

@@ -114,7 +114,17 @@ describe("GET /api/realtime/evidence", () => {
     socket.emit("message", JSON.stringify({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: "turn_user_1",
-      transcript: "My customer ID is cus 001."
+      transcript: "My customer ID is cus 001.",
+      usage: {
+        type: "tokens",
+        input_tokens: 30,
+        input_token_details: {
+          audio_tokens: 30,
+          text_tokens: 0
+        },
+        output_tokens: 8,
+        total_tokens: 38
+      }
     }));
     socket.emit("message", JSON.stringify({
       type: "response.function_call_arguments.delta",
@@ -124,12 +134,31 @@ describe("GET /api/realtime/evidence", () => {
     socket.emit("message", JSON.stringify({
       type: "response.done",
       response: {
+        model: "gpt-realtime-2",
         output: [{
           type: "function_call",
           name: "lookup_customer",
           call_id: "call_lookup_customer",
           arguments: JSON.stringify({ customer_id: "cus_001" })
-        }]
+        }],
+        usage: {
+          total_tokens: 170,
+          input_tokens: 120,
+          output_tokens: 50,
+          input_token_details: {
+            text_tokens: 100,
+            audio_tokens: 20,
+            cached_tokens: 50,
+            cached_tokens_details: {
+              text_tokens: 50,
+              audio_tokens: 0
+            }
+          },
+          output_token_details: {
+            text_tokens: 10,
+            audio_tokens: 40
+          }
+        }
       }
     }));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -156,6 +185,14 @@ describe("GET /api/realtime/evidence", () => {
       actor: "user",
       is_operational_source: false
     });
+    expect(parsed.cost_telemetry).toMatchObject({
+      estimate_status: "available",
+      model: "gpt-realtime-2",
+      source_event_count: 2,
+      total_usd: 0.00451,
+      transcription_model: "gpt-realtime-whisper"
+    });
+    expect(parsed.cost_telemetry?.raw_usage_events).toHaveLength(2);
     expect(JSON.stringify(parsed.transcript)).not.toContain("customer_id");
     expect(JSON.stringify(body)).not.toContain("sk-server-secret");
   });

@@ -9,6 +9,7 @@ import {
   ToolErrorSchema,
   ToolRiskSchema
 } from "../domain/schema";
+import { RealtimeCostTelemetrySchema } from "../realtime/config/pricing";
 
 export const REALTIME_EVIDENCE_SCHEMA_VERSION = "realtime_evidence.v1";
 
@@ -236,6 +237,7 @@ export const RealtimeEvidenceSnapshotSchema = z.object({
   call_id: RealtimeEvidenceCallIdSchema,
   change_sets: z.array(ChangeSetEvidenceItemSchema).default([]),
   confirmations: z.array(ConfirmationEvidenceItemSchema).default([]),
+  cost_telemetry: RealtimeCostTelemetrySchema.optional(),
   diffs: z.array(ChangeSetDiffEvidenceItemSchema).default([]),
   generated_at: DateTimeStringSchema,
   limitations: z.array(EvidenceLimitationSchema).default([]),
@@ -287,6 +289,7 @@ export type ChangeSetDiffEvidenceItem = z.infer<
   typeof ChangeSetDiffEvidenceItemSchema
 >;
 export type EvidenceLimitation = z.infer<typeof EvidenceLimitationSchema>;
+export type RealtimeCostTelemetry = z.infer<typeof RealtimeCostTelemetrySchema>;
 export type RealtimeEvidenceSnapshot = z.infer<
   typeof RealtimeEvidenceSnapshotSchema
 >;

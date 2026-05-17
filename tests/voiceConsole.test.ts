@@ -13,6 +13,7 @@ import {
   markRealtimeState,
   markRealtimeStartRequested
 } from "../src/features/voice-console/state/voiceConsoleRealtimeState";
+import { toVoiceConsoleEvidenceState } from "../src/features/voice-console/evidence/voiceConsoleEvidence";
 
 describe("voice console UI shell", () => {
   it("renders the required operational console regions", () => {
@@ -31,6 +32,7 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Agent");
     expect(html).toContain("Caller");
     expect(html).toContain("Live activity");
+    expect(html).toContain("Estimated cost");
     expect(html).toContain("Transcript evidence");
     expect(html).toContain("Tool timeline");
     expect(html).toContain("Call ID");
@@ -56,6 +58,32 @@ describe("voice console UI shell", () => {
         evidence: {
           status: "ready",
           lastUpdated: "2026-05-14T09:00:00.000Z",
+          cost: {
+            estimateStatus: "partial",
+            flags: ["transcription_usage_not_captured"],
+            lineItems: [{
+              amountLabel: "$0.0037",
+              amountUsd: 0.00366,
+              category: "speech_to_speech",
+              id: "speech_audio_output",
+              label: "Speech response",
+              quantityLabel: "40 tokens"
+            }, {
+              amountLabel: "$0.0009",
+              amountUsd: 0.00085,
+              category: "input_transcription",
+              id: "transcription_audio_duration",
+              label: "Transcription audio",
+              quantityLabel: "0.050 min"
+            }],
+            model: "gpt-realtime-2",
+            pricingLastVerifiedAt: "2026-05-17",
+            sourceEventCount: 2,
+            totalLabel: "$0.0045",
+            totalUsd: 0.00451,
+            transcriptionModel: "gpt-realtime-whisper",
+            unavailableReasons: ["transcription usage not captured"]
+          },
           transcript: [{
             actor: "user",
             at: "09:00:00",
@@ -107,9 +135,39 @@ describe("voice console UI shell", () => {
     expect(html).toContain("preview_change_set");
     expect(html).toContain("Blocked");
     expect(html).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
+    expect(html).toContain("Estimated cost");
+    expect(html).toContain("$0.0045");
+    expect(html).toContain("Partial local estimate");
+    expect(html).toContain("gpt-realtime-whisper");
+    expect(html).toContain("Transcription audio");
     expect(html).toContain("response.done");
     expect(html).toContain("error: invalid_request_error");
     expect(html).not.toContain("completed successfully");
+  });
+
+  it("maps unavailable cost telemetry without fabricating a zero total", () => {
+    const evidence = toVoiceConsoleEvidenceState({
+      generated_at: "2026-05-14T09:00:00.000Z",
+      cost_telemetry: {
+        estimate_status: "unavailable",
+        flags: ["unknown_speech_model"],
+        line_items: [],
+        model: "gpt-realtime-future",
+        pricing_last_verified_at: "2026-05-17",
+        source_event_count: 1,
+        transcription_model: "gpt-realtime-whisper",
+        unavailable_reasons: [
+          "No frozen pricing is configured for the active Realtime model."
+        ]
+      }
+    });
+
+    expect(evidence.cost).toMatchObject({
+      estimateStatus: "unavailable",
+      model: "gpt-realtime-future",
+      totalLabel: undefined
+    });
+    expect(evidence.cost?.unavailableReasons[0]).toContain("No frozen pricing");
   });
 
   it("drives visible call state through the mocked controller contract", () => {
