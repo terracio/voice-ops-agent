@@ -128,7 +128,7 @@ describe("realtime report redaction", () => {
           text: sensitive
         }]
       },
-      scoring: createScoring(),
+      scoring: createScoring(sensitive),
       stage: "crawl"
     });
 
@@ -139,6 +139,8 @@ describe("realtime report redaction", () => {
     expect(reportMd).not.toContain(sensitive);
     expect(reportJson).toContain('"trace": []');
     expect(reportJson).toContain('"trace_path"');
+    expect(reportJson).toContain('"scoring"');
+    expect(reportJson).toContain('"message": "[redacted]"');
     expect(reportMd).toContain("[redacted]");
 
     rmSync(reportDir, { force: true, recursive: true });
@@ -175,11 +177,20 @@ function createResult(): RealtimeRunnerResult {
   };
 }
 
-function createScoring(): RealtimeCrawlScoring {
+function createScoring(sensitive: string): RealtimeCrawlScoring {
   return {
-    diagnostics: [],
-    score_failures: 0,
-    scores: [],
-    status: "passed"
+    diagnostics: [{
+      category: "state",
+      failure_type: "final_state_mismatch",
+      message: `Expected final state snapshot for ${sensitive} was missing.`
+    }],
+    score_failures: 1,
+    scores: [{
+      category: "state",
+      failure_type: "final_state_mismatch",
+      message: `Customer state changed for ${sensitive}.`,
+      passed: false
+    }],
+    status: "failed"
   };
 }

@@ -101,6 +101,7 @@ export function writeRealtimeReports(options: {
   });
   const redactedResult = redactResultForReport(options.result);
   const redactedExpected = redactExpectedForReport(options.realtimeCase.expected);
+  const redactedScoring = redactScoringForReport(options.scoring);
   const redactedInputText = options.preparedInput.input_text
     ? "[redacted]"
     : options.preparedInput.input_text;
@@ -142,7 +143,7 @@ export function writeRealtimeReports(options: {
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
         expected: redactedExpected,
-        scoring: options.scoring,
+        scoring: redactedScoring,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
         ...redactedResult
@@ -173,8 +174,8 @@ export function writeRealtimeReports(options: {
       `Tool calls: ${options.result.tool_calls.length}`,
       `Audit events: ${options.result.audit_events.length}`,
       `Transcript fragments: ${options.result.transcript_fragments.length}`,
-      `Scoring status: ${options.scoring.status}`,
-      `Score failures: ${options.scoring.score_failures}`,
+      `Scoring status: ${redactedScoring.status}`,
+      `Score failures: ${redactedScoring.score_failures}`,
       "",
       "## Fixture",
       "",
@@ -202,7 +203,7 @@ export function writeRealtimeReports(options: {
       "",
       "## Scoring",
       "",
-      renderRealtimeCrawlScores(options.scoring),
+      renderRealtimeCrawlScores(redactedScoring),
       "",
       "## Tool Calls",
       "",
@@ -300,6 +301,20 @@ function redactExpectedForReport(
       ...expected.expected_final_state,
       customer_ids: []
     }
+  };
+}
+
+function redactScoringForReport(scoring: RealtimeCrawlScoring): RealtimeCrawlScoring {
+  return {
+    ...scoring,
+    diagnostics: scoring.diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      message: "[redacted]"
+    })),
+    scores: scoring.scores.map((score) => ({
+      ...score,
+      message: "[redacted]"
+    }))
   };
 }
 
