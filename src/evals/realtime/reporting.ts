@@ -252,7 +252,15 @@ function redactResultForReport(result: RealtimeRunnerResult): RealtimeRunnerResu
     transcript_fragments: result.transcript_fragments.map((fragment) => ({
       ...fragment,
       text: "[redacted]"
-    }))
+    })),
+    out_of_band_transcription: result.out_of_band_transcription
+      ? {
+          ...result.out_of_band_transcription,
+          transcript: result.out_of_band_transcription.transcript
+            ? "[redacted]"
+            : result.out_of_band_transcription.transcript
+        }
+      : result.out_of_band_transcription
   };
 }
 

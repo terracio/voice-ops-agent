@@ -162,7 +162,7 @@ describe("Realtime out-of-band transcription diagnostics", () => {
     expect(report.out_of_band_transcription).toMatchObject({
       response_id: "resp_oob",
       status: "completed",
-      transcript: "customer id c u s underscore zero zero one"
+      transcript: "[redacted]"
     });
     expect(readFileSync(paths.markdown_path, "utf8")).toContain(
       "customer id c u s underscore zero zero one"
