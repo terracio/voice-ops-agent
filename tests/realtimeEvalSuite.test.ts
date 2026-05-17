@@ -275,6 +275,100 @@ describe("realtime eval suite", () => {
 
     rmSync(reportDir, { force: true, recursive: true });
   });
+
+  it("redacts sensitive report artifacts across json and markdown", () => {
+    const reportDir = join(
+      "reports",
+      "realtime",
+      "crawl",
+      "maya_smoke",
+      "unit_report_trace"
+    );
+    rmSync(reportDir, { force: true, recursive: true });
+
+    const sensitive = "SECRET_CUSTOMER_TOKEN_123";
+    const paths = writeRealtimeReports({
+      caseId: "maya_smoke",
+      env_file_status: "loaded",
+      preparedInput: {
+        input_mode: "text",
+        input_text: "Caller requested account help.",
+        audio_metadata: { source: "test" }
+      },
+      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      result: {
+        ...createResult(),
+        audit_events: [{
+          at: "2026-05-12T10:00:00.000Z",
+          event_id: "aud_1",
+          actor: "agent",
+          type: "tool_executed",
+          customer_id: "cus_001",
+          details: {
+            transcript_excerpt: sensitive,
+            resource_id: "resource_sensitive",
+            nested: { customer_id: "cus_001", text: sensitive }
+          }
+        }],
+        final_state: {
+          customer_states: [{
+            customer: {
+              customer_id: "cus_001",
+              name: "Maya Secret",
+              phone: "+1-555-555-1234",
+              allergies: ["peanut"],
+              customizations: { dislikes: ["onion"], protein_preferences: ["fish"] },
+              payment_last_checked_at: "2026-05-12T10:00:00.000Z",
+              payment_status: "past_due"
+            },
+            service_dates: ["2026-05-20"]
+          }],
+          kitchen_deltas: [{
+            created_at: "2026-05-12T10:00:00.000Z",
+            customer_id: "cus_001",
+            delta_id: "kdelta_1",
+            line_items: [sensitive]
+          }],
+          payment_followups: [{
+            created_at: "2026-05-12T10:00:00.000Z",
+            customer_id: "cus_001",
+            followup_id: "pf_1",
+            reason: sensitive
+          }]
+        },
+        out_of_band_transcription: { status: "completed", transcript: sensitive },
+        tool_calls: [{
+          audit_event_ids: ["aud_1"],
+          input: { customer_id: "cus_001", note: sensitive },
+          started_at: "2026-05-12T10:00:00.000Z",
+          status: "completed",
+          tool_call_id: "tc_1",
+          tool_name: "lookup_customer",
+          output: { note: sensitive }
+        }],
+        trace: [{ at: "2026-05-12T10:00:00.000Z", source: "runner", type: sensitive }],
+        transcript_fragments: [{
+          at: "2026-05-12T10:00:00.000Z",
+          role: "user",
+          source_event_type: "response.done",
+          text: sensitive
+        }]
+      },
+      scoring: createScoring(),
+      stage: "crawl"
+    });
+
+    const reportJson = readFileSync(paths.json_path, "utf8");
+    const reportMd = readFileSync(paths.markdown_path, "utf8");
+
+    expect(reportJson).not.toContain(sensitive);
+    expect(reportMd).not.toContain(sensitive);
+    expect(reportJson).toContain('"trace": []');
+    expect(reportJson).toContain('"trace_path"');
+    expect(reportMd).toContain("[redacted]");
+
+    rmSync(reportDir, { force: true, recursive: true });
+  });
 });
 
 function createSummary(

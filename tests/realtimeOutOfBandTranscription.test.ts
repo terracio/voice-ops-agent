@@ -164,9 +164,7 @@ describe("Realtime out-of-band transcription diagnostics", () => {
       status: "completed",
       transcript: "[redacted]"
     });
-    expect(readFileSync(paths.markdown_path, "utf8")).toContain(
-      "customer id c u s underscore zero zero one"
-    );
+    expect(readFileSync(paths.markdown_path, "utf8")).toContain("[redacted]");
 
     rmSync(reportDir, { force: true, recursive: true });
   });

@@ -99,7 +99,9 @@ export function writeRealtimeReports(options: {
     reportDir,
     sampleRateHz: options.realtimeCase.audio.sample_rate_hz
   });
-  const eventLines = options.result.trace
+  const redactedResult = redactResultForReport(options.result);
+
+  const eventLines = redactedResult.trace
     .map((event, index) =>
       `${index + 1}. ${event.at} ${event.source}:${event.type}`
     )
@@ -119,10 +121,8 @@ export function writeRealtimeReports(options: {
     ? renderAudioArtifactLines(audioArtifacts)
     : "Audio artifacts: not written";
   const oobLines = renderOutOfBandTranscription(
-    options.result.out_of_band_transcription
+    redactedResult.out_of_band_transcription
   );
-
-  const redactedResult = redactResultForReport(options.result);
 
   writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
   writeFileSync(
@@ -218,31 +218,49 @@ export function writeRealtimeReports(options: {
   };
 }
 
-function redactResultForReport(result: RealtimeRunnerResult): RealtimeRunnerResult {
+function redactResultForReport(result: RealtimeRunnerResult) {
+  const redactString = (_value: string): string => "[redacted]";
+
+  const redactUnknown = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      return redactString(value);
+    }
+    if (Array.isArray(value)) {
+      return value.map(redactUnknown);
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => {
+          if (
+            key === "transcript_excerpt" ||
+            key === "resource_id" ||
+            key === "customer_id" ||
+            key === "tool_result" ||
+            key === "tool_input" ||
+            key === "tool_output"
+          ) {
+            return [key, "[redacted]"];
+          }
+          return [key, redactUnknown(entry)];
+        })
+      );
+    }
+    return value;
+  };
+
   return {
     ...result,
+    trace: [],
     audit_events: result.audit_events.map((event) => ({
       ...event,
-      customer_id: event.customer_id ? "[redacted]" : event.customer_id
+      customer_id: event.customer_id ? "[redacted]" : event.customer_id,
+      details: event.details ? redactUnknown(event.details) : event.details
     })),
     final_state: {
       ...result.final_state,
-      customer_states: result.final_state.customer_states.map((state) => ({
-        ...state,
-        customer: {
-          ...state.customer,
-          allergies: [],
-          customizations: {
-            ...state.customer.customizations,
-            dislikes: [],
-            protein_preferences: []
-          },
-          name: "[redacted]",
-          payment_last_checked_at: undefined,
-          phone: "[redacted]"
-        },
-        service_dates: []
-      }))
+      customer_states: [],
+      kitchen_deltas: [],
+      payment_followups: []
     },
     tool_calls: result.tool_calls.map((toolCall) => ({
       ...toolCall,
