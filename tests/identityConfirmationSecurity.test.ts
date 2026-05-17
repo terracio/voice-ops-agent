@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetDb } from "../src/domain/db";
+import { listAuditEvents, resetDb } from "../src/domain/db";
 import {
   applyRealtimeToolResultToSessionState,
   applyRealtimeTranscriptEventToSessionState,
@@ -73,6 +73,14 @@ describe("identity confirmation security", () => {
             "Acknowledge naturally that verification is complete for Maya, then ask how you can help with the subscription update."
         }
       });
+    expect([...listAuditEvents()].reverse().find(
+      (event) => event.tool_name === "confirm_customer_identity" &&
+        event.event_type === "read"
+    )).toMatchObject({
+      details: {
+        identity_confirmation_intent: { intent: "confirm_self" }
+      }
+    });
 
     await expect(harness.invoke("get_customer_state", {}))
       .resolves.toMatchObject({
@@ -107,6 +115,42 @@ describe("identity confirmation security", () => {
       .resolves.toMatchObject({
         ok: false,
         error: { code: "IDENTITY_CONFIRMATION_NOT_EXPLICIT" }
+      });
+  });
+
+  it.each([
+    "I am Maya's husband.",
+    "This is Maya's friend.",
+    "I am Maya's assistant calling for her."
+  ])("rejects third-party identity confirmation: %s", async (transcript) => {
+    const harness = createIdentityHarness();
+
+    await harness.invoke("lookup_customer", { customer_id: "CUS_001" });
+    harness.userTurn("turn_identity_third_party", transcript);
+
+    await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
+      .resolves.toMatchObject({
+        ok: false,
+        error: { code: "IDENTITY_CONFIRMATION_NOT_EXPLICIT" }
+      });
+    expect([...listAuditEvents()].reverse().find(
+      (event) => event.tool_name === "confirm_customer_identity" &&
+        event.event_type === "policy_block"
+    )).toMatchObject({
+      details: {
+        identity_confirmation_intent: { intent: "third_party" },
+        same_turn_confirmation: false
+      }
+    });
+    expect(harness.state).toMatchObject({
+      identity_status: "uncertain",
+      resolved_customer_id: undefined,
+      pending_identity_candidate: { customer_id: "cus_001" }
+    });
+    await expect(harness.invoke("get_customer_state", {}))
+      .resolves.toMatchObject({
+        ok: false,
+        error: { code: "IDENTITY_NOT_RESOLVED" }
       });
   });
 });

@@ -80,11 +80,16 @@ Customer lookup is candidate discovery, not authentication.
 
 Before private reads, payment reads, ChangeSet tools, or customer-attached escalation, the caller must explicitly confirm the pending candidate in a later user turn. Only then may `confirm_customer_identity` promote the hidden session context to the confirmed customer.
 
+Before that promotion, the server classifies the latest caller turn with the identity confirmation intent boundary and records the classifier evidence in audit details. The current implementation is deterministic and conservative: only `confirm_self` authorizes identity. Denial, correction, third-party claims such as "Maya's husband", questions, or unclear text fail closed.
+
+For a production contact-center deployment, this boundary is the right place to add a calibrated non-generative classifier for messy speech, accents, and multilingual phrasing. That classifier must keep the same contract: high-confidence `confirm_self` may pass; low-confidence, third-party, contradictory, or unclear outputs must block, ask again, or escalate.
+
 The identity boundary blocks:
 
 - direct private reads after lookup alone,
 - same-turn identity confirmation from the lookup utterance,
 - model-supplied hidden identity fields,
+- third-party or possessive name claims,
 - confirmation of a customer that does not match the pending candidate.
 
 ## Stable Policy IDs

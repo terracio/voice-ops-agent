@@ -281,7 +281,7 @@ The realtime agent SHOULD receive only the model-facing operational tools.
 | Tool | Risk | Requirement |
 |---|---|---|
 | `lookup_customer` | `read` | Find customer candidates from customer ID, name, phone, or other allowed lookup hint. Must not authorize private account access by itself. |
-| `confirm_customer_identity` | `read` | Promote one pending customer candidate to confirmed identity only after a later explicit caller confirmation turn. |
+| `confirm_customer_identity` | `read` | Promote one pending customer candidate to confirmed identity only after a later caller turn is classified as explicit self-confirmation. |
 | `get_customer_state` | `read` | Read the confirmed customer's plan, service dates, allergies, preferences, payment summary, and state version. |
 | `resolve_service_dates` | `read` | Convert caller date language into exact service dates using customer state and a fixed reference date. Must flag ambiguity and non-scheduled days. |
 | `get_payment_status` | `read` | Read payment status for follow-up planning only. Must never settle, charge, or mark payment paid. |
@@ -336,6 +336,8 @@ The system MUST enforce these policies:
 | Expired ChangeSet blocked | Expired ChangeSets cannot commit. |
 
 Each hard policy SHOULD have a stable policy identifier in code and eval output.
+
+Identity confirmation intent MUST be evaluated server-side and fail closed. The current deterministic implementation MAY be replaced or augmented by a calibrated classifier, but only `confirm_self` MAY authorize the pending identity. Denial, correction, third-party claims, unclear speech, and low-confidence classifier output MUST keep identity unresolved or escalate.
 
 ## Evals
 
