@@ -100,14 +100,38 @@ function identityConfirmationFailure(
   );
 }
 
-function isExplicitIdentityConfirmation(message: string): boolean {
-  const normalized = message.toLowerCase().replace(/\s+/g, " ").trim();
+function isExplicitIdentityConfirmation(
+  message: string,
+  candidate: { name?: string }
+): boolean {
+  const normalized = message.toLowerCase()
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
   if (/\b(no|not|wrong|different|someone else|maybe|instead|actually)\b/.test(normalized)) {
     return false;
   }
+  if (/[?]/.test(normalized)) return false;
+
+  const candidateName = candidate.name?.toLowerCase()
+    .replace(/[’]/g, "'")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const namePattern = candidateName
+    ? new RegExp(
+      `\\b((yes[, ]+)?i confirm i am|i confirm i'm|(yes[, ]+)?i am|yes[, ]+i'm|this is) ${escapeRegex(candidateName)}\\b`
+    )
+    : undefined;
+
   return /^(yes[, ]+)?(that'?s|that is) (me|my account|correct)[.!]?$/.test(normalized) ||
     /^(yes[, ]+)?correct[.!]?$/.test(normalized) ||
-    /^i confirm (that'?s|that is) (me|my account)[.!]?$/.test(normalized);
+    /^i confirm (that'?s|that is) (me|my account)[.!]?$/.test(normalized) ||
+    Boolean(namePattern?.test(normalized));
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export const lookupCustomerTool = defineTool({
@@ -198,7 +222,7 @@ export const confirmCustomerIdentityTool = defineTool({
 
     if (
       context.current_user_turn_id === candidate.lookup_user_turn_id ||
-      !isExplicitIdentityConfirmation(context.last_user_message)
+      !isExplicitIdentityConfirmation(context.last_user_message, candidate)
     ) {
       const event = appendIdentityBlockEvent(
         "confirm_customer_identity",

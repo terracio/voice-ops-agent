@@ -55,6 +55,13 @@ describe("identity confirmation security", () => {
         error: { code: "IDENTITY_CONFIRMATION_NOT_EXPLICIT" }
       });
 
+    harness.userTurn("turn_identity_bare_yes", "Yes.");
+    await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
+      .resolves.toMatchObject({
+        ok: false,
+        error: { code: "IDENTITY_CONFIRMATION_NOT_EXPLICIT" }
+      });
+
     harness.userTurn("turn_identity_confirm", "Yes, that's me.");
     await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
       .resolves.toMatchObject({
@@ -66,6 +73,35 @@ describe("identity confirmation security", () => {
       .resolves.toMatchObject({
         ok: true,
         data: { customer: { customer_id: "cus_001" } }
+      });
+  });
+
+  it("accepts explicit candidate-name confirmation despite repeated realtime fragments", async () => {
+    const harness = createIdentityHarness();
+
+    await harness.invoke("lookup_customer", { customer_id: "CUS_001" });
+    harness.userTurn(
+      "turn_identity_named_confirm",
+      "confirm am Maya I confirm I am Maya."
+    );
+
+    await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
+      .resolves.toMatchObject({
+        ok: true,
+        data: { customer_id: "cus_001", identity_status: "confirmed" }
+      });
+  });
+
+  it("rejects negated candidate-name confirmation", async () => {
+    const harness = createIdentityHarness();
+
+    await harness.invoke("lookup_customer", { customer_id: "CUS_001" });
+    harness.userTurn("turn_identity_negated", "No, I am not Maya.");
+
+    await expect(harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" }))
+      .resolves.toMatchObject({
+        ok: false,
+        error: { code: "IDENTITY_CONFIRMATION_NOT_EXPLICIT" }
       });
   });
 });
