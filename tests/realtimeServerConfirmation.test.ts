@@ -42,6 +42,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await resolveMonday(socket, "confirm");
     await emitFunctionCall(socket, "create_change_set", "call_create", {
       change_set_id: "cs_realtime_confirm",
       operations: [{
@@ -99,6 +100,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await resolveMonday(socket, "misheard");
     await emitFunctionCall(socket, "create_change_set", "call_create", {
       change_set_id: "cs_misheard_confirm",
       operations: [{
@@ -144,6 +146,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await resolveMonday(socket, "stale");
     now = new Date("2026-05-11T10:00:30Z");
     socket.emit("message", JSON.stringify({
       item_id: "item_identity_yes",
@@ -195,6 +198,16 @@ async function emitFunctionCall(
     type: "response.done"
   }));
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function resolveMonday(
+  socket: FakeSidebandSocket,
+  suffix: string
+): Promise<void> {
+  await emitFunctionCall(socket, "resolve_service_dates", `call_resolve_${suffix}`, {
+    phrase: "Pause Monday.",
+    requested_days: ["Monday"]
+  });
 }
 
 function functionOutputs(socket: FakeSidebandSocket): Array<{

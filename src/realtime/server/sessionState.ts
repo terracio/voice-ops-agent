@@ -1,4 +1,8 @@
 import type { ToolResult } from "../../domain/schema";
+import {
+  ResolveServiceDatesOutputSchema,
+  type ResolveServiceDatesOutput
+} from "../../domain/dateResolver";
 import type {
   ToolExecutionContext,
   ToolIdentityStatus
@@ -12,6 +16,7 @@ export type RealtimeSessionState = {
   last_user_turn_at?: string;
   last_user_message?: string;
   resolved_customer_id?: string;
+  trusted_date_resolutions: ResolveServiceDatesOutput[];
 };
 
 export type RealtimeIdentityStateUpdate = {
@@ -25,7 +30,7 @@ export type RealtimeToolContextBase = Omit<
 >;
 
 export function createRealtimeSessionState(): RealtimeSessionState {
-  return { identity_status: "unknown" };
+  return { identity_status: "unknown", trusted_date_resolutions: [] };
 }
 
 export function createRealtimeToolContextBase(options: {
@@ -69,7 +74,8 @@ export function buildRealtimeToolContext(options: {
     identity_status: options.state.identity_status,
     ...(options.state.resolved_customer_id
       ? { resolved_customer_id: options.state.resolved_customer_id }
-      : {})
+      : {}),
+    trusted_date_resolutions: options.state.trusted_date_resolutions
   };
 }
 
@@ -106,12 +112,29 @@ export function applyRealtimeToolResultToSessionState(options: {
   state: RealtimeSessionState;
   toolName: string;
 }): RealtimeIdentityStateUpdate | undefined {
+  if (options.toolName === "resolve_service_dates") {
+    appendTrustedDateResolution(options.state, options.result);
+    return undefined;
+  }
   if (options.toolName !== "lookup_customer") return undefined;
 
   const nextState = identityStateFromLookupResult(options.result);
   options.state.identity_status = nextState.identity_status;
   options.state.resolved_customer_id = nextState.resolved_customer_id;
   return nextState;
+}
+
+function appendTrustedDateResolution(
+  state: RealtimeSessionState,
+  result: ToolResult<unknown>
+): void {
+  if (!result.ok) return;
+  const parsed = ResolveServiceDatesOutputSchema.safeParse(result.data);
+  if (!parsed.success) return;
+  state.trusted_date_resolutions = [
+    ...state.trusted_date_resolutions,
+    parsed.data
+  ];
 }
 
 function identityStateFromLookupResult(

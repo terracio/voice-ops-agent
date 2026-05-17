@@ -121,6 +121,7 @@ Keep these as code-enforced constraints, not prompt-only guidance:
 - Never mark payments as paid.
 - Never charge a card.
 - Never commit ambiguous date changes.
+- Never create date-changing ChangeSets without trusted server-generated date-resolution evidence.
 - Never write without explicit confirmation.
 - Never create kitchen deltas before commit.
 - Never commit stale or expired ChangeSets.

@@ -100,11 +100,24 @@ These are code-enforced constraints, not only voice-agent behavior guidelines.
 - Payment settlement and card charging are forbidden.
 - Payment follow-ups are allowed only as ChangeSet operations.
 - Ambiguous dates cannot be written.
+- Date-changing ChangeSets require trusted server-generated date-resolution evidence.
 - Commits require preview plus server-created confirmation.
 - Stale ChangeSets cannot commit.
 - Expired ChangeSets cannot be revived.
 - Kitchen deltas cannot exist before commit.
 - Customization overwrites must show a before/after delta.
+
+## Date Resolution Boundary
+
+Date-changing operations such as `pause_dates` and `resume_dates` require trusted resolver evidence from `resolve_service_dates`.
+
+The model may suggest a date, but it cannot make a guessed date authoritative by omitting `date_resolution` or by supplying resolver-shaped arguments. The server stores successful date-resolution results in hidden tool context, and `create_change_set` may use only resolver evidence that:
+
+- belongs to the confirmed customer,
+- is not ambiguous,
+- covers every service date in the proposed date operation.
+
+If that evidence is missing, ambiguous, mismatched, or incomplete, the ChangeSet must fail with `P002_AMBIGUOUS_DATE`.
 
 ## Internal Side Effects
 

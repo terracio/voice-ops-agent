@@ -30,7 +30,7 @@ describe("Realtime session identity state", () => {
         policy_id: "P001_IDENTITY_UNCERTAIN"
       }
     });
-    expect(harness.sessionState).toEqual({ identity_status: "unknown" });
+    expect(harness.sessionState).toMatchObject({ identity_status: "unknown" });
   });
 
   it("does not let model args grant hidden identity context", async () => {
@@ -48,7 +48,7 @@ describe("Realtime session identity state", () => {
         code: "TOOL_CONTEXT_OVERRIDE_FORBIDDEN"
       }
     });
-    expect(harness.sessionState).toEqual({ identity_status: "unknown" });
+    expect(harness.sessionState).toMatchObject({ identity_status: "unknown" });
   });
 
   it("updates hidden identity after confirmed lookup and allows follow-on reads", async () => {
@@ -64,7 +64,7 @@ describe("Realtime session identity state", () => {
         candidate_count: 1
       }
     });
-    expect(harness.sessionState).toEqual({
+    expect(harness.sessionState).toMatchObject({
       identity_status: "confirmed",
       resolved_customer_id: "cus_001"
     });
@@ -97,7 +97,7 @@ describe("Realtime session identity state", () => {
         write_blocked: true
       }
     });
-    expect(harness.sessionState).toEqual({ identity_status: "uncertain" });
+    expect(harness.sessionState).toMatchObject({ identity_status: "uncertain" });
 
     const state = await harness.invoke("get_customer_state", {
       customer_id: "cus_004"
@@ -148,6 +148,29 @@ describe("Realtime session identity state", () => {
         last_user_message: "Confirm pause for May 18th, 2026."
       });
   });
+
+  it("stores server-generated service-date resolutions in hidden context", async () => {
+    const harness = createToolHarness();
+
+    await harness.invoke("lookup_customer", { customer_id: "CUS_001" });
+    const resolution = await harness.invoke("resolve_service_dates", {
+      phrase: "Pause Monday.",
+      requested_days: ["Monday"]
+    });
+
+    expect(resolution).toMatchObject({ ok: true });
+    expect(harness.sessionState.trusted_date_resolutions).toMatchObject([
+      {
+        customer_id: "cus_001",
+        actionable_service_dates: ["2026-05-18"],
+        ambiguous: false
+      }
+    ]);
+    expect(buildRealtimeToolContext({
+      base: harness.base,
+      state: harness.sessionState
+    }).trusted_date_resolutions).toHaveLength(1);
+  });
 });
 
 function createToolHarness() {
@@ -166,6 +189,7 @@ function createToolHarness() {
   });
 
   return {
+    base,
     sessionState,
     invoke: async (toolName: string, args: unknown) => {
       const tool = findTool(tools, toolName);

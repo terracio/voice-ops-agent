@@ -284,7 +284,7 @@ The realtime agent SHOULD receive only the model-facing operational tools.
 | `get_customer_state` | `read` | Read the confirmed customer's plan, service dates, allergies, preferences, payment summary, and state version. |
 | `resolve_service_dates` | `read` | Convert caller date language into exact service dates using customer state and a fixed reference date. Must flag ambiguity and non-scheduled days. |
 | `get_payment_status` | `read` | Read payment status for follow-up planning only. Must never settle, charge, or mark payment paid. |
-| `create_change_set` | `preview` | Create a pending ChangeSet for valid proposed operations. Must require confirmed identity and policy validation. |
+| `create_change_set` | `preview` | Create a pending ChangeSet for valid proposed operations. Must require confirmed identity and policy validation. Date-changing operations must be covered by trusted server-generated `resolve_service_dates` evidence. |
 | `validate_change_set` | `preview` | Re-run policy validation for a pending ChangeSet. Must not mutate customer state. |
 | `preview_change_set` | `preview` | Produce before/after deltas and the confirmation challenge for a pending ChangeSet. Must not mutate customer state. |
 | `capture_confirmation` | `write` | Create the server confirmation record from the current explicit user turn for the same ChangeSet. |
@@ -326,7 +326,7 @@ The system MUST enforce these policies:
 | Identity required before writes | Account-specific writes, ChangeSet commits, and side effects require confirmed identity. |
 | Allergy mutation blocked | The agent must never add, remove, or weaken allergy records. Allergy-risk requests require escalation. |
 | Payment settlement blocked | The agent must never charge a card or mark a payment as paid. |
-| Ambiguous dates blocked | Date-based writes require exact resolved service dates. |
+| Ambiguous dates blocked | Date-based writes require exact resolved service dates from trusted server-generated resolver evidence. Model-supplied resolver-shaped input is not write authority. |
 | Confirmation required | Risky writes require preview plus explicit server-captured confirmation. |
 | Kitchen delta after commit | Kitchen deltas must not exist before the related ChangeSet commits. |
 | State version checked | Commits must fail if current state differs from previewed state. |

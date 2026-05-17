@@ -2,7 +2,7 @@ import * as db from "../domain/db";
 import type { Confirmation, ToolResult } from "../domain/schema";
 import { createMealPlanToolRegistry, type ToolExecutionContext } from "../tools";
 import { EvalCaseResultSchema, EvalCaseSchema, type EvalCase, type EvalCaseResult, type EvalMode, type EvalScriptStep } from "./caseSchema";
-
+import { applyTrustedDateResolutionFromToolResult } from "./scriptedDateResolution";
 export type ScriptedRunnerContext = { run_id: string; mode: EvalMode; run_started_at: string; now: () => string };
 
 type Diagnostic = EvalCaseResult["diagnostics"][number];
@@ -15,8 +15,7 @@ type ContextPatch = { identity_status?: ToolExecutionContext["identity_status"];
 type RunnerState = {
   diagnostics: Diagnostic[]; transcript: TranscriptEntry[]; toolCalls: ToolCallRecord[];
   auditIds: Set<string>; customerIds: Set<string>; changeSetIds: Set<string>; confirmationIds: Set<string>;
-  lastChangeSetId?: string;
-  lastConfirmationId?: string;
+  lastChangeSetId?: string; lastConfirmationId?: string;
 };
 type StepInput = {
   step: EvalScriptStep; stepIndex: number; evalCase: EvalCase;
@@ -192,6 +191,7 @@ async function executeToolCall(input: StepInput, step: Pick<ScriptToolCall, "too
     audit_event_ids: result.audit_event_ids
   });
   collectToolOutput(input.state, result);
+  applyTrustedDateResolutionFromToolResult({ context: input.toolContext, result, toolName: step.tool_name });
   validateExpectation(input.state, step.tool_name, result, step.expect);
 }
 

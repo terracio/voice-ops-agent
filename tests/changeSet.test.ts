@@ -40,6 +40,7 @@ function createPreviewed(
       change_set_id,
       operations,
       now: CREATED_AT,
+      ...dateResolutionFor(operations),
       ...extra
     })
   );
@@ -70,6 +71,11 @@ function policyPassed(changeSet: ChangeSet, policyId: PolicyIdValue): boolean | 
 
 function pauseMonday(): ChangeOperation {
   return { type: "pause_dates", dates: ["2026-05-18"], reason: "travel" };
+}
+function dateResolutionFor(operations: ChangeOperation[]): Partial<Parameters<typeof createChangeSet>[0]> {
+  return operations.some((operation) => operation.type === "pause_dates" || operation.type === "resume_dates")
+    ? { date_resolution: resolveServiceDates({ customer_id: CUSTOMER_ID, phrase: "Pause Monday.", requested_days: ["Monday"] }) }
+    : {};
 }
 
 describe("ChangeSet lifecycle", () => {

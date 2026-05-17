@@ -22,6 +22,13 @@ function context(overrides: Partial<ToolExecutionContext> = {}): ToolExecutionCo
     last_user_message: "Please pause Monday.",
     identity_status: "confirmed",
     resolved_customer_id: "cus_001",
+    trusted_date_resolutions: [
+      resolveServiceDates({
+        customer_id: "cus_001",
+        phrase: "Pause Monday.",
+        requested_days: ["Monday"]
+      })
+    ],
     current_time: CREATED_AT,
     reference_time: CREATED_AT,
     ...overrides
@@ -54,7 +61,7 @@ describe("changeSetTools", () => {
         modelArgs: {
           change_set_id: "cs_tool_happy",
           operations: [
-            { type: "pause_dates", dates: ["2026-05-18", "2026-05-19"], reason: "travel" },
+            { type: "pause_dates", dates: ["2026-05-18"], reason: "travel" },
             { type: "update_customization", field: "spice_level", next_value: "spicy" }
           ],
           ttl_minutes: 30
@@ -96,9 +103,7 @@ describe("changeSetTools", () => {
       before: "normal",
       after: "spicy"
     }]);
-    expect(preview.non_actionable_items).toContain(
-      "No scheduled service date exists for 2026-05-19."
-    );
+    expect(preview.non_actionable_items).toEqual([]);
     expect(preview.requires_confirmation).toBe(true);
     expect(db.listKitchenExportDeltas("cus_001")).toHaveLength(0);
 
@@ -277,47 +282,22 @@ describe("changeSetTools", () => {
 
   it("covers hard blocked paths through tool wrappers", async () => {
     const registry = createToolRegistry(changeSetTools);
-    const created = expectData<ChangeSet>(
-      await registry.execute("create_change_set", {
+    const ambiguousResolution = resolveServiceDates({
+      customer_id: "cus_001",
+      phrase: "sometime next week"
+    });
+    await expect(
+      registry.execute("create_change_set", {
         modelArgs: {
           change_set_id: "cs_blocked_paths",
           operations: [{ type: "pause_dates", dates: ["2026-05-18"] }],
-          date_resolution: resolveServiceDates({
-            customer_id: "cus_001",
-            phrase: "sometime next week"
-          }),
+          date_resolution: ambiguousResolution,
           ttl_minutes: 1
         },
-        context: context({ current_time: CREATED_AT })
-      })
-    );
-
-    await expect(
-      registry.execute("preview_change_set", {
-        modelArgs: { change_set_id: created.change_set_id },
-        context: context({ current_time: PREVIEWED_AT })
-      })
-    ).resolves.toMatchObject({ ok: true });
-    const confirmation = expectData<Confirmation>(
-      await registry.execute("capture_confirmation", {
-        modelArgs: {
-          change_set_id: created.change_set_id
-        },
         context: context({
-          current_time: CONFIRMED_AT,
-          current_user_turn_id: "turn_confirm_blocked",
-          last_user_message: "Yes, confirm it."
+          current_time: CREATED_AT,
+          trusted_date_resolutions: [ambiguousResolution]
         })
-      })
-    );
-
-    await expect(
-      registry.execute("commit_change_set", {
-        modelArgs: {
-          change_set_id: created.change_set_id,
-          confirmation_id: confirmation.confirmation_id
-        },
-        context: context({ current_time: COMMITTED_AT })
       })
     ).resolves.toMatchObject({
       ok: false,

@@ -15,9 +15,9 @@ import {
   requireConfirmationTurnAfterPreview,
   requireOwnedChangeSet,
   requireResolvedCustomer,
+  trustedDateResolutionForChangeSet,
   timeFromContext,
   validateChangeSetState,
-  validateDateResolutionCustomer
 } from "./changeSetToolSupport";
 import { defineTool, failedToolResult } from "./types";
 import {
@@ -48,11 +48,12 @@ export const createChangeSetTool = defineTool({
     const customerId = requireResolvedCustomer(context);
     if (!customerId.ok) return customerId;
 
-    const dateResolutionIssue = validateDateResolutionCustomer(
+    const dateResolution = trustedDateResolutionForChangeSet(
       args,
+      context,
       customerId.data
     );
-    if (dateResolutionIssue) return dateResolutionIssue;
+    if (!dateResolution.ok) return dateResolution;
 
     return createChangeSet({
       run_id: context.run_id,
@@ -61,7 +62,7 @@ export const createChangeSetTool = defineTool({
       operations: args.operations,
       now: timeFromContext(context),
       ttl_minutes: args.ttl_minutes,
-      date_resolution: args.date_resolution,
+      date_resolution: dateResolution.data,
       medical_risk_signals: args.medical_risk_signals
     });
   }

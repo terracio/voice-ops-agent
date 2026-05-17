@@ -7,7 +7,8 @@ import {
   metadataFor,
   uniquePolicyIds
 } from "../domain/changeSetPreview";
-import { PolicyId, type ChangeSet, type ToolResult } from "../domain/schema";
+import type { ResolveServiceDatesOutput } from "../domain/dateResolver";
+import { PolicyId, type ChangeOperation, type ChangeSet, type ToolResult } from "../domain/schema";
 import type { ToolExecutionContext } from "./context";
 import { failedToolResult } from "./types";
 import {
@@ -121,19 +122,52 @@ export function requireOwnedChangeSet(
   return ok(changeSet, []);
 }
 
-export function validateDateResolutionCustomer(
+export function trustedDateResolutionForChangeSet(
   args: CreateChangeSetToolInput,
+  context: ToolExecutionContext,
   customerId: string
-): ToolResult<never> | undefined {
-  if (!args.date_resolution || args.date_resolution.customer_id === customerId) {
-    return undefined;
+): ToolResult<ResolveServiceDatesOutput | undefined> {
+  if (args.date_resolution && args.date_resolution.customer_id !== customerId) {
+    return failedToolResult({
+      code: "DATE_RESOLUTION_CUSTOMER_MISMATCH",
+      message: "Date resolution does not belong to the resolved customer.",
+      policy_id: PolicyId.IDENTITY_UNCERTAIN
+    });
   }
 
+  const dates = dateOperationDates(args.operations);
+  if (dates.length === 0) return ok(undefined, []);
+
+  const trustedResolution = (context.trusted_date_resolutions ?? []).find(
+    (resolution) => dateResolutionCoversOperationDates(resolution, dates, customerId)
+  );
+  if (trustedResolution) return ok(trustedResolution, []);
+
   return failedToolResult({
-    code: "DATE_RESOLUTION_CUSTOMER_MISMATCH",
-    message: "Date resolution does not belong to the resolved customer.",
-    policy_id: PolicyId.IDENTITY_UNCERTAIN
+    code: "DATE_RESOLUTION_REQUIRED",
+    message: "Date-changing ChangeSets require server-generated date resolution evidence.",
+    policy_id: PolicyId.AMBIGUOUS_DATE
   });
+}
+
+function dateOperationDates(operations: ChangeOperation[]): string[] {
+  return [...new Set(operations.flatMap((operation) =>
+    operation.type === "pause_dates" || operation.type === "resume_dates"
+      ? operation.dates
+      : []
+  ))];
+}
+
+function dateResolutionCoversOperationDates(
+  resolution: ResolveServiceDatesOutput,
+  dates: string[],
+  customerId: string
+): boolean {
+  if (resolution.customer_id !== customerId || resolution.ambiguous) {
+    return false;
+  }
+  const actionableDates = new Set(resolution.actionable_service_dates);
+  return dates.every((date) => actionableDates.has(date));
 }
 
 export function nonActionableItems(changeSet: ChangeSet): string[] {

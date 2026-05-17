@@ -27,6 +27,15 @@ const scriptedCase: EvalCase = {
     },
     {
       type: "tool_call",
+      tool_call_id: "tc_resolve",
+      tool_name: "resolve_service_dates",
+      args: {
+        phrase: "This is Maya. Please pause my Monday meal.",
+        requested_days: ["Monday"]
+      }
+    },
+    {
+      type: "tool_call",
       tool_call_id: "tc_create",
       tool_name: "create_change_set",
       args: {
@@ -85,6 +94,7 @@ describe("scripted eval runner", () => {
 
     expect(result?.status).toBe("passed");
     expect(result?.tool_calls.map((call) => call.tool_name)).toEqual([
+      "resolve_service_dates",
       "create_change_set",
       "preview_change_set",
       "capture_confirmation",
@@ -160,14 +170,15 @@ describe("scripted eval runner", () => {
         script: [
           scriptedCase.script[0],
           scriptedCase.script[1],
+          scriptedCase.script[2],
           {
             type: "setup",
             action: "make_customer_state_stale",
             customer_id: "cus_001",
             state_version_increment: 1
           },
-          scriptedCase.script[2],
-          scriptedCase.script[4],
+          scriptedCase.script[3],
+          scriptedCase.script[5],
           {
             type: "tool_call",
             tool_call_id: "tc_stale_commit",

@@ -17,6 +17,7 @@ import {
   type ChangeSet,
   type ToolResult
 } from "../src/domain/schema";
+import { resolveServiceDates } from "../src/domain/dateResolver";
 
 const CREATED_AT = "2026-05-11T10:00:00Z";
 const PREVIEWED_AT = "2026-05-11T10:01:00Z";
@@ -272,6 +273,11 @@ describe("ChangeSet commit side-effect integration", () => {
         },
         { type: "create_payment_followup", reason: "failed_payment" }
       ],
+      date_resolution: resolveServiceDates({
+        customer_id: CUSTOMER_ID,
+        phrase: "Pause Monday.",
+        requested_days: ["Monday"]
+      }),
       now: CREATED_AT
     }));
     expectData(previewChangeSet({

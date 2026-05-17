@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ResolveServiceDatesOutputSchema } from "../domain/dateResolver";
 import { DateTimeStringSchema } from "../domain/schema";
 
 export const ToolActorSchema = z.enum(["agent", "user", "system", "policy"]);
@@ -19,7 +20,8 @@ export const ToolExecutionContextSchema = z.object({
   resolved_customer_id: z.string().min(1).optional(),
   last_user_turn_at: DateTimeStringSchema.optional(),
   current_time: DateTimeStringSchema.optional(),
-  reference_time: DateTimeStringSchema.optional()
+  reference_time: DateTimeStringSchema.optional(),
+  trusted_date_resolutions: z.array(ResolveServiceDatesOutputSchema).optional()
 }).strict();
 
 export type ToolActor = z.infer<typeof ToolActorSchema>;
@@ -36,7 +38,8 @@ export const TOOL_EXECUTION_CONTEXT_KEYS = [
   "resolved_customer_id",
   "last_user_turn_at",
   "current_time",
-  "reference_time"
+  "reference_time",
+  "trusted_date_resolutions"
 ] as const satisfies readonly (keyof ToolExecutionContext)[];
 
 export type ToolExecutionContextKey =

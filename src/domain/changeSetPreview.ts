@@ -179,12 +179,29 @@ export function evaluateChangeSetPolicies(
       matched_customer_count: 1
     },
     dateResolution: {
-      ambiguous: input.date_resolution?.ambiguous ?? false,
-      reason: input.date_resolution?.clarification_question
+      ambiguous: input.date_resolution?.ambiguous ??
+        hasDateChangingOperation(changeSet.operations),
+      reason: input.date_resolution?.clarification_question ??
+        missingDateResolutionReason(changeSet.operations)
     },
     medicalRiskSignals: input.medical_risk_signals,
     preview: input.preview
   });
+}
+
+function hasDateChangingOperation(operations: ChangeOperation[]): boolean {
+  return operations.some(
+    (operation) =>
+      operation.type === "pause_dates" || operation.type === "resume_dates"
+  );
+}
+
+function missingDateResolutionReason(
+  operations: ChangeOperation[]
+): string | undefined {
+  return hasDateChangingOperation(operations)
+    ? "Date-changing operations require server-generated date resolution evidence."
+    : undefined;
 }
 
 export function applyChangeOperations(
