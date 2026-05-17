@@ -157,6 +157,8 @@ Responsibilities:
 
 The sideband controller must not contain domain rules. It should be orchestration glue around the shared registry and domain layer.
 
+The browser-created call path starts sideband control automatically. The manual `/api/realtime/control` attach route is a server/debug surface and must require `Authorization: Bearer $MEALPLAN_REALTIME_CONTROL_TOKEN` before parsing request bodies or opening sockets.
+
 ## Tool and State Flow
 
 Operational tools follow the same shape in every runtime:

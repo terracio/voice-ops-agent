@@ -4,6 +4,7 @@ import {
   startRealtimeServerControl,
   type RealtimeSidebandSocketFactory
 } from "../../../../realtime/server/serverControl";
+import { requireRealtimeControlToken } from "../controlAuth";
 
 export type RealtimeControlRouteOptions = {
   socketFactory?: RealtimeSidebandSocketFactory;
@@ -13,6 +14,9 @@ export async function handleRealtimeControlRequest(
   request: Request,
   options: RealtimeControlRouteOptions = {}
 ) {
+  const authFailure = requireRealtimeControlToken(request);
+  if (authFailure) return authFailure;
+
   let body: unknown;
   try {
     body = await request.json();
