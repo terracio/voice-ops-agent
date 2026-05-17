@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { estimateRealtimeCostTelemetry } from "../src/realtime/config/costTelemetry";
+import {
+  appendRealtimeCostUsageEvent,
+  createInitialRealtimeCostTelemetry,
+  estimateRealtimeCostTelemetry
+} from "../src/realtime/config/costTelemetry";
 
 const capturedAt = "2026-05-17T09:00:00.000Z";
 
@@ -120,6 +124,73 @@ describe("Realtime cost telemetry", () => {
     expect(estimate.line_items).not.toContainEqual(expect.objectContaining({
       code: "transcription_audio_duration",
       amount_usd: 0
+    }));
+  });
+
+  it("does not price speech input totals when cached token split is missing", () => {
+    const estimate = estimateRealtimeCostTelemetry({
+      model: "gpt-realtime-2",
+      transcriptionModel: "gpt-realtime-whisper",
+      rawUsageEvents: [{
+        captured_at: capturedAt,
+        event_type: "response.done",
+        model: "gpt-realtime-2",
+        usage: {
+          input_token_details: {
+            text_tokens: 100,
+            audio_tokens: 50,
+            cached_tokens: 25
+          },
+          output_token_details: {
+            text_tokens: 10,
+            audio_tokens: 20
+          }
+        }
+      }]
+    });
+
+    expect(estimate.estimate_status).toBe("partial");
+    expect(estimate.flags).toContain("speech_cached_breakdown_missing");
+    expect(estimate.line_items.map((item) => item.code)).toEqual([
+      "speech_text_output",
+      "speech_audio_output"
+    ]);
+    expect(estimate.total_usd).toBe(0.00152);
+  });
+
+  it("captures alternate transcription completion usage events", () => {
+    const initial = createInitialRealtimeCostTelemetry({
+      model: "gpt-realtime-2",
+      transcriptionModel: "gpt-realtime-whisper"
+    });
+    const ignored = appendRealtimeCostUsageEvent({
+      createdAt: capturedAt,
+      event: {
+        type: "input_audio_transcription.done",
+        usage: { input_token_details: { audio_tokens: 600 } }
+      },
+      telemetry: initial
+    });
+    const estimate = appendRealtimeCostUsageEvent({
+      createdAt: capturedAt,
+      event: {
+        type: "input_audio_buffer.transcription.completed",
+        usage: {
+          input_token_details: { audio_tokens: 600 },
+          total_tokens: 620
+        }
+      },
+      telemetry: ignored
+    });
+
+    expect(ignored.source_event_count).toBe(0);
+    expect(estimate.raw_usage_events[0]?.event_type).toBe(
+      "input_audio_buffer.transcription.completed"
+    );
+    expect(estimate.flags).not.toContain("transcription_usage_not_captured");
+    expect(estimate.line_items).toContainEqual(expect.objectContaining({
+      code: "transcription_audio_duration",
+      amount_usd: 0.017
     }));
   });
 });

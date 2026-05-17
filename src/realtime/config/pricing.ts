@@ -32,7 +32,9 @@ export const REALTIME_PRICING = {
 
 const RawUsageEventTypeSchema = z.enum([
   "response.done",
-  "conversation.item.input_audio_transcription.completed"
+  "conversation.item.input_audio_transcription.completed",
+  "input_audio_buffer.transcription.completed",
+  "input_audio_transcription.completed"
 ]);
 
 export const RealtimeCostUsageSourceEventSchema = z.object({

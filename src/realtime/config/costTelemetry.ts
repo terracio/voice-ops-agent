@@ -14,6 +14,11 @@ type SpeechRates =
 type TranscriptionRates =
   typeof REALTIME_PRICING.models["gpt-realtime-whisper"]["transcription"];
 type CostLineItem = z.infer<typeof RealtimeCostLineItemSchema>;
+const TRANSCRIPTION_COMPLETED_EVENT_TYPES = new Set([
+  "conversation.item.input_audio_transcription.completed",
+  "input_audio_buffer.transcription.completed",
+  "input_audio_transcription.completed"
+]);
 
 export function createInitialRealtimeCostTelemetry(options: {
   model?: string;
@@ -46,8 +51,7 @@ export function appendRealtimeCostUsageEvent(options: {
       ? usageEvent.model
       : options.telemetry.model,
     rawUsageEvents: [...options.telemetry.raw_usage_events, usageEvent],
-    transcriptionModel: usageEvent.event_type ===
-      "conversation.item.input_audio_transcription.completed"
+    transcriptionModel: isTranscriptionCompletedEvent(usageEvent.event_type)
       ? usageEvent.model
       : options.telemetry.transcription_model
   });
@@ -69,8 +73,7 @@ export function estimateRealtimeCostTelemetry(options: {
     return event.event_type === "response.done";
   });
   const transcriptionEvents = rawUsageEvents.filter((event) => {
-    return event.event_type ===
-      "conversation.item.input_audio_transcription.completed";
+    return isTranscriptionCompletedEvent(event.event_type);
   });
 
   if (!speechRates) flags.add("unknown_speech_model");
@@ -133,30 +136,32 @@ function speechLineItems(
 
   if (input) {
     const cached = cachedInputTokens(input, flags);
-    addTokenItem(items, event, "speech_to_speech", {
-      code: "speech_text_input",
-      label: "Text input",
-      rate: rates.text_input_usd_per_million,
-      tokens: uncachedTokens(input.text_tokens, cached.text)
-    });
-    addTokenItem(items, event, "speech_to_speech", {
-      code: "speech_audio_input",
-      label: "Audio input",
-      rate: rates.audio_input_usd_per_million,
-      tokens: uncachedTokens(input.audio_tokens, cached.audio)
-    });
-    addTokenItem(items, event, "speech_to_speech", {
-      code: "speech_cached_text_input",
-      label: "Cached text input",
-      rate: rates.cached_text_input_usd_per_million,
-      tokens: cached.text
-    });
-    addTokenItem(items, event, "speech_to_speech", {
-      code: "speech_cached_audio_input",
-      label: "Cached audio input",
-      rate: rates.cached_audio_input_usd_per_million,
-      tokens: cached.audio
-    });
+    if (!cached.hasMissingBreakdown) {
+      addTokenItem(items, event, "speech_to_speech", {
+        code: "speech_text_input",
+        label: "Text input",
+        rate: rates.text_input_usd_per_million,
+        tokens: uncachedTokens(input.text_tokens, cached.text)
+      });
+      addTokenItem(items, event, "speech_to_speech", {
+        code: "speech_audio_input",
+        label: "Audio input",
+        rate: rates.audio_input_usd_per_million,
+        tokens: uncachedTokens(input.audio_tokens, cached.audio)
+      });
+      addTokenItem(items, event, "speech_to_speech", {
+        code: "speech_cached_text_input",
+        label: "Cached text input",
+        rate: rates.cached_text_input_usd_per_million,
+        tokens: cached.text
+      });
+      addTokenItem(items, event, "speech_to_speech", {
+        code: "speech_cached_audio_input",
+        label: "Cached audio input",
+        rate: rates.cached_audio_input_usd_per_million,
+        tokens: cached.audio
+      });
+    }
     if (positiveNumber(input.image_tokens)) flags.add("speech_image_tokens_unpriced");
   } else if (positiveNumber(usage.input_tokens)) {
     flags.add("speech_input_breakdown_missing");
@@ -214,15 +219,16 @@ function cachedInputTokens(input: Record<string, unknown>, flags: Set<string>) {
   if (!details) {
     if (positiveNumber(input.cached_tokens)) {
       flags.add("speech_cached_breakdown_missing");
+      return { audio: undefined, hasMissingBreakdown: true, text: undefined };
     }
-    return { audio: undefined, text: undefined };
+    return { audio: undefined, hasMissingBreakdown: false, text: undefined };
   }
   const text = numberValue(details.text_tokens);
   const audio = numberValue(details.audio_tokens);
   if (positiveNumber(details.image_tokens)) {
     flags.add("speech_cached_image_tokens_unpriced");
   }
-  return { audio, text };
+  return { audio, hasMissingBreakdown: false, text };
 }
 
 function addTokenItem(
@@ -254,8 +260,7 @@ function costUsageSourceEventFromRealtimeEvent(options: {
 }): RealtimeCostUsageSourceEvent | undefined {
   const event = recordValue(options.event);
   const type = nonEmptyString(event?.type);
-  if (type !== "response.done" &&
-    type !== "conversation.item.input_audio_transcription.completed") {
+  if (!type || (type !== "response.done" && !isTranscriptionCompletedEvent(type))) {
     return undefined;
   }
   const response = recordValue(event?.response);
@@ -268,6 +273,10 @@ function costUsageSourceEventFromRealtimeEvent(options: {
     source_event_id: nonEmptyString(event?.event_id),
     usage: type === "response.done" ? response?.usage ?? null : event?.usage ?? null
   });
+}
+
+function isTranscriptionCompletedEvent(type: string): boolean {
+  return TRANSCRIPTION_COMPLETED_EVENT_TYPES.has(type);
 }
 
 function speechPricing(model: string): SpeechRates | undefined {
