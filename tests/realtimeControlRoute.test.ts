@@ -24,10 +24,12 @@ class FakeSidebandSocket implements RealtimeSidebandSocket {
 }
 
 const originalApiKey = process.env.OPENAI_API_KEY;
+const originalControlToken = process.env.MEALPLAN_REALTIME_CONTROL_TOKEN;
 
-function jsonRequest(body: unknown): Request {
+function jsonRequest(body: unknown, token = "test-control-token"): Request {
   return new Request("http://localhost/api/realtime/control", {
     method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(body)
   });
 }
@@ -39,11 +41,57 @@ describe("POST /api/realtime/control", () => {
     } else {
       process.env.OPENAI_API_KEY = originalApiKey;
     }
+    if (originalControlToken === undefined) {
+      delete process.env.MEALPLAN_REALTIME_CONTROL_TOKEN;
+    } else {
+      process.env.MEALPLAN_REALTIME_CONTROL_TOKEN = originalControlToken;
+    }
     vi.restoreAllMocks();
+  });
+
+  it("fails closed when the control token is not configured", async () => {
+    process.env.OPENAI_API_KEY = "sk-server-secret";
+    delete process.env.MEALPLAN_REALTIME_CONTROL_TOKEN;
+    const socketFactory = vi.fn(() => new FakeSidebandSocket());
+
+    const response = await handleRealtimeControlRequest(
+      jsonRequest({ call_id: "rtc_test_123456" }),
+      { socketFactory }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("realtime_control_auth_misconfigured");
+    expect(socketFactory).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing or invalid control tokens before parsing the body", async () => {
+    process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_CONTROL_TOKEN = "test-control-token";
+    const socketFactory = vi.fn(() => new FakeSidebandSocket());
+
+    const missing = await handleRealtimeControlRequest(
+      new Request("http://localhost/api/realtime/control", {
+        body: "{",
+        method: "POST"
+      }),
+      { socketFactory }
+    );
+    const invalid = await handleRealtimeControlRequest(
+      jsonRequest({ call_id: "rtc_test_123456" }, "wrong-token"),
+      { socketFactory }
+    );
+
+    expect(missing.status).toBe(401);
+    expect((await missing.json()).error).toBe("realtime_control_unauthorized");
+    expect(invalid.status).toBe(401);
+    expect((await invalid.json()).error).toBe("realtime_control_unauthorized");
+    expect(socketFactory).not.toHaveBeenCalled();
   });
 
   it("rejects invalid call IDs without opening a socket", async () => {
     process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_CONTROL_TOKEN = "test-control-token";
     const socketFactory = vi.fn(() => new FakeSidebandSocket());
 
     const response = await handleRealtimeControlRequest(
@@ -59,6 +107,7 @@ describe("POST /api/realtime/control", () => {
 
   it("returns a clear server error when OPENAI_API_KEY is missing", async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.MEALPLAN_REALTIME_CONTROL_TOKEN = "test-control-token";
     const socketFactory = vi.fn(() => new FakeSidebandSocket());
 
     const response = await handleRealtimeControlRequest(
@@ -74,6 +123,7 @@ describe("POST /api/realtime/control", () => {
 
   it("starts server controls without returning tools or API keys", async () => {
     process.env.OPENAI_API_KEY = "sk-server-secret";
+    process.env.MEALPLAN_REALTIME_CONTROL_TOKEN = "test-control-token";
     const socket = new FakeSidebandSocket();
     const socketFactory = vi.fn(() => socket);
 
