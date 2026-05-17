@@ -78,6 +78,31 @@ describe("date resolver", () => {
     ]);
   });
 
+  it("marks locked kitchen dates as non-actionable", () => {
+    resetDb("omar_locked_cutoff");
+
+    const result = resolveServiceDates({
+      customer_id: "cus_002",
+      phrase: "Pause tomorrow's meal.",
+      reference_date: EVAL_REFERENCE_DATE
+    });
+
+    expect(result.ambiguous).toBe(false);
+    expect(result.actionable_service_dates).toEqual([]);
+    expect(result.resolved_dates).toEqual([
+      {
+        requested_label: "tomorrow",
+        calendar_date: "2026-05-12",
+        service_date: "2026-05-12",
+        day_of_week: "Tuesday",
+        is_scheduled_delivery_day: true,
+        status: "locked",
+        actionable: false,
+        non_actionable_reason: "kitchen_locked"
+      }
+    ]);
+  });
+
   it("returns ambiguity with a clarification question and no write candidates", () => {
     const result = resolveServiceDates({
       customer_id: "cus_001",

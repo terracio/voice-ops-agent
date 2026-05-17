@@ -1,8 +1,11 @@
 import { createPolicyBlockAuditEvent, createReadAuditEvent } from "../audit";
 import { appendAuditEvent, getCustomer, getCustomerState, type CustomerState } from "../domain/db";
-import { resolveServiceDatesForState } from "../domain/dateResolver";
+import {
+  resolveServiceDatesForState,
+  type ResolveServiceDatesOutput
+} from "../domain/dateResolver";
 import { EVAL_REFERENCE_DATE } from "../domain/seed";
-import { PolicyId, type AuditEvent, type DateString, type PaymentStatus, type ToolError, type ToolResult } from "../domain/schema";
+import { PolicyId, type AuditEvent, type DateString, type PaymentStatus, type PolicyIdValue, type ToolError, type ToolResult } from "../domain/schema";
 import type { ToolExecutionContext } from "./context";
 import { normalizeCustomerId } from "./customerId";
 import { AuthorizedCustomerInputSchema, CustomerStateOutputSchema, PaymentStatusInputSchema, PaymentStatusOutputSchema, ResolveServiceDatesToolInputSchema, ResolveServiceDatesToolOutputSchema, ToolReferenceDateSchema, type AuthorizedCustomerInput, type CustomerStateOutput, type PaymentStatusOutput, type ResolveServiceDatesToolInput, type ResolveServiceDatesToolOutput } from "./readToolSchemas";
@@ -134,6 +137,21 @@ function paymentFollowupReason(status: PaymentStatus) {
   return undefined;
 }
 
+function resolveDatePolicyIds(
+  resolved: ResolveServiceDatesOutput
+): PolicyIdValue[] {
+  const policyIds: PolicyIdValue[] = [];
+  if (resolved.ambiguous) policyIds.push(PolicyId.AMBIGUOUS_DATE);
+  if (
+    resolved.resolved_dates.some(
+      (date) => date.non_actionable_reason === "kitchen_locked"
+    )
+  ) {
+    policyIds.push(PolicyId.LOCKED_SERVICE_DATE_FORBIDDEN);
+  }
+  return policyIds;
+}
+
 function customerNotFound<TData>(
   toolName: string,
   context: ToolExecutionContext,
@@ -223,13 +241,14 @@ export const resolveServiceDatesTool = defineTool({
       },
       authorized.customerId
     );
+    const policyIds = resolveDatePolicyIds(resolved);
 
     return {
       ok: true,
       data: ResolveServiceDatesToolOutputSchema.parse({
         ...resolved,
-        policy_ids: resolved.ambiguous ? [PolicyId.AMBIGUOUS_DATE] : [],
-        write_blocked: resolved.ambiguous
+        policy_ids: policyIds,
+        write_blocked: policyIds.length > 0
       }),
       audit_event_ids: [event.event_id]
     };

@@ -11,11 +11,7 @@ import {
 
 const DAY_NAMES = DayOfWeekSchema.options;
 const SERVICE_DATE_STATUS_VALUES = ["active", "paused", "locked", "skipped"] as const;
-const NON_ACTIONABLE_REASONS = [
-  "ambiguous_date",
-  "not_scheduled_delivery_day",
-  "no_service_date_record"
-] as const;
+const NON_ACTIONABLE_REASONS = ["ambiguous_date", "not_scheduled_delivery_day", "no_service_date_record", "kitchen_locked"] as const;
 
 export const ResolveServiceDatesInputSchema = z.object({
   customer_id: z.string().min(1),
@@ -272,12 +268,15 @@ function createActionableDate(
   requested: RequestedCalendarDate,
   serviceDate: ServiceDate
 ): ResolvedServiceDate {
+  const locked = serviceDate.status === "locked" || serviceDate.kitchen_locked;
+
   return {
     ...requested,
     service_date: serviceDate.service_date,
     is_scheduled_delivery_day: true,
     status: serviceDate.status,
-    actionable: true
+    actionable: !locked,
+    ...(locked ? { non_actionable_reason: "kitchen_locked" as const } : {})
   };
 }
 
