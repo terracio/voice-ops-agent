@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { issueRealtimeEvidenceSession } from "../../../../evidence";
 import { exchangeBrowserRealtimeSdpOffer } from "../../../../realtime/server/browserSession";
 import {
   startRealtimeServerControl,
@@ -27,12 +28,16 @@ export async function handleRealtimeCallRequest(
       socketFactory: options.socketFactory
     });
 
+    const evidenceSessionToken = issueRealtimeEvidenceSession({
+      callId: exchange.call_id
+    });
+
     return new Response(exchange.answer_sdp, {
       headers: {
         "Cache-Control": "no-store",
         "Content-Type": "application/sdp",
         "Location": exchange.location,
-        "Set-Cookie": `realtime_call_id=${encodeURIComponent(exchange.call_id)}; Path=/; HttpOnly; SameSite=Strict; Secure`,
+        "Set-Cookie": `realtime_evidence_session=${encodeURIComponent(evidenceSessionToken)}; Path=/api/realtime/evidence; HttpOnly; SameSite=Strict; Secure`,
         "X-Realtime-Call-Id": exchange.call_id
       }
     });

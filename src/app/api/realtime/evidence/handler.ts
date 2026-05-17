@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   getRealtimeEvidenceSnapshot,
-  RealtimeEvidenceCallIdSchema
+  RealtimeEvidenceCallIdSchema,
+  validateRealtimeEvidenceSession
 } from "../../../../evidence";
 
 const NO_STORE_HEADERS = {
@@ -20,8 +21,10 @@ export async function handleRealtimeEvidenceRequest(request: Request) {
     );
   }
 
-  const cookieCallId = realtimeCallIdFromCookie(request.headers.get("cookie"));
-  if (!cookieCallId) {
+  const evidenceSessionToken = evidenceSessionTokenFromCookie(
+    request.headers.get("cookie")
+  );
+  if (!evidenceSessionToken) {
     return evidenceError(
       "missing_realtime_session",
       "Realtime evidence requires an active browser session.",
@@ -29,7 +32,11 @@ export async function handleRealtimeEvidenceRequest(request: Request) {
     );
   }
 
-  if (cookieCallId !== parsedCallId.data) {
+  const hasActiveSession = validateRealtimeEvidenceSession({
+    callId: parsedCallId.data,
+    token: evidenceSessionToken
+  });
+  if (!hasActiveSession) {
     return evidenceError(
       "forbidden_realtime_evidence_access",
       "Realtime evidence can only be read for the active call.",
@@ -49,11 +56,13 @@ export async function handleRealtimeEvidenceRequest(request: Request) {
   return NextResponse.json(snapshot, { headers: NO_STORE_HEADERS });
 }
 
-function realtimeCallIdFromCookie(cookieHeader: string | null): string | undefined {
+function evidenceSessionTokenFromCookie(
+  cookieHeader: string | null
+): string | undefined {
   if (!cookieHeader) return undefined;
   for (const fragment of cookieHeader.split(";")) {
     const [rawName, ...rawValue] = fragment.trim().split("=");
-    if (rawName !== "realtime_call_id") continue;
+    if (rawName !== "realtime_evidence_session") continue;
     const value = rawValue.join("=");
     if (!value) return undefined;
     try {
