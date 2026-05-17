@@ -145,6 +145,7 @@ pnpm install
 Run the browser demo:
 
 ```bash
+cp .env.example .env
 pnpm dev
 ```
 

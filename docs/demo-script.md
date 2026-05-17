@@ -10,6 +10,7 @@ Install and run:
 
 ```bash
 pnpm install
+cp .env.example .env
 pnpm dev
 ```
 
