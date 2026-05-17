@@ -152,9 +152,12 @@ describe("voice console UI shell", () => {
 
     expect(stopped.sessionStatus).toBe("disconnected");
     expect(stopped.agentMode).toBe("idle");
-    expect(stopped.callId).toBeNull();
+    expect(stopped.callId).toBe(started.callId);
     expect(stopped.controlHandoff).toBe("pending");
     expect(stopped.events[0]?.title).toBe("Session stopped");
+    expect(stopped.events[0]?.detail).toBe(
+      "Audio stopped; evidence remains available until reset"
+    );
   });
 
   it("keeps browser code out of server-only domain and tool modules", () => {
@@ -212,6 +215,16 @@ describe("voice console UI shell", () => {
 
     expect(toolRunning.agentMode).toBe("tool-running");
     expect(toolRunning.assistantAudioLabel).toBe("Server tools are running");
+
+    const ended = markRealtimeState(toolRunning, {
+      at: "10:52:04",
+      previousState: "tool-running",
+      state: "ended"
+    });
+
+    expect(ended.sessionStatus).toBe("disconnected");
+    expect(ended.callId).toBe("rtc_test_123");
+    expect(ended.events[0]?.title).toBe("Session ended");
   });
 
   it("deduplicates same-second realtime error events for stable React keys", () => {

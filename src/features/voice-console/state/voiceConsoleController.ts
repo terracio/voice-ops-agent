@@ -136,7 +136,6 @@ export function applyVoiceConsoleAction(
         sessionStatus: "disconnected",
         agentMode: "idle",
         assistantAudioLabel: "No audio playing",
-        callId: null,
         microphonePermission: "not-requested",
         isMuted: true,
         inputLevel: 0,
@@ -148,7 +147,7 @@ export function applyVoiceConsoleAction(
         at,
         tone: "pending",
         title: "Session stopped",
-        detail: "Control handoff returned to pending",
+        detail: "Audio stopped; evidence remains available until reset",
         label: "PENDING"
       }
     );

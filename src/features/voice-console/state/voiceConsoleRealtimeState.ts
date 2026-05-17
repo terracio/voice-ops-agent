@@ -216,7 +216,6 @@ function statePatchForRealtimeState(
       ...state,
       agentMode: "idle",
       assistantAudioLabel: "No audio playing",
-      callId: null,
       controlHandoff: "pending",
       serverCallSetup: "not-created",
       inputLevel: 0,

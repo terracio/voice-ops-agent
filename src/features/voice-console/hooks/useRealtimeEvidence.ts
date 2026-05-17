@@ -32,12 +32,13 @@ export function useRealtimeEvidence({
   );
 
   useEffect(() => {
-    if (!enabled || !callId) {
+    if (!callId) {
       setEvidence((current) =>
         current.status === "idle" ? current : EMPTY_VOICE_CONSOLE_EVIDENCE
       );
       return;
     }
+    if (!enabled) return;
 
     let cancelled = false;
     const controller = new AbortController();
