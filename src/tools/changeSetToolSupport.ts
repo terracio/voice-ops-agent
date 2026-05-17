@@ -7,6 +7,10 @@ import {
   metadataFor,
   uniquePolicyIds
 } from "../domain/changeSetPreview";
+import {
+  classifyConfirmationIntent,
+  confirmationChallengePhraseForChangeSet
+} from "../domain/confirmationIntent";
 import type { ResolveServiceDatesOutput } from "../domain/dateResolver";
 import { PolicyId, type ChangeOperation, type ChangeSet, type ToolResult } from "../domain/schema";
 import type { ToolExecutionContext } from "./context";
@@ -202,32 +206,17 @@ export function nonActionableItems(changeSet: ChangeSet): string[] {
 }
 
 export function isExplicitConfirmation(message: string): boolean {
-  const normalized = message.toLowerCase().replace(/\s+/g, " ").trim();
-  if (/\b(but|instead|actually|except)\b/.test(normalized)) {
-    return false;
-  }
-  if (/\bchange\b.+\bto\b/.test(normalized)) return false;
-
-  if (/^confirm\b.+[?]$/.test(normalized)) return false;
-  if (/^confirm\b(?: [a-z0-9,.'_-]+)*[.!]?$/.test(normalized)) return true;
-
-  return /^(yes|yep|yeah|correct|confirmed|i confirm|that is correct|looks good|go ahead)([,. ]+(confirm|please do|those changes|the changes|it|that|this))*[.!]?$/.test(normalized);
+  return classifyConfirmationIntent({ transcript: message }).intent === "confirm";
 }
 
 export function confirmationChallengeForChangeSet(
   changeSet: ChangeSet
 ): PreviewChangeSetToolOutput["confirmation_challenge"] {
-  const phrase = `Confirm ${confirmationChallengeSubject(changeSet)}.`;
+  const phrase = confirmationChallengePhraseForChangeSet(changeSet);
   return {
     phrase,
     instruction: `Ask the caller to say exactly: "${phrase}"`
   };
-}
-
-export function requiresTranscriptConfirmation(
-  context: ToolExecutionContext
-): boolean {
-  return confirmationSourceForContext(context) !== "realtime_user_turn";
 }
 
 export function requireConfirmationTurnAfterPreview(
@@ -267,17 +256,4 @@ export function timeFromContext(context: ToolExecutionContext): string {
 
 export function ok<T>(data: T, audit_event_ids: string[]): ToolResult<T> {
   return { ok: true, data, audit_event_ids };
-}
-
-function confirmationChallengeSubject(changeSet: ChangeSet): string {
-  if (changeSet.operations.length > 1) return "meal plan changes";
-
-  const [operation] = changeSet.operations;
-  if (!operation) return "meal plan changes";
-  if (operation.type === "pause_dates") return "pause delivery";
-  if (operation.type === "resume_dates") return "resume delivery";
-  if (operation.type === "create_payment_followup") {
-    return "payment follow-up";
-  }
-  return "meal preference change";
 }

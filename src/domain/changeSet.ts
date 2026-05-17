@@ -8,17 +8,8 @@ import {
 import * as db from "./db";
 import { materializeCommittedSideEffects } from "./sideEffects";
 import { ResolveServiceDatesOutputSchema } from "./dateResolver";
-import {
-  ChangeOperationSchema,
-  ChangeSetSchema,
-  ConfirmationSchema,
-  DateTimeStringSchema,
-  PolicyId,
-  createToolResultSchema,
-  type ChangeSet,
-  type Confirmation,
-  type ToolResult
-} from "./schema";
+import { classifyConfirmationIntent, confirmationChallengePhraseForChangeSet } from "./confirmationIntent";
+import { ChangeOperationSchema, ChangeSetSchema, ConfirmationSchema, DateTimeStringSchema, PolicyId, createToolResultSchema, type ChangeSet, type Confirmation, type ToolResult } from "./schema";
 import { ChangeSetPreviewSchema, addMinutes, applyChangeOperations, buildChangeSetPreview, blockedChangeSet, confirmationIssue, evaluateChangeSetPolicies, metadataFor, rememberChangeSetMetadata, uniquePolicyIds, withCustomizationPreviousValues, type ChangeSetPreview } from "./changeSetPreview";
 
 const DEFAULT_TTL_MINUTES = 15;
@@ -181,6 +172,13 @@ export function captureServerConfirmation(input: CaptureConfirmationInput): Tool
 
   const confirmationId = parsed.confirmation_id ?? nextId("conf");
   if (db.getConfirmation(confirmationId)) return err("CONFIRMATION_ALREADY_EXISTS", `Confirmation already exists: ${confirmationId}`);
+  const confirmationIntent = classifyConfirmationIntent({
+    challenge: confirmationChallengePhraseForChangeSet(changeSet),
+    transcript: parsed.transcript_excerpt
+  });
+  if (confirmationIntent.intent !== "confirm") {
+    return err("CONFIRMATION_NOT_EXPLICIT", "Confirmation must match the preview challenge or a short clear affirmative.");
+  }
   const confirmation = ConfirmationSchema.parse({
     confirmation_id: confirmationId,
     run_id: parsed.run_id,
@@ -193,7 +191,8 @@ export function captureServerConfirmation(input: CaptureConfirmationInput): Tool
     confirmed_at: now,
     transcript_excerpt: parsed.transcript_excerpt,
     confirmation_source: parsed.confirmation_source,
-    confirmation_type: parsed.confirmation_type
+    confirmation_type: parsed.confirmation_type,
+    confirmation_intent: confirmationIntent
   });
   const saved = db.saveConfirmation(confirmation);
 
@@ -218,7 +217,8 @@ export function captureServerConfirmation(input: CaptureConfirmationInput): Tool
         captured_by: "server",
         confirmed_by: "user",
         transcript_excerpt: saved.transcript_excerpt,
-        confirmation_type: saved.confirmation_type
+        confirmation_type: saved.confirmation_type,
+        confirmation_intent: saved.confirmation_intent
       }
     })
   );

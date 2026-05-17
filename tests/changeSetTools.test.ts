@@ -126,7 +126,13 @@ describe("changeSetTools", () => {
       source_user_turn_id: "turn_confirm",
       captured_by: "server",
       confirmed_by: "user",
-      transcript_excerpt: "Yes, confirm those changes."
+      transcript_excerpt: "Yes, confirm those changes.",
+      confirmation_intent: {
+        intent: "confirm",
+        method: "deterministic",
+        matched_signals: ["affirmative:yes_confirm_those_changes"],
+        rejected_signals: []
+      }
     });
 
     const committed = expectData<ChangeSet>(

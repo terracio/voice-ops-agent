@@ -290,10 +290,10 @@ function toConfirmationRecord(confirmation: Confirmation): EvalCaseResult["confi
     confirmed_by: confirmation.confirmed_by,
     previewed_at: confirmation.previewed_at,
     confirmed_at: confirmation.confirmed_at,
-    confirmation_type: confirmation.confirmation_type
+    confirmation_type: confirmation.confirmation_type,
+    confirmation_intent: confirmation.confirmation_intent
   };
 }
-
 function applyContextPatch(context: ToolExecutionContext, patch?: ContextPatch): void {
   if (!patch) return;
   if (patch.identity_status) context.identity_status = patch.identity_status;
