@@ -5,6 +5,7 @@ import { PolicyId } from "../src/domain/schema";
 import {
   createToolRegistry,
   CustomerStateOutputSchema,
+  identityTools,
   readTools,
   ResolveServiceDatesToolOutputSchema,
   type ToolExecutionContext
@@ -29,7 +30,7 @@ const unresolvedContext: ToolExecutionContext = {
 };
 
 function registry() {
-  return createToolRegistry(readTools);
+  return createToolRegistry([...identityTools, ...readTools]);
 }
 
 beforeEach(() => {

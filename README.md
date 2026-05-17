@@ -69,7 +69,7 @@ Example caller request:
 
 > “Hi, I’m traveling next week. Can you pause Monday and Tuesday, keep Wednesday, make my chicken meals spicy, and check if my card failed yesterday?”
 
-The system should identify the customer, read the current plan, resolve dates, detect that Tuesday is not scheduled, check payment status, preview safe changes, ask for confirmation, commit only after server-captured confirmation, and write audit/eval evidence.
+The system should find and confirm the customer, read the current plan, resolve dates, detect that Tuesday is not scheduled, check payment status, preview safe changes, ask for confirmation, commit only after server-captured confirmation, and write audit/eval evidence.
 
 ---
 

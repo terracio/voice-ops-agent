@@ -4,10 +4,14 @@ import {
   type ResolveServiceDatesOutput
 } from "../../domain/dateResolver";
 import type {
+  PendingIdentityCandidate,
   ToolExecutionContext,
   ToolIdentityStatus
 } from "../../tools/context";
-import { LookupCustomerOutputSchema } from "../../tools/readToolSchemas";
+import {
+  ConfirmCustomerIdentityOutputSchema,
+  LookupCustomerOutputSchema
+} from "../../tools/readToolSchemas";
 import { timestamp } from "../runner/support";
 
 export type RealtimeSessionState = {
@@ -15,12 +19,14 @@ export type RealtimeSessionState = {
   identity_status: ToolIdentityStatus;
   last_user_turn_at?: string;
   last_user_message?: string;
+  pending_identity_candidate?: PendingIdentityCandidate;
   resolved_customer_id?: string;
   trusted_date_resolutions: ResolveServiceDatesOutput[];
 };
 
 export type RealtimeIdentityStateUpdate = {
   identity_status: ToolIdentityStatus;
+  pending_identity_candidate?: PendingIdentityCandidate;
   resolved_customer_id?: string;
 };
 
@@ -75,7 +81,10 @@ export function buildRealtimeToolContext(options: {
     ...(options.state.resolved_customer_id
       ? { resolved_customer_id: options.state.resolved_customer_id }
       : {}),
-    trusted_date_resolutions: options.state.trusted_date_resolutions
+    trusted_date_resolutions: options.state.trusted_date_resolutions,
+    ...(options.state.pending_identity_candidate
+      ? { pending_identity_candidate: options.state.pending_identity_candidate }
+      : {})
   };
 }
 
@@ -110,18 +119,23 @@ export function applyRealtimeTranscriptEventToSessionState(options: {
 export function applyRealtimeToolResultToSessionState(options: {
   result: ToolResult<unknown>;
   state: RealtimeSessionState;
+  toolContext: ToolExecutionContext;
   toolName: string;
 }): RealtimeIdentityStateUpdate | undefined {
   if (options.toolName === "resolve_service_dates") {
     appendTrustedDateResolution(options.state, options.result);
     return undefined;
   }
+  if (options.toolName === "confirm_customer_identity") {
+    return applyIdentityConfirmationResult(options.state, options.result);
+  }
   if (options.toolName !== "lookup_customer") return undefined;
 
-  const nextState = identityStateFromLookupResult(options.result);
-  options.state.identity_status = nextState.identity_status;
-  options.state.resolved_customer_id = nextState.resolved_customer_id;
-  return nextState;
+  return applyLookupResultToSessionState(
+    options.state,
+    options.result,
+    options.toolContext
+  );
 }
 
 function appendTrustedDateResolution(
@@ -137,10 +151,35 @@ function appendTrustedDateResolution(
   ];
 }
 
-function identityStateFromLookupResult(
+function applyIdentityConfirmationResult(
+  state: RealtimeSessionState,
   result: ToolResult<unknown>
-): RealtimeIdentityStateUpdate {
-  if (!result.ok) return { identity_status: "unknown" };
+): RealtimeIdentityStateUpdate | undefined {
+  if (!result.ok) return undefined;
+
+  const parsed = ConfirmCustomerIdentityOutputSchema.safeParse(result.data);
+  if (!parsed.success) return undefined;
+
+  state.identity_status = "confirmed";
+  state.resolved_customer_id = parsed.data.customer_id;
+  state.pending_identity_candidate = undefined;
+  return {
+    identity_status: "confirmed",
+    resolved_customer_id: parsed.data.customer_id
+  };
+}
+
+function applyLookupResultToSessionState(
+  state: RealtimeSessionState,
+  result: ToolResult<unknown>,
+  context: ToolExecutionContext
+): RealtimeIdentityStateUpdate | undefined {
+  if (state.identity_status === "confirmed") return undefined;
+  if (!result.ok) {
+    state.identity_status = "unknown";
+    state.pending_identity_candidate = undefined;
+    return { identity_status: "unknown" };
+  }
 
   const parsed = LookupCustomerOutputSchema.safeParse(result.data);
   if (!parsed.success) return { identity_status: "unknown" };
@@ -152,12 +191,25 @@ function identityStateFromLookupResult(
     candidate?.identity_confidence === "confirmed";
 
   if (confirmedSingleMatch && candidate) {
+    state.identity_status = "uncertain";
+    state.resolved_customer_id = undefined;
+    state.pending_identity_candidate = {
+      customer_id: candidate.customer_id,
+      name: candidate.name,
+      phone_last4: candidate.phone_last4,
+      identity_confidence: "confirmed",
+      lookup_user_turn_id: context.current_user_turn_id,
+      ...(context.current_time ? { lookup_at: context.current_time } : {})
+    };
     return {
-      identity_status: "confirmed",
-      resolved_customer_id: candidate.customer_id
+      identity_status: "uncertain",
+      pending_identity_candidate: state.pending_identity_candidate
     };
   }
 
+  state.identity_status = "uncertain";
+  state.resolved_customer_id = undefined;
+  state.pending_identity_candidate = undefined;
   return { identity_status: "uncertain" };
 }
 

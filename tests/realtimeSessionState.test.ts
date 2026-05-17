@@ -51,7 +51,7 @@ describe("Realtime session identity state", () => {
     expect(harness.sessionState).toMatchObject({ identity_status: "unknown" });
   });
 
-  it("updates hidden identity after confirmed lookup and allows follow-on reads", async () => {
+  it("keeps lookup as pending identity until the caller confirms it", async () => {
     const harness = createToolHarness();
 
     const lookup = await harness.invoke("lookup_customer", {
@@ -65,13 +65,34 @@ describe("Realtime session identity state", () => {
       }
     });
     expect(harness.sessionState).toMatchObject({
+      identity_status: "uncertain",
+      pending_identity_candidate: { customer_id: "cus_001" }
+    });
+
+    await expect(harness.invoke("get_customer_state", {
+      customer_id: "cus_001"
+    })).resolves.toMatchObject({
+      ok: false,
+      error: { policy_id: "P001_IDENTITY_UNCERTAIN" }
+    });
+
+    harness.userTurn("turn_confirm_identity", "Yes, that's me.");
+    const confirmation = await harness.invoke("confirm_customer_identity", {
+      customer_id: "CUS_001"
+    });
+    expect(confirmation).toMatchObject({
+      ok: true,
+      data: {
+        identity_status: "confirmed",
+        customer_id: "cus_001"
+      }
+    });
+    expect(harness.sessionState).toMatchObject({
       identity_status: "confirmed",
       resolved_customer_id: "cus_001"
     });
 
-    const state = await harness.invoke("get_customer_state", {
-      customer_id: "cus_001"
-    });
+    const state = await harness.invoke("get_customer_state", {});
     expect(state).toMatchObject({
       ok: true,
       data: {
@@ -153,6 +174,8 @@ describe("Realtime session identity state", () => {
     const harness = createToolHarness();
 
     await harness.invoke("lookup_customer", { customer_id: "CUS_001" });
+    harness.userTurn("turn_confirm_identity", "Yes, that's me.");
+    await harness.invoke("confirm_customer_identity", { customer_id: "CUS_001" });
     const resolution = await harness.invoke("resolve_service_dates", {
       phrase: "Pause Monday.",
       requested_days: ["Monday"]
@@ -191,6 +214,18 @@ function createToolHarness() {
   return {
     base,
     sessionState,
+    userTurn: (turnId: string, text: string) => {
+      applyRealtimeTranscriptEventToSessionState({
+        event: {
+          item_id: turnId,
+          transcript: text,
+          type: "conversation.item.input_audio_transcription.completed"
+        },
+        fallbackTurnId: "fallback_turn",
+        now: () => new Date("2026-05-13T09:01:00+02:00"),
+        state: sessionState
+      });
+    },
     invoke: async (toolName: string, args: unknown) => {
       const tool = findTool(tools, toolName);
       return JSON.parse(String(await tool.invoke({} as never, JSON.stringify(args))));

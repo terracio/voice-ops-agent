@@ -299,6 +299,7 @@ export function startRealtimeServerControl(options: {
           applyRealtimeToolResultToSessionState({
             result,
             state: sessionState,
+            toolContext,
             toolName: call.name
           });
           sendFunctionCallResult(socket, call.call_id, result);

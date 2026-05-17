@@ -10,6 +10,15 @@ export const ToolIdentityStatusSchema = z.enum([
   "unknown"
 ]);
 
+export const PendingIdentityCandidateSchema = z.object({
+  customer_id: z.string().min(1),
+  name: z.string().min(1),
+  phone_last4: z.string().min(1),
+  identity_confidence: z.literal("confirmed"),
+  lookup_user_turn_id: z.string().min(1),
+  lookup_at: DateTimeStringSchema.optional()
+}).strict();
+
 export const ToolExecutionContextSchema = z.object({
   run_id: z.string().min(1),
   session_id: z.string().min(1),
@@ -21,11 +30,15 @@ export const ToolExecutionContextSchema = z.object({
   last_user_turn_at: DateTimeStringSchema.optional(),
   current_time: DateTimeStringSchema.optional(),
   reference_time: DateTimeStringSchema.optional(),
-  trusted_date_resolutions: z.array(ResolveServiceDatesOutputSchema).optional()
+  trusted_date_resolutions: z.array(ResolveServiceDatesOutputSchema).optional(),
+  pending_identity_candidate: PendingIdentityCandidateSchema.optional()
 }).strict();
 
 export type ToolActor = z.infer<typeof ToolActorSchema>;
 export type ToolIdentityStatus = z.infer<typeof ToolIdentityStatusSchema>;
+export type PendingIdentityCandidate = z.infer<
+  typeof PendingIdentityCandidateSchema
+>;
 export type ToolExecutionContext = z.infer<typeof ToolExecutionContextSchema>;
 
 export const TOOL_EXECUTION_CONTEXT_KEYS = [
@@ -39,7 +52,8 @@ export const TOOL_EXECUTION_CONTEXT_KEYS = [
   "last_user_turn_at",
   "current_time",
   "reference_time",
-  "trusted_date_resolutions"
+  "trusted_date_resolutions",
+  "pending_identity_candidate"
 ] as const satisfies readonly (keyof ToolExecutionContext)[];
 
 export type ToolExecutionContextKey =

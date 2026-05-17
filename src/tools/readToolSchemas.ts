@@ -42,6 +42,20 @@ export const LookupCustomerOutputSchema = z.object({
   clarification_question: z.string().min(1).optional()
 }).strict();
 
+export const ConfirmCustomerIdentityInputSchema = z.object({
+  customer_id: SearchStringSchema.optional()
+}).strict();
+
+export const ConfirmCustomerIdentityOutputSchema = z.object({
+  identity_status: z.literal("confirmed"),
+  customer_id: z.string().min(1),
+  name: z.string().min(1),
+  phone_last4: z.string().min(1),
+  confirmed_from_turn_id: z.string().min(1),
+  policy_ids: z.array(PolicyIdSchema),
+  write_blocked: z.literal(false)
+}).strict();
+
 export const AuthorizedCustomerInputSchema = z.object({
   customer_id: SearchStringSchema.optional()
 }).strict();
@@ -107,6 +121,12 @@ export const ToolReferenceDateSchema = DateStringSchema;
 
 export type LookupCustomerInput = z.infer<typeof LookupCustomerInputSchema>;
 export type LookupCustomerOutput = z.infer<typeof LookupCustomerOutputSchema>;
+export type ConfirmCustomerIdentityInput = z.infer<
+  typeof ConfirmCustomerIdentityInputSchema
+>;
+export type ConfirmCustomerIdentityOutput = z.infer<
+  typeof ConfirmCustomerIdentityOutputSchema
+>;
 export type AuthorizedCustomerInput = z.infer<typeof AuthorizedCustomerInputSchema>;
 export type CustomerStateOutput = z.infer<typeof CustomerStateOutputSchema>;
 export type ResolveServiceDatesToolInput = z.infer<

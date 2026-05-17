@@ -32,7 +32,7 @@ MealPlan VoiceOps must demonstrate a safe realtime voice operations flow for thi
 MealPlan VoiceOps MUST support a production-shaped demo of a meal-plan contact-center agent that can:
 
 - run a realtime browser voice session,
-- identify or clarify the customer,
+- find and explicitly confirm the customer before private account access,
 - read current customer state,
 - resolve service dates from natural language,
 - preview valid meal-plan changes,
@@ -280,7 +280,8 @@ The realtime agent SHOULD receive only the model-facing operational tools.
 
 | Tool | Risk | Requirement |
 |---|---|---|
-| `lookup_customer` | `read` | Find customer candidates from customer ID, name, phone, or other allowed lookup hint. Must return uncertainty when identity is not exact. |
+| `lookup_customer` | `read` | Find customer candidates from customer ID, name, phone, or other allowed lookup hint. Must not authorize private account access by itself. |
+| `confirm_customer_identity` | `read` | Promote one pending customer candidate to confirmed identity only after a later explicit caller confirmation turn. |
 | `get_customer_state` | `read` | Read the confirmed customer's plan, service dates, allergies, preferences, payment summary, and state version. |
 | `resolve_service_dates` | `read` | Convert caller date language into exact service dates using customer state and a fixed reference date. Must flag ambiguity and non-scheduled days. |
 | `get_payment_status` | `read` | Read payment status for follow-up planning only. Must never settle, charge, or mark payment paid. |
@@ -323,7 +324,7 @@ The system MUST enforce these policies:
 
 | Policy | Requirement |
 |---|---|
-| Identity required before writes | Account-specific writes, ChangeSet commits, and side effects require confirmed identity. |
+| Identity required before private access | Account-specific reads, writes, ChangeSet commits, and side effects require confirmed identity. Lookup alone creates only a pending candidate. |
 | Allergy mutation blocked | The agent must never add, remove, or weaken allergy records. Allergy-risk requests require escalation. |
 | Payment settlement blocked | The agent must never charge a card or mark a payment as paid. |
 | Ambiguous dates blocked | Date-based writes require exact resolved service dates from trusted server-generated resolver evidence. Model-supplied resolver-shaped input is not write authority. |

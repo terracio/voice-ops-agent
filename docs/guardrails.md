@@ -17,7 +17,7 @@ The safety boundary is enforced in layers.
 | Layer | What it protects |
 |---|---|
 | Tool schemas | Reject malformed tool input and output. |
-| Tool context | Requires resolved customer identity and owned ChangeSets before account-specific work. |
+| Tool context | Requires confirmed customer identity and owned ChangeSets before account-specific work. |
 | Policy supervisor | Applies stable hard-policy checks in deterministic code. |
 | ChangeSet lifecycle | Turns risky writes into previewed, confirmable, revalidated operations. |
 | Confirmation records | Prevent the model from authorizing writes by assertion. |
@@ -70,6 +70,21 @@ Instead, `capture_confirmation` may create a confirmation record only after a pr
 `commit_change_set` consumes the server-created `confirmation_id`. It does not accept a model claim that the user approved the write.
 
 The confirmation record stores a transcript excerpt for evidence. That transcript text is diagnostic evidence, not general write authority.
+
+## Identity Boundary
+
+Customer lookup is candidate discovery, not authentication.
+
+`lookup_customer` may find one likely customer, but that result only creates a pending identity candidate in hidden server context. It must not set `identity_status: "confirmed"` by itself.
+
+Before private reads, payment reads, ChangeSet tools, or customer-attached escalation, the caller must explicitly confirm the pending candidate in a later user turn. Only then may `confirm_customer_identity` promote the hidden session context to the confirmed customer.
+
+The identity boundary blocks:
+
+- direct private reads after lookup alone,
+- same-turn identity confirmation from the lookup utterance,
+- model-supplied hidden identity fields,
+- confirmation of a customer that does not match the pending candidate.
 
 ## Stable Policy IDs
 

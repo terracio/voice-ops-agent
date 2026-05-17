@@ -120,6 +120,7 @@ Keep these as code-enforced constraints, not prompt-only guidance:
 - Never modify allergies.
 - Never mark payments as paid.
 - Never charge a card.
+- Never treat `lookup_customer` alone as confirmed identity.
 - Never commit ambiguous date changes.
 - Never create date-changing ChangeSets without trusted server-generated date-resolution evidence.
 - Never write without explicit confirmation.

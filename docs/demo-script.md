@@ -52,7 +52,7 @@ After pressing **Start**, point out:
 
 ## Primary Demo: Delivery Change With Payment Follow-Up
 
-This path demonstrates identity lookup, state reads, date resolution, safe preview, confirmation, commit, and side effects.
+This path demonstrates identity lookup, explicit identity confirmation, state reads, date resolution, safe preview, confirmation, commit, and side effects.
 
 ### Turn 1: Identify The Caller
 
@@ -66,14 +66,14 @@ Expected behavior:
 
 1. Agent acknowledges the request.
 2. Tool timeline shows `lookup_customer`.
-3. Customer context updates to Maya.
-4. Agent does not expose plan, payment, or allergy details before identity is resolved.
+3. Agent asks the caller to confirm the pending Maya candidate.
+4. Agent does not expose plan, payment, or allergy details before identity is confirmed.
 
 Useful evidence to point out:
 
 - `lookup_customer` input may contain `CUS_001`; the tool normalizes it to `cus_001`.
-- The server evidence marks the lookup as a read.
-- The customer context comes from tool state, not from transcript text alone.
+- The server evidence marks the lookup as a read and keeps it as a pending candidate.
+- `confirm_customer_identity` is the step that promotes the hidden session context to confirmed identity.
 
 ### Turn 2: Request Operational Changes
 

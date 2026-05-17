@@ -2,6 +2,7 @@ export * from "./changeSetTools";
 export * from "./changeSetToolSchemas";
 export * from "./context";
 export * from "./escalationTools";
+export * from "./identityTools";
 export * from "./mealplanRegistry";
 export * from "./readToolSchemas";
 export * from "./readTools";

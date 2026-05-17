@@ -25,6 +25,7 @@ describe("MealPlan model-facing registry", () => {
   it("contains read tools, ChangeSet tools, and escalation only", () => {
     expect(mealPlanModelTools.map((tool) => tool.name)).toEqual([
       "lookup_customer",
+      "confirm_customer_identity",
       "get_customer_state",
       "resolve_service_dates",
       "get_payment_status",

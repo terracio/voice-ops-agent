@@ -64,7 +64,10 @@ describe("MealPlan realtime agent contract", () => {
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/unclear audio/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/escalate_to_human/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(
-      /lookup_customer` is allowed before separate identifier confirmation/i
+      /lookup_customer` finds a candidate only/i
+    );
+    expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(
+      /confirm_customer_identity` to succeed first/i
     );
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(/TOOL_INVALID_ARGS/i);
     expect(MEALPLAN_REALTIME_AGENT_INSTRUCTIONS).toMatch(

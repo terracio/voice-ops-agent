@@ -42,6 +42,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await confirmIdentity(socket, "confirm");
     await resolveMonday(socket, "confirm");
     await emitFunctionCall(socket, "create_change_set", "call_create", {
       change_set_id: "cs_realtime_confirm",
@@ -100,6 +101,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await confirmIdentity(socket, "misheard");
     await resolveMonday(socket, "misheard");
     await emitFunctionCall(socket, "create_change_set", "call_create", {
       change_set_id: "cs_misheard_confirm",
@@ -146,6 +148,7 @@ describe("Realtime server confirmation context", () => {
     await emitFunctionCall(socket, "lookup_customer", "call_lookup", {
       customer_id: "CUS_001"
     });
+    await confirmIdentity(socket, "stale");
     await resolveMonday(socket, "stale");
     now = new Date("2026-05-11T10:00:30Z");
     socket.emit("message", JSON.stringify({
@@ -207,6 +210,20 @@ async function resolveMonday(
   await emitFunctionCall(socket, "resolve_service_dates", `call_resolve_${suffix}`, {
     phrase: "Pause Monday.",
     requested_days: ["Monday"]
+  });
+}
+
+async function confirmIdentity(
+  socket: FakeSidebandSocket,
+  suffix: string
+): Promise<void> {
+  socket.emit("message", JSON.stringify({
+    item_id: `item_identity_${suffix}`,
+    transcript: "Yes, that's me.",
+    type: "conversation.item.input_audio_transcription.completed"
+  }));
+  await emitFunctionCall(socket, "confirm_customer_identity", `call_identity_${suffix}`, {
+    customer_id: "CUS_001"
   });
 }
 

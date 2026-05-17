@@ -59,6 +59,7 @@ export function createRealtimeAgentSdkTools(options: {
       isEnabled: async () => true,
       invoke: async (_runContext, input) => {
         const modelArgs = normalizeToolInput(input);
+        const toolContext = options.getToolContext();
         const toolCall = options.traceCollector?.recordToolStart({
           toolName: realtimeTool.name,
           input: modelArgs
@@ -66,12 +67,13 @@ export function createRealtimeAgentSdkTools(options: {
         try {
           const result = await registry.execute(realtimeTool.name, {
             modelArgs,
-            context: options.getToolContext()
+            context: toolContext
           });
           const identityUpdate = options.sessionState
             ? applyRealtimeToolResultToSessionState({
               result,
               state: options.sessionState,
+              toolContext,
               toolName: realtimeTool.name
             })
             : undefined;
@@ -83,10 +85,7 @@ export function createRealtimeAgentSdkTools(options: {
             });
           }
           if (toolCall) {
-            options.traceCollector?.recordToolResult(
-              toolCall.tool_call_id,
-              result
-            );
+            options.traceCollector?.recordToolResult(toolCall.tool_call_id, result);
           }
           return JSON.stringify(result);
         } catch (error) {

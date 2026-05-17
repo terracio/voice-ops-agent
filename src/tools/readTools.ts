@@ -1,11 +1,11 @@
 import { createPolicyBlockAuditEvent, createReadAuditEvent } from "../audit";
-import { appendAuditEvent, findCustomers, getCustomer, getCustomerState, type CustomerState } from "../domain/db";
+import { appendAuditEvent, getCustomer, getCustomerState, type CustomerState } from "../domain/db";
 import { resolveServiceDatesForState } from "../domain/dateResolver";
 import { EVAL_REFERENCE_DATE } from "../domain/seed";
-import { PolicyId, type AuditEvent, type Customer, type DateString, type PaymentStatus, type ToolError, type ToolResult } from "../domain/schema";
+import { PolicyId, type AuditEvent, type DateString, type PaymentStatus, type ToolError, type ToolResult } from "../domain/schema";
 import type { ToolExecutionContext } from "./context";
-import { normalizeCustomerId, normalizeLookupInput } from "./customerId";
-import { AuthorizedCustomerInputSchema, CustomerStateOutputSchema, LookupCustomerInputSchema, LookupCustomerOutputSchema, PaymentStatusInputSchema, PaymentStatusOutputSchema, ResolveServiceDatesToolInputSchema, ResolveServiceDatesToolOutputSchema, ToolReferenceDateSchema, type AuthorizedCustomerInput, type CustomerStateOutput, type LookupCustomerInput, type LookupCustomerOutput, type PaymentStatusOutput, type ResolveServiceDatesToolInput, type ResolveServiceDatesToolOutput } from "./readToolSchemas";
+import { normalizeCustomerId } from "./customerId";
+import { AuthorizedCustomerInputSchema, CustomerStateOutputSchema, PaymentStatusInputSchema, PaymentStatusOutputSchema, ResolveServiceDatesToolInputSchema, ResolveServiceDatesToolOutputSchema, ToolReferenceDateSchema, type AuthorizedCustomerInput, type CustomerStateOutput, type PaymentStatusOutput, type ResolveServiceDatesToolInput, type ResolveServiceDatesToolOutput } from "./readToolSchemas";
 import { defineTool, failedToolResult, type ToolDefinition } from "./types";
 
 type ReadDetails = { resource_type: string; resource_id?: string; [key: string]: unknown };
@@ -103,21 +103,6 @@ function authorizeCustomer(
   return { ok: true, customerId: context.resolved_customer_id };
 }
 
-function toLookupCandidate(customer: Customer) {
-  return {
-    customer_id: customer.customer_id,
-    name: customer.name,
-    phone_last4: customer.phone.slice(-4),
-    identity_confidence: customer.identity_confidence
-  };
-}
-
-function queryFields(input: LookupCustomerInput): string[] {
-  return (["customer_id", "name", "phone"] as const).filter((field) =>
-    Boolean(input[field])
-  );
-}
-
 function customerStateOutput(state: CustomerState): CustomerStateOutput {
   const { customer, plan } = state;
   return CustomerStateOutputSchema.parse({
@@ -166,55 +151,6 @@ function customerNotFound<TData>(
     [event.event_id]
   );
 }
-
-export const lookupCustomerTool = defineTool({
-  name: "lookup_customer",
-  description: "Find possible customers from a name, phone, or customer ID.",
-  risk: "read",
-  inputSchema: LookupCustomerInputSchema,
-  outputSchema: LookupCustomerOutputSchema,
-  metadata: metadata("Lookup customer", "Customer lookup", ["read", "identity"]),
-  execute(args, context): ToolResult<LookupCustomerOutput> {
-    const lookupArgs = normalizeLookupInput(args);
-    const customers = findCustomers(lookupArgs);
-    const singleConfirmed =
-      customers.length === 1 && customers[0]?.identity_confidence === "confirmed";
-    const event = appendReadEvent(
-      "lookup_customer",
-      context,
-      {
-        resource_type: "customers",
-        resource_id: singleConfirmed ? customers[0]?.customer_id : undefined,
-        query_fields: queryFields(lookupArgs),
-        result_count: customers.length
-      },
-      singleConfirmed ? customers[0]?.customer_id : undefined
-    );
-
-    if (customers.length === 0) {
-      return failedToolResult(
-        { code: "CUSTOMER_NOT_FOUND", message: "No customer matched the lookup fields." },
-        [event.event_id]
-      );
-    }
-
-    const uncertain = !singleConfirmed;
-    return {
-      ok: true,
-      data: {
-        identity_status: uncertain ? "uncertain" : "confirmed",
-        candidate_count: customers.length,
-        candidates: customers.map(toLookupCandidate),
-        policy_ids: uncertain ? [PolicyId.IDENTITY_UNCERTAIN] : [],
-        write_blocked: uncertain,
-        clarification_question: uncertain
-          ? "Please confirm the exact customer before continuing."
-          : undefined
-      },
-      audit_event_ids: [event.event_id]
-    };
-  }
-});
 
 export const getCustomerStateTool = defineTool({
   name: "get_customer_state",
@@ -345,4 +281,8 @@ export const getPaymentStatusTool = defineTool({
   }
 });
 
-export const readTools = [lookupCustomerTool, getCustomerStateTool, resolveServiceDatesTool, getPaymentStatusTool] satisfies ToolDefinition[];
+export const readTools = [
+  getCustomerStateTool,
+  resolveServiceDatesTool,
+  getPaymentStatusTool
+] satisfies ToolDefinition[];
