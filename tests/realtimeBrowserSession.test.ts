@@ -36,10 +36,10 @@ describe("Realtime browser session boundary", () => {
             },
             transcription: {
               language: "en",
-              model: "gpt-4o-mini-transcribe"
+              model: "gpt-realtime-whisper"
             }
           },
-          output: { voice: "alloy" }
+          output: { voice: "marin" }
         },
         reasoning: { effort: "low" }
       }
@@ -83,7 +83,7 @@ describe("Realtime browser session boundary", () => {
             },
             transcription: {
               language: "en",
-              model: "gpt-4o-mini-transcribe"
+              model: "gpt-realtime-whisper"
             }
           }
         },

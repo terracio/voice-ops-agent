@@ -115,8 +115,8 @@ The browser demo uses the browser as the audio surface and the Realtime API as t
 | Browser audio packetization | No app-level chunk size is configured for the live browser path. WebRTC handles audio packetization between the browser and the Realtime session. | Keep the browser path close to a real low-latency voice call instead of manually batching microphone bytes. |
 | OpenAI input noise reduction | Defaults to `far_field`. Override with `MEALPLAN_REALTIME_NOISE_REDUCTION=near_field`, `far_field`, `off`, `none`, or `disabled`. | Tune Realtime API input cleanup without changing code. |
 | Turn detection / VAD | The live browser path relies on the OpenAI Realtime API default VAD. The API default is `server_vad`; the code does not override `turn_detection` for browser calls. | Keep live phone-style turn taking natural while avoiding a custom client-side speech detector. |
-| Input transcription | `gpt-4o-mini-transcribe`, language `en`. | Provide visible transcript evidence for debugging and the demo UI. Transcript text is not write authority. |
-| Output voice | `alloy`. | Keep the demo voice stable across sessions. |
+| Input transcription | `gpt-realtime-whisper`, language `en`. | Provide visible transcript evidence for debugging and the demo UI. Transcript text is not write authority. |
+| Output voice | `marin`. | Keep the demo voice stable across sessions. |
 | Reasoning effort | `low`. | Balance responsiveness with basic operational reasoning. |
 | Parallel tool calls | `false`. | Keep tool execution ordered and easier to audit in this safety-sensitive demo. |
 | Safety identifier | `mealplan-voiceops-local-demo`. | Attach stable tracing context to local browser sessions. |

@@ -146,7 +146,7 @@ This is the only path where the application chooses an audio chunk size. In the 
 | Chunk size | `960` bytes at 24 kHz PCM16 mono | `24000 samples/sec * 2 bytes/sample * 0.020 sec`. |
 | Commit strategy | Commit only the final chunk, then request a response. | Makes single-turn replay boundaries deterministic. |
 | Turn detection | `null` in the eval runner | The harness, not VAD, decides when the replayed user turn ends. |
-| Input transcription | `gpt-4o-mini-transcribe`, language `en` | Captures diagnostic transcript evidence. |
+| Input transcription | `gpt-realtime-whisper`, language `en` | Captures diagnostic transcript evidence. |
 | Reasoning effort | `low` | Matches the browser demo's default responsiveness profile. |
 | Parallel tool calls | `false` | Keeps tool ordering easier to score and audit. |
 | Quiet window | `1000` ms | Wait long enough for late events before scoring a turn. |

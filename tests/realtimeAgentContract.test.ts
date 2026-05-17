@@ -28,7 +28,9 @@ describe("MealPlan realtime agent contract", () => {
   it("keeps the realtime model configurable with a gpt-realtime-2 default", () => {
     expect(DEFAULT_OPENAI_REALTIME_MODEL).toBe("gpt-realtime-2");
     expect(DEFAULT_OPENAI_REALTIME_REASONING_EFFORT).toBe("low");
-    expect(REALTIME_RUNTIME_CONFIG.shared.voice).toBe("alloy");
+    expect(REALTIME_RUNTIME_CONFIG.shared.voice).toBe("marin");
+    expect(REALTIME_RUNTIME_CONFIG.shared.inputTranscription.model)
+      .toBe("gpt-realtime-whisper");
     expect(REALTIME_RUNTIME_CONFIG.browser.noiseReduction.defaultType)
       .toBe("far_field");
     expect(REALTIME_RUNTIME_CONFIG.evalReplay.chunkDurationMs).toBe(20);

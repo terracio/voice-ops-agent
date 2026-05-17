@@ -3,11 +3,11 @@ export const REALTIME_RUNTIME_CONFIG = {
     defaultModel: "gpt-realtime-2",
     inputTranscription: {
       language: "en",
-      model: "gpt-4o-mini-transcribe"
+      model: "gpt-realtime-whisper"
     },
     parallelToolCalls: false,
     reasoningEffort: "low",
-    voice: "alloy"
+    voice: "marin"
   },
   browser: {
     callsUrl: "https://api.openai.com/v1/realtime/calls",
