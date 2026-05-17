@@ -218,7 +218,7 @@ export function writeRealtimeReports(options: {
   };
 }
 
-function redactResultForReport(result: RealtimeRunnerResult) {
+function redactResultForReport(result: RealtimeRunnerResult): RealtimeRunnerResult {
   const redactString = (_value: string): string => "[redacted]";
 
   const redactUnknown = (value: unknown): unknown => {
@@ -248,13 +248,16 @@ function redactResultForReport(result: RealtimeRunnerResult) {
     return value;
   };
 
+  const redactAuditDetails = (details: Record<string, unknown>): Record<string, unknown> =>
+    redactUnknown(details) as Record<string, unknown>;
+
   return {
     ...result,
-    trace: [],
+    trace: [] as RealtimeRunnerResult["trace"],
     audit_events: result.audit_events.map((event) => ({
       ...event,
       customer_id: event.customer_id ? "[redacted]" : event.customer_id,
-      details: event.details ? redactUnknown(event.details) : event.details
+      details: redactAuditDetails(event.details)
     })),
     final_state: {
       ...result.final_state,

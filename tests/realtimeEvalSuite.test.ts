@@ -299,10 +299,11 @@ describe("realtime eval suite", () => {
       result: {
         ...createResult(),
         audit_events: [{
-          at: "2026-05-12T10:00:00.000Z",
           event_id: "aud_1",
+          timestamp: "2026-05-12T10:00:00.000Z",
+          run_id: "unit_report_trace",
           actor: "agent",
-          type: "tool_executed",
+          event_type: "read",
           customer_id: "cus_001",
           details: {
             transcript_excerpt: sensitive,
@@ -316,24 +317,52 @@ describe("realtime eval suite", () => {
               customer_id: "cus_001",
               name: "Maya Secret",
               phone: "+1-555-555-1234",
+              timezone: "Asia/Dubai",
+              identity_confidence: "confirmed",
+              state_version: 3,
+              plan_id: "plan_secret",
               allergies: ["peanut"],
-              customizations: { dislikes: ["onion"], protein_preferences: ["fish"] },
+              customizations: {
+                spice_level: "normal",
+                dislikes: ["onion"],
+                protein_preferences: ["fish"]
+              },
               payment_last_checked_at: "2026-05-12T10:00:00.000Z",
               payment_status: "past_due"
             },
-            service_dates: ["2026-05-20"]
+            plan: {
+              customer_id: "cus_001",
+              delivery_days: ["Monday"],
+              meals_per_week: 5,
+              plan_id: "plan_secret",
+              plan_name: "Secret Plan",
+              status: "active"
+            },
+            service_dates: [{
+              service_date: "2026-05-20",
+              day_of_week: "Wednesday",
+              status: "active",
+              kitchen_cutoff_at: "2026-05-19T18:00:00.000Z",
+              kitchen_locked: false
+            }]
           }],
           kitchen_deltas: [{
             created_at: "2026-05-12T10:00:00.000Z",
             customer_id: "cus_001",
             delta_id: "kdelta_1",
-            line_items: [sensitive]
+            change_set_id: "cs_1",
+            idempotency_key: "idem_secret",
+            affected_dates: ["2026-05-20"],
+            summary: sensitive
           }],
           payment_followups: [{
             created_at: "2026-05-12T10:00:00.000Z",
             customer_id: "cus_001",
             followup_id: "pf_1",
-            reason: sensitive
+            idempotency_key: "idem_followup",
+            reason: "past_due",
+            status: "open",
+            source_change_set_id: "cs_1"
           }]
         },
         out_of_band_transcription: { status: "completed", transcript: sensitive },
