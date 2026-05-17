@@ -234,6 +234,24 @@ describe("Realtime WebRTC browser controller", () => {
     expect(audioElement.srcObject).toBeNull();
   });
 
+  it("cleans up media and peer resources on data channel errors", async () => {
+    const { audioElement, controller, localTrack, pc } = createHarness();
+    const remoteTrack = new FakeTrack();
+    const remoteStream = new FakeStream([remoteTrack]);
+    await controller.start();
+    pc.emitRemoteTrack(remoteTrack, remoteStream);
+
+    pc.dataChannel.onerror?.({} as Event);
+
+    expect(controller.state).toBe("error");
+    expect(controller.callId).toBeUndefined();
+    expect(localTrack.stopped).toBe(true);
+    expect(remoteTrack.stopped).toBe(true);
+    expect(pc.closed).toBe(true);
+    expect(pc.dataChannel.closed).toBe(true);
+    expect(audioElement.srcObject).toBeNull();
+  });
+
   it("keeps browser controller imports free of server-only modules", () => {
     const source = [
       "../src/realtime/browser/webrtcController.ts",

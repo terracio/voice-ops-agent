@@ -214,6 +214,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       if (ACTIVE_STATES.has(this.stateValue)) this.setState("ended");
     };
     dataChannel.onerror = () => {
+      this.cleanupResources();
       this.setState("error");
     };
     dataChannel.onmessage = (event) => {
