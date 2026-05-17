@@ -56,6 +56,36 @@ describe("Realtime WebRTC browser controller", () => {
     });
   });
 
+  it("requests exactly one initial audio greeting after the data channel opens", async () => {
+    const { controller, pc } = createHarness();
+    const greetingEvents: string[] = [];
+    controller.subscribe((event) => {
+      if (event.type === "greeting-requested") greetingEvents.push(event.type);
+    });
+
+    await controller.start();
+    pc.dataChannel.onmessage?.({
+      data: JSON.stringify({ type: "response.done" })
+    } as MessageEvent<string>);
+
+    const sent = pc.dataChannel.sentMessages.map((message) =>
+      JSON.parse(message) as {
+        response?: { instructions?: string; output_modalities?: string[] };
+        type?: string;
+      }
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({
+      response: {
+        instructions:
+          "Greet the caller as MealPlan, ask how you can help today, and do not call tools.",
+        output_modalities: ["audio"]
+      },
+      type: "response.create"
+    });
+    expect(greetingEvents).toEqual(["greeting-requested"]);
+  });
+
   it("cleans up when the server SDP response misses a call id", async () => {
     const { controller, fetchImpl, localTrack, pc } = createHarness({
       location: "/v1/realtime/calls/nope"
@@ -136,8 +166,25 @@ describe("Realtime WebRTC browser controller", () => {
 
     await expect(startPromise).rejects.toThrow("start was cancelled");
     expect(controller.state).toBe("ended");
+    expect(pc.dataChannel.sentMessages).toEqual([]);
     expect(localTrack.stopped).toBe(true);
     expect(pc.closed).toBe(true);
+  });
+
+  it("does not request a greeting when the data channel fails before opening", async () => {
+    const { controller, fetchImpl, pc } = createHarness({
+      dataChannelReadyState: "connecting"
+    });
+
+    const startPromise = controller.start();
+    for (let step = 0; step < 5 && fetchImpl.mock.calls.length === 0; step += 1) {
+      await Promise.resolve();
+    }
+    pc.dataChannel.onerror?.({} as Event);
+
+    await expect(startPromise).rejects.toThrow("before opening");
+    expect(controller.state).toBe("error");
+    expect(pc.dataChannel.sentMessages).toEqual([]);
   });
 
   it("mutes local audio tracks without closing the active session", async () => {

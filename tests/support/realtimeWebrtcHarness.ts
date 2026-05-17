@@ -29,6 +29,7 @@ class FakeDataChannel {
   onerror: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent<string>) => void) | null = null;
   onopen: (() => void) | null = null;
+  readonly sentMessages: string[] = [];
 
   constructor(public readyState: RTCDataChannelState = "open") {}
 
@@ -36,6 +37,10 @@ class FakeDataChannel {
     this.closed = true;
     this.readyState = "closed";
     this.onclose?.();
+  }
+
+  send(data: string) {
+    this.sentMessages.push(data);
   }
 }
 

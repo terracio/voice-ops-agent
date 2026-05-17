@@ -51,6 +51,15 @@ const ACTIVE_STATES = new Set<RealtimeWebrtcControllerState>([
   "waiting-for-confirmation"
 ]);
 
+const INITIAL_GREETING_EVENT = {
+  response: {
+    instructions:
+      "Greet the caller as MealPlan, ask how you can help today, and do not call tools.",
+    output_modalities: ["audio"]
+  },
+  type: "response.create"
+};
+
 export const REALTIME_MIC_CONSTRAINTS: MediaStreamConstraints = {
   ...REALTIME_RUNTIME_CONFIG.browser.mediaConstraints
 };
@@ -176,6 +185,7 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       });
       await waitForRealtimeDataChannelOpen(dataChannel);
       this.assertStartCurrent(generation);
+      this.requestInitialGreeting(dataChannel, generation);
       this.setState("listening");
     } catch (error) {
       const normalized = normalizeRealtimeError(error);
@@ -300,6 +310,18 @@ class BrowserRealtimeWebrtcController implements RealtimeWebrtcController {
       throw new Error("Microphone capture is unavailable in this browser.");
     }
     return this.mediaDevices;
+  }
+
+  private requestInitialGreeting(
+    dataChannel: RTCDataChannel,
+    generation: number
+  ): void {
+    this.assertStartCurrent(generation);
+    if (this.dataChannel !== dataChannel || dataChannel.readyState !== "open") {
+      return;
+    }
+    dataChannel.send(JSON.stringify(INITIAL_GREETING_EVENT));
+    this.emit({ type: "greeting-requested" });
   }
 
   private setState(state: RealtimeWebrtcControllerState): void {

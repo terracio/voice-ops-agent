@@ -127,17 +127,17 @@ export function VoiceConsoleView({
             </div>
             <div className="call-controls" aria-label="Call controls">
               <ControlButton
-                label="Start"
-                detail="Start session"
-                icon="play"
+                label="Call"
+                detail="Ring MealPlan"
+                icon="phone"
                 tone="primary"
                 disabled={state.sessionStatus !== "disconnected"}
                 onClick={() => onAction({ type: "start" })}
               />
               <ControlButton
-                label="Stop"
-                detail="Stop session"
-                icon="stop"
+                label="Hang up"
+                detail="End audio"
+                icon="phone-off"
                 disabled={state.sessionStatus === "disconnected"}
                 onClick={() => onAction({ type: "stop" })}
               />

@@ -30,7 +30,7 @@ export function markRealtimeStartRequested(
     {
       ...state,
       agentMode: "idle",
-      assistantAudioLabel: "Requesting microphone access",
+      assistantAudioLabel: "Ringing MealPlan",
       callId: null,
       controlHandoff: "pending",
       serverCallSetup: "not-created",
@@ -39,10 +39,10 @@ export function markRealtimeStartRequested(
     },
     {
       at,
-      detail: "Browser is requesting microphone access and server call setup",
+      detail: "Local ringback started while browser audio and server setup begin",
       id: `realtime-start-requested-${at}`,
-      label: "STARTING",
-      title: "Starting realtime session",
+      label: "CALLING",
+      title: "Call requested",
       tone: "pending"
     }
   );
@@ -75,6 +75,26 @@ export function markRealtimeCallId(
       label: "CALL",
       title: "Realtime call created",
       tone: "success"
+    }
+  );
+}
+
+export function markRealtimeGreetingRequested(
+  state: VoiceConsoleState,
+  at: string
+): VoiceConsoleState {
+  return addEvent(
+    {
+      ...state,
+      assistantAudioLabel: "Agent greeting requested"
+    },
+    {
+      at,
+      detail: "Browser requested one assistant audio greeting after the data channel opened",
+      id: `initial-greeting-${at}`,
+      label: "GREETING",
+      title: "Initial greeting requested",
+      tone: "info"
     }
   );
 }
@@ -166,7 +186,7 @@ function statePatchForRealtimeState(
     return {
       ...state,
       agentMode: "idle",
-      assistantAudioLabel: "Connecting to GPT Realtime",
+      assistantAudioLabel: "Ringing MealPlan",
       sessionStatus: "connecting"
     };
   }
@@ -175,7 +195,7 @@ function statePatchForRealtimeState(
     return {
       ...state,
       agentMode: "listening",
-      assistantAudioLabel: "Listening for caller audio",
+      assistantAudioLabel: "Agent ready for caller audio",
       controlHandoff: "attached",
       serverCallSetup: "created",
       inputLevel: state.isMuted ? 0 : 38,
@@ -188,7 +208,7 @@ function statePatchForRealtimeState(
     return {
       ...state,
       agentMode: "speaking",
-      assistantAudioLabel: "Assistant audio playing",
+      assistantAudioLabel: "Agent speaking",
       sessionStatus: "connected"
     };
   }
@@ -246,15 +266,15 @@ function activityForRealtimeState(
     { detail: string; label: string; title: string; tone: ActivityTone }
   > = {
     connecting: {
-      detail: "Browser media and server Realtime call setup are being prepared",
-      label: "CONNECTING",
-      title: "Connecting to Realtime",
+      detail: "Local ringback is playing while MealPlan connects",
+      label: "RINGING",
+      title: "Calling MealPlan",
       tone: "pending"
     },
     ended: {
       detail: "Browser audio, peer connection, and sideband control were closed",
       label: "ENDED",
-      title: "Session ended",
+      title: "Call ended",
       tone: "pending"
     },
     idle: {
@@ -264,15 +284,15 @@ function activityForRealtimeState(
       tone: "info"
     },
     listening: {
-      detail: "Browser audio and server sideband are attached",
+      detail: "Agent is ready on the Realtime call",
       label: "LIVE",
-      title: "Session listening",
+      title: "Call connected",
       tone: "success"
     },
     speaking: {
       detail: "Assistant audio is playing in the browser",
       label: "AUDIO",
-      title: "Assistant speaking",
+      title: "Agent speaking",
       tone: "info"
     },
     "tool-running": {
@@ -298,7 +318,7 @@ function formatRealtimeErrorMessage(message: string): string {
     normalized.includes("notallowed") ||
     normalized.includes("not allowed")
   ) {
-    return "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Start again.";
+    return "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Call again.";
   }
   return message;
 }
