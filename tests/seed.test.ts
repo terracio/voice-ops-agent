@@ -7,6 +7,7 @@ import {
   ServiceDateSchema
 } from "../src/domain/schema";
 import {
+  DEFAULT_SEED_SCENARIO_ID,
   EVAL_REFERENCE_DATE,
   getSeedScenario,
   listSeedScenarios,
@@ -22,6 +23,19 @@ describe("seed scenarios", () => {
     ]);
     expect(getSeedScenario("missing")).toBeUndefined();
     expect(getSeedScenario("maya_default")?.seed_id).toBe("maya_default");
+  });
+
+  it("uses a browser demo seed with all account archetypes by default", () => {
+    const browserDemo = getSeedScenario(DEFAULT_SEED_SCENARIO_ID);
+
+    expect(DEFAULT_SEED_SCENARIO_ID).toBe("browser_demo");
+    expect(browserDemo?.customers.map((customer) => customer.customer_id))
+      .toEqual(["cus_001", "cus_002", "cus_003", "cus_004", "cus_005"]);
+    expect(browserDemo?.service_dates_by_customer_id.cus_002[0])
+      .toMatchObject({
+        service_date: "2026-05-12",
+        kitchen_locked: true
+      });
   });
 
   it("returns copies so callers cannot mutate canonical seed data", () => {

@@ -99,6 +99,29 @@ describe("read tools", () => {
     }
   );
 
+  it("looks up non-Maya demo accounts from the default browser seed", async () => {
+    const result = await registry().execute("lookup_customer", {
+      modelArgs: { customer_id: "CUS_002" },
+      context: unresolvedContext
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        identity_status: "confirmed",
+        candidate_count: 1,
+        candidates: [
+          {
+            customer_id: "cus_002",
+            name: "Omar",
+            phone_last4: "0002",
+            identity_confidence: "confirmed"
+          }
+        ]
+      }
+    });
+  });
+
   it("keeps ambiguous lookup output privacy-preserving and write-blocked", async () => {
     resetDb("identity_uncertain");
 

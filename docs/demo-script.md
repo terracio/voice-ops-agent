@@ -50,6 +50,17 @@ After pressing **Start**, point out:
 - tool timeline,
 - customer context panel.
 
+The browser demo starts from the `browser_demo` seed. That seed includes all
+demo customer archetypes so reviewers can try different account paths in the
+same live UI:
+
+| Customer ID | Scenario |
+| --- | --- |
+| `CUS_001` | Maya happy path with failed payment follow-up |
+| `CUS_002` | Omar account with a kitchen-locked cutoff date |
+| `CUS_003` | Lina account with allergy-risk escalation |
+| `CUS_004` / `CUS_005` | Ambiguous identity records sharing the same phone |
+
 ## Primary Demo: Delivery Change With Payment Follow-Up
 
 This path demonstrates identity lookup, explicit identity confirmation, state reads, date resolution, safe preview, confirmation, commit, and side effects.

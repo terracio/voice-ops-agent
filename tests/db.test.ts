@@ -128,7 +128,7 @@ describe("resettable mock DB", () => {
       })
     );
 
-    resetDb();
+    resetDb("maya_default");
 
     expect(getCustomer("cus_004")).toBeUndefined();
     expect(getChangeSet("cs_001")).toBeUndefined();
