@@ -163,7 +163,7 @@ function toCostLineItem(value: unknown, index: number): EvidenceCostLineItem {
     amountLabel: amountUsd === undefined ? "unavailable" : formatUsd(amountUsd),
     amountUsd,
     category: costCategory(item.category),
-    id: stringValue(item.code) ?? `cost-${index}`,
+    id: `${stringValue(item.code) ?? "cost"}-${index}`,
     label: stringValue(item.label) ?? "Usage",
     quantityLabel: quantityLabel(item.quantity, item.unit)
   };
