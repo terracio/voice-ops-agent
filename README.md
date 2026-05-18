@@ -1,5 +1,10 @@
 # MealPlan VoiceOps
 
+[![CI](https://github.com/terracio/voice-ops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/terracio/voice-ops-agent/actions/workflows/ci.yml)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![OpenAI Realtime](https://img.shields.io/badge/OpenAI-Realtime-10a37f)
+
 > **The model can propose. The application decides.**
 
 MealPlan VoiceOps is a realtime voice operations agent for a fictional meal-plan company.
@@ -8,6 +13,8 @@ It tests whether `gpt-realtime-2`, when placed inside a production-style operati
 
 The voice demo is the product surface. The harness is the engineering point.
 
+![MealPlan VoiceOps live console showing call metrics, confirmed identity, ChangeSet preview, policy status, and tool evidence](docs/assets/demo.png)
+
 ```text
 realtime speech-to-speech model
   + server-side tool execution
@@ -15,6 +22,29 @@ realtime speech-to-speech model
   + safe state transitions
   + audit/eval evidence
 ```
+
+---
+
+## Quick Start
+
+```bash
+pnpm install
+cp .env.example .env
+pnpm dev
+```
+
+Set `OPENAI_API_KEY` in `.env` before starting a live browser call.
+
+Local safety checks:
+
+```bash
+pnpm lint
+pnpm test
+pnpm eval
+pnpm build
+```
+
+`pnpm eval` runs the deterministic scripted safety suite without OpenAI credentials. Realtime audio evals use `pnpm eval:realtime` and are manual because they require OpenAI credentials, API credits, and live model behavior.
 
 ---
 
