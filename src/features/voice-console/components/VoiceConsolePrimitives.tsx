@@ -11,11 +11,12 @@ export function Panel({
   icon: IconName;
   children: ReactNode;
 }) {
+  const titleId = `${slug(title)}-title`;
   return (
-    <section className="console-panel" aria-labelledby={`${title.toLowerCase()}-title`}>
+    <section className="console-panel" aria-labelledby={titleId}>
       <div className="panel-title">
         <Icon name={icon} />
-        <h2 id={`${title.toLowerCase()}-title`}>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
       </div>
       <div className="panel-body">{children}</div>
     </section>
@@ -126,4 +127,8 @@ function activityIcon(tone: VoiceConsoleState["events"][number]["tone"]): IconNa
   if (tone === "ready" || tone === "success") return "check";
   if (tone === "info") return "info";
   return "question";
+}
+
+function slug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

@@ -35,23 +35,23 @@ Use Chrome or another browser with microphone permission support. Use headphones
 
 Before placing a call, orient the reviewer:
 
-- The left side is the voice console.
+- The **Live Call** tab is the default voice cockpit.
+- **Transcript**, **Evidence**, and **Trace** hold full-history diagnostic detail.
 - The browser captures caller audio and plays assistant audio over WebRTC.
 - WebRTC handles live browser audio packetization. The app does not manually choose a browser chunk size.
 - The server opens a sideband control path to the same Realtime session.
 - The browser never receives the OpenAI API key or operational tools.
-- The evidence panels show transcript evidence, tool calls, sideband state, and audit-facing events.
+- The evidence tabs show transcript evidence, tool calls, sideband state, and audit-facing events.
 
 After pressing **Call**, point out:
 
 - the local browser ringback while the call is connecting,
 - microphone permission state,
-- call id,
-- control handoff status,
+- call metrics and control handoff status,
 - the agent's initial greeting once the Realtime data channel is ready,
-- live transcript panels,
-- tool timeline,
-- customer context panel.
+- current speech in the Live Call tab,
+- full transcript, tool evidence, and trace diagnostics in their dedicated tabs,
+- customer context and safety placeholders in the right-side Live Call region.
 
 The ringback is local browser UI audio only. It is not model audio and should not
 appear as transcript or evidence. The initial agent greeting is requested by the

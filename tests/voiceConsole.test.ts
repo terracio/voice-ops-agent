@@ -15,6 +15,7 @@ import {
   markRealtimeStartRequested
 } from "../src/features/voice-console/state/voiceConsoleRealtimeState";
 import { toVoiceConsoleEvidenceState } from "../src/features/voice-console/evidence/voiceConsoleEvidence";
+import { createVoiceConsoleEvidenceFixture } from "./support/voiceConsoleFixtures";
 
 describe("voice console UI shell", () => {
   it("renders the required operational console regions", () => {
@@ -27,28 +28,41 @@ describe("voice console UI shell", () => {
     );
 
     expect(html).toContain("MealPlan VoiceOps");
+    expect(html).toContain("Live Call");
+    expect(html).toContain("Transcript");
+    expect(html).toContain("Evidence");
+    expect(html).toContain("Trace");
+    expect(html).toContain("aria-selected=\"true\"");
     expect(html).toContain("Local demo");
     expect(html).toContain("gpt-realtime-2");
     expect(html).toContain("Disconnected");
-    expect(html).toContain("Agent");
-    expect(html).toContain("Caller");
+    expect(html).toContain("Call metrics");
+    expect(html).toContain("Current audio");
+    expect(html).toContain("Conversation timeline");
+    expect(html).toContain("Current speech");
+    expect(html).toContain("Agent action");
+    expect(html).toContain("Customer summary");
+    expect(html).toContain("ChangeSet preview");
+    expect(html).toContain("Tool timeline");
+    expect(html).toContain("Policy summary");
+    expect(html).not.toContain("Tool and policy summary");
     expect(html).toContain("Call");
-    expect(html).toContain("Hang up");
+    expect(html).toContain("Mute");
+    expect(html).toContain("Reset");
+    expect(html).not.toContain("Hang up");
     expect(html).not.toContain("Start session");
     expect(html).not.toContain("Stop session");
-    expect(html).toContain("Live activity");
-    expect(html).toContain("Estimated cost");
-    expect(html).toContain("Transcript evidence");
-    expect(html).toContain("Tool timeline");
-    expect(html).toContain("Call ID");
-    expect(html).toContain("Control handoff");
-    expect(html).toContain("Server call setup");
     expect(html).toContain("Server-side only");
+    expect(html).not.toContain("Transcript evidence");
+    expect(html).not.toContain("Debug text only");
+    expect(html).not.toContain("Input {");
+    expect(html).not.toContain("Output {");
+    expect(html).not.toContain("Live activity");
     expect(html).not.toContain("Audit log");
     expect(html).not.toContain("Before/after diff");
   });
 
-  it("renders transcript and tool timeline from server evidence", () => {
+  it("renders transcript and evidence tabs from server evidence", () => {
     const state = markRealtimeState(
       markRealtimeCallId(
         markRealtimeStartRequested(createInitialVoiceConsoleState("10:51:24"), "10:52:00"),
@@ -57,97 +71,57 @@ describe("voice console UI shell", () => {
       ),
       { at: "10:52:02", previousState: "connecting", state: "listening" }
     );
-    const html = renderToStaticMarkup(
+    const evidence = createVoiceConsoleEvidenceFixture();
+    const transcriptHtml = renderToStaticMarkup(
       React.createElement(VoiceConsoleView, {
         state,
-        evidence: {
-          status: "ready",
-          lastUpdated: "2026-05-14T09:00:00.000Z",
-          cost: {
-            estimateStatus: "partial",
-            flags: ["transcription_usage_not_captured"],
-            lineItems: [{
-              amountLabel: "$0.0037",
-              amountUsd: 0.00366,
-              category: "speech_to_speech",
-              id: "speech_audio_output",
-              label: "Speech response",
-              quantityLabel: "40 tokens"
-            }, {
-              amountLabel: "$0.0009",
-              amountUsd: 0.00085,
-              category: "input_transcription",
-              id: "transcription_audio_duration",
-              label: "Transcription audio",
-              quantityLabel: "0.050 min"
-            }],
-            model: "gpt-realtime-2",
-            pricingLastVerifiedAt: "2026-05-17",
-            sourceEventCount: 2,
-            totalLabel: "$0.0045",
-            totalUsd: 0.00451,
-            transcriptionModel: "gpt-realtime-whisper",
-            unavailableReasons: ["transcription usage not captured"]
-          },
-          transcript: [{
-            actor: "user",
-            at: "09:00:00",
-            id: "tr_user_1",
-            kind: "realtime_transcript",
-            text: "Please make my meals spicy next week.",
-            turnId: "turn_user_1"
-          }, {
-            actor: "assistant",
-            at: "09:00:02",
-            id: "tr_assistant_1",
-            kind: "realtime_transcript",
-            text: "I can help with that.",
-            turnId: "turn_assistant_1"
-          }],
-          tools: [{
-            at: "09:00:01",
-            id: "tool_preview_1",
-            input: "{\"change_set_id\":\"cs_001\"}",
-            name: "preview_change_set",
-            risk: "preview",
-            status: "blocked",
-            summary: "Customization update requires a preview delta.",
-            policyId: "P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA"
-          }],
-          events: [{
-            at: "09:00:01",
-            eventType: "response.done",
-            id: "evt_1",
-            label: "response.done",
-            severity: "info"
-          }, {
-            at: "09:00:02",
-            eventType: "error",
-            id: "evt_2",
-            label: "error: invalid_request_error",
-            severity: "error"
-          }]
-        },
+        evidence,
+        initialTab: "transcript",
+        onAction: () => undefined
+      })
+    );
+    const evidenceHtml = renderToStaticMarkup(
+      React.createElement(VoiceConsoleView, {
+        state,
+        evidence,
+        initialTab: "evidence",
         onAction: () => undefined
       })
     );
 
-    expect(html).toContain("Debug text only");
-    expect(html).toContain("Caller transcript");
-    expect(html).toContain("Agent transcript");
-    expect(html).toContain("Please make my meals spicy next week.");
-    expect(html).toContain("I can help with that.");
-    expect(html).toContain("preview_change_set");
-    expect(html).toContain("Blocked");
-    expect(html).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
-    expect(html).toContain("Estimated cost");
-    expect(html).toContain("$0.0045");
-    expect(html).toContain("Partial local estimate");
-    expect(html).toContain("gpt-realtime-whisper");
-    expect(html).toContain("Transcription audio");
-    expect(html).toContain("response.done");
-    expect(html).toContain("error: invalid_request_error");
-    expect(html).not.toContain("completed successfully");
+    expect(transcriptHtml).toContain("Debug text only");
+    expect(transcriptHtml).toContain("Transcript evidence");
+    expect(transcriptHtml).toContain("Please make my meals spicy next week.");
+    expect(transcriptHtml).toContain("I can help with that.");
+    expect(evidenceHtml).toContain("Tool timeline");
+    expect(evidenceHtml).toContain("preview_change_set");
+    expect(evidenceHtml).toContain("Blocked");
+    expect(evidenceHtml).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
+    expect(evidenceHtml).toContain("Estimated cost");
+    expect(evidenceHtml).toContain("$0.0045");
+    expect(evidenceHtml).toContain("Partial local estimate");
+    expect(evidenceHtml).toContain("gpt-realtime-whisper");
+    expect(evidenceHtml).toContain("Transcription audio");
+    expect(evidenceHtml).toContain("response.done");
+    expect(evidenceHtml).toContain("error: invalid_request_error");
+    expect(evidenceHtml).not.toContain("completed successfully");
+  });
+
+  it("renders trace diagnostics without mixing them into the Live Call tab", () => {
+    const state = createInitialVoiceConsoleState("10:51:24");
+    const html = renderToStaticMarkup(
+      React.createElement(VoiceConsoleView, {
+        state,
+        initialTab: "trace",
+        onAction: () => undefined
+      })
+    );
+
+    expect(html).toContain("Live activity");
+    expect(html).toContain("Call ID");
+    expect(html).toContain("Control handoff");
+    expect(html).toContain("Server call setup");
+    expect(html).toContain("Server-side only");
   });
 
   it("maps unavailable cost telemetry without fabricating a zero total", () => {
@@ -234,6 +208,7 @@ describe("voice console UI shell", () => {
     const browserFiles = [
       "src/app/page.tsx",
       "src/features/voice-console/components/VoiceConsole.tsx",
+      "src/features/voice-console/components/VoiceConsoleLiveCall.tsx",
       "src/features/voice-console/components/VoiceConsolePrimitives.tsx",
       "src/features/voice-console/components/VoiceEvidencePanels.tsx",
       "src/features/voice-console/components/voiceConsoleIcons.tsx",
