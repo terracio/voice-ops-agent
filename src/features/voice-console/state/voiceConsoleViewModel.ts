@@ -4,10 +4,7 @@ import {
   type EvidenceToolItem,
   type VoiceConsoleEvidenceState
 } from "../evidence/voiceConsoleEvidence";
-import type {
-  EvidenceChangeSetDiffItem,
-  EvidenceChangeSetItem
-} from "../evidence/voiceConsoleStructuredEvidence";
+import type { EvidenceChangeSetDiffItem, EvidenceChangeSetItem } from "../evidence/voiceConsoleStructuredEvidence";
 import { buildVoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
 import {
   currentChangeSetBlocker,
@@ -37,16 +34,13 @@ export type LiveCallConnectionState =
   | "ended"
   | "error";
 export type LiveCallTone = "neutral" | "pending" | "success" | "warning" | "error";
-export type LiveCallIdentityStatus =
-  | "unknown"
-  | "pending"
-  | "confirmed"
-  | "uncertain";
+export type LiveCallIdentityStatus = "unknown" | "pending" | "confirmed" | "uncertain";
 
 export type LiveCallToolRow = {
   at: string;
   id: string;
   name: string;
+  policyId?: string;
   resultLabel: string;
   risk: string;
   status: "queued" | "running" | "completed" | "blocked" | "failed" | "waiting";
@@ -107,7 +101,7 @@ export function buildLiveCallViewModel(options: {
   const policy = policySummary(customer.identityStatus, activeChangeSet, changeSet);
 
   return {
-    actionBanner: actionBanner(options.state, tools, customer.identityStatus, policy),
+    actionBanner: actionBanner(options.state, tools, customer.identityStatus, policy, changeSet),
     agentAudioStatus: agentAudioStatus(options.state.agentMode),
     changeSet,
     connection,
@@ -282,11 +276,18 @@ function actionBanner(
   state: VoiceConsoleState,
   tools: LiveCallToolRow[],
   identityStatus: LiveCallIdentityStatus,
-  policy: LiveCallViewModel["policy"]
+  policy: LiveCallViewModel["policy"],
+  changeSet: LiveCallViewModel["changeSet"]
 ): LiveCallViewModel["actionBanner"] {
   const activeTool = [...tools].reverse().find((tool) => tool.status === "running");
-  if (policy.tone === "error" || policy.tone === "warning") return policy;
+  if (state.sessionStatus === "disconnected") return state.callId
+    ? { detail: "Call history remains visible until reset.", label: "Call ended", tone: "neutral" }
+    : { detail: "Start a call to attach browser audio and server sideband control.", label: "Ready to start call", tone: "neutral" };
   if (activeTool) return { detail: activeTool.resultLabel, label: `Running ${activeTool.name}`, tone: "pending" };
+  if (changeSet?.confirmationRequired && policy.detail.includes("explicit confirmation")) {
+    return { detail: "Preview shown; no state is committed until server confirmation succeeds.", label: "Waiting for confirmation", tone: "pending" };
+  }
+  if (policy.tone === "error" || policy.tone === "warning") return policy;
   if (state.agentMode === "waiting-for-confirmation") {
     return { detail: "Server must capture explicit caller confirmation before commit.", label: "Waiting for confirmation", tone: "pending" };
   }
@@ -299,6 +300,7 @@ function toToolRow(item: EvidenceToolItem): LiveCallToolRow {
     at: item.at,
     id: item.id,
     name: item.name,
+    policyId: item.policyId,
     resultLabel: item.summary ?? formatEvidenceStatus(item.status),
     risk: item.risk,
     status: toolStatus(item.status)

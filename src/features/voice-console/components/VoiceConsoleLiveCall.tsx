@@ -1,3 +1,4 @@
+import { VoiceAgentSafetyPanel } from "./VoiceAgentSafetyPanel";
 import { VoiceCallControls } from "./VoiceCallControls";
 import { VoiceConversationTimeline } from "./VoiceConversationTimeline";
 import {
@@ -6,10 +7,7 @@ import {
 } from "./VoiceConsolePrimitives";
 import { VoiceCurrentAudioStatus } from "./VoiceCurrentAudioStatus";
 import { VoiceCurrentSpeech } from "./VoiceCurrentSpeech";
-import {
-  formatEvidenceStatus,
-  type VoiceConsoleEvidenceState
-} from "../evidence/voiceConsoleEvidence";
+import type { VoiceConsoleEvidenceState } from "../evidence/voiceConsoleEvidence";
 import {
   toHandoffLabel,
   toStatusLabel
@@ -63,25 +61,10 @@ export function VoiceConsoleLiveCall({
         <VoiceCallControls state={state} onAction={onAction} />
       </div>
 
-      <aside className="live-call-right" aria-label="Agent action and safety">
-        <Panel title="Agent action" icon="activity">
-          <ActionBanner state={state} />
-        </Panel>
-        <Panel title="Customer summary" icon="user">
-          <p className="skeleton-copy">{state.customerContext}</p>
-          <p className="safety-note">Private reads and writes stay blocked until server identity evidence is confirmed.</p>
-        </Panel>
-        <Panel title="ChangeSet preview" icon="shield">
-          <p className="skeleton-copy">No pending ChangeSet preview.</p>
-          <p className="safety-note">The browser can display deltas only after the server creates and validates them.</p>
-        </Panel>
-        <Panel title="Tool timeline" icon="activity">
-          <ToolTimelineSummary evidence={evidence} state={state} />
-        </Panel>
-        <Panel title="Policy summary" icon="lock">
-          <PolicySummary />
-        </Panel>
-      </aside>
+      <VoiceAgentSafetyPanel
+        model={liveCall}
+        serverToolsLabel={state.serverToolsLabel}
+      />
     </section>
   );
 }
@@ -95,68 +78,8 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionBanner({ state }: { state: VoiceConsoleState }) {
-  return (
-    <div className={`action-banner ${state.agentMode}`}>
-      <strong>{actionTitle(state)}</strong>
-      <span>{actionDetail(state)}</span>
-    </div>
-  );
-}
-
-function ToolTimelineSummary({
-  evidence,
-  state
-}: {
-  evidence: VoiceConsoleEvidenceState;
-  state: VoiceConsoleState;
-}) {
-  const latestTool = evidence.tools.at(-1);
-  return (
-    <div className="summary-stack">
-      <p className="skeleton-copy">
-        Tools: {latestTool
-          ? `${latestTool.name} ${formatEvidenceStatus(latestTool.status).toLowerCase()}`
-          : state.serverToolsLabel}
-      </p>
-      <p className="safety-note">
-        Compact server tool status only. Full inputs and outputs stay in the Evidence tab.
-      </p>
-    </div>
-  );
-}
-
-function PolicySummary() {
-  return (
-    <div className="summary-stack">
-      <p className="skeleton-copy">Identity and write policies remain active.</p>
-      <p className="safety-note">
-        Policy enforcement and commits remain server-owned; this panel is display-only.
-      </p>
-    </div>
-  );
-}
-
 function costMetric(evidence: VoiceConsoleEvidenceState): string {
   if (!evidence.cost) return "Waiting for telemetry";
   if (evidence.cost.estimateStatus === "unavailable") return "Unavailable";
   return evidence.cost.totalLabel ?? "Partial estimate";
-}
-
-function actionTitle(state: VoiceConsoleState): string {
-  if (state.sessionStatus === "connecting") return "Connecting";
-  if (state.sessionStatus === "disconnected") return state.callId ? "Call ended" : "Ready to start";
-  if (state.agentMode === "tool-running") return "Server tool running";
-  if (state.agentMode === "waiting-for-confirmation") return "Awaiting confirmation";
-  return "Listening for caller";
-}
-
-function actionDetail(state: VoiceConsoleState): string {
-  if (state.sessionStatus === "disconnected") {
-    return state.callId
-      ? "Call history remains visible until reset."
-      : "Start a call to attach browser audio and server sideband control.";
-  }
-  if (state.agentMode === "tool-running") return "Tool execution is handled by the server.";
-  return "The model may propose actions; the application decides writes.";
 }

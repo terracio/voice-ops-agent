@@ -1,0 +1,148 @@
+.summary-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.summary-heading strong {
+  min-width: 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 28px;
+  border-radius: 8px;
+  background: #eef0f3;
+  color: #273245;
+  padding: 5px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.status-chip.pending,
+.status-chip.running,
+.status-chip.waiting,
+.status-chip.warning {
+  background: #fff1db;
+  color: #b45309;
+}
+
+.status-chip.success,
+.status-chip.completed {
+  background: #dff4f1;
+  color: #00675d;
+}
+
+.status-chip.error,
+.status-chip.blocked,
+.status-chip.failed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.summary-list {
+  display: grid;
+  grid-template-columns: minmax(106px, 0.42fr) minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.summary-list dt {
+  color: #4b5565;
+  font-size: 0.84rem;
+}
+
+.summary-list dd {
+  min-width: 0;
+  margin: 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.risk-flag-list,
+.tool-summary-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.risk-flag-list li {
+  width: fit-content;
+  border-radius: 8px;
+  background: #fff1db;
+  color: #9a5b00;
+  padding: 7px 10px;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.change-diff-table {
+  overflow: hidden;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+}
+
+.change-diff-table > div {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  border-top: 1px solid #d8dee8;
+  padding: 9px 10px;
+}
+
+.change-diff-table > div:first-child {
+  border-top: 0;
+  background: #f6f8fb;
+  color: #4b5565;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.change-diff-table span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tool-summary-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.tool-summary-list div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tool-summary-list strong,
+.tool-summary-list p,
+.tool-summary-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tool-summary-list span:not(.status-chip),
+.tool-summary-list p,
+.tool-summary-list small {
+  color: #4b5565;
+  font-size: 0.84rem;
+}
+
+.tool-summary-list p,
+.tool-summary-list small {
+  grid-column: 1 / -1;
+  margin: 0;
+}
