@@ -63,6 +63,21 @@ export function useVoiceConsoleRealtime({
     };
   }, []);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setState((current) =>
+        current.callTiming.startedAtMs && !current.callTiming.endedAtMs
+          ? applyVoiceConsoleAction(current, {
+            type: "tick",
+            at: currentClockTime(),
+            nowMs: Date.now()
+          })
+          : current
+      );
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const getRingbackTone = useCallback(() => {
     if (!ringbackRef.current) ringbackRef.current = ringbackFactory();
     return ringbackRef.current;
@@ -75,11 +90,13 @@ export function useVoiceConsoleRealtime({
   const handleRealtimeEvent = useCallback(
     (event: RealtimeWebrtcControllerEvent) => {
       const at = currentClockTime();
+      const nowMs = Date.now();
       if (event.type === "state") {
         if (stopsRingback(event.state)) stopRingback();
         setState((current) =>
           markRealtimeState(current, {
             at,
+            nowMs,
             previousState: event.previousState,
             state: event.state
           })
@@ -93,7 +110,9 @@ export function useVoiceConsoleRealtime({
       } else if (event.type === "remote-stream") {
         setState((current) => markRealtimeRemoteAudio(current, at));
       } else if (event.type === "error") {
-        setState((current) => markRealtimeError(current, event.error.message, at));
+        setState((current) =>
+          markRealtimeError(current, event.error.message, at, nowMs)
+        );
       }
     },
     [stopRingback]
@@ -113,14 +132,15 @@ export function useVoiceConsoleRealtime({
   const onAction = useCallback(
     async (action: VoiceConsoleAction) => {
       const at = currentClockTime();
+      const nowMs = Date.now();
 
       if (controller) {
-        setState((current) => controller.dispatch(current, action));
+        setState((current) => controller.dispatch(current, { ...action, at, nowMs }));
         return;
       }
 
       if (action.type === "start") {
-        setState((current) => markRealtimeStartRequested(current, at));
+        setState((current) => markRealtimeStartRequested(current, at, nowMs));
         const runtime = getRealtimeController();
         if (!isStartable(runtime.state)) return;
         getRingbackTone().start();
@@ -134,7 +154,7 @@ export function useVoiceConsoleRealtime({
             runtime.state !== "error" &&
             !message.toLowerCase().includes("cancelled")
           ) {
-            setState((current) => markRealtimeError(current, message, at));
+            setState((current) => markRealtimeError(current, message, at, nowMs));
           }
         }
         return;
@@ -144,7 +164,7 @@ export function useVoiceConsoleRealtime({
         stopRingback();
         realtimeRef.current?.stop();
         setState((current) =>
-          applyVoiceConsoleAction(current, { ...action, at })
+          applyVoiceConsoleAction(current, { ...action, at, nowMs })
         );
         return;
       }
@@ -158,12 +178,12 @@ export function useVoiceConsoleRealtime({
         stopRingback();
         realtimeRef.current?.reset();
         setState((current) =>
-          applyVoiceConsoleAction(current, { ...action, at })
+          applyVoiceConsoleAction(current, { ...action, at, nowMs })
         );
         return;
       }
 
-      setState((current) => applyVoiceConsoleAction(current, { ...action, at }));
+      setState((current) => applyVoiceConsoleAction(current, { ...action, at, nowMs }));
     },
     [controller, getRealtimeController, getRingbackTone, stopRingback]
   );

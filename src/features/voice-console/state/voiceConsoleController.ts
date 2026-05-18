@@ -1,4 +1,12 @@
 import { REALTIME_RUNTIME_CONFIG } from "../../../realtime/config/runtimeConfig";
+import {
+  clockTimeToMs,
+  createIdleCallTiming,
+  endCallTiming,
+  startCallTiming,
+  tickCallTiming,
+  type CallTimingState
+} from "./voiceConsoleTiming";
 
 export type SessionStatus = "disconnected" | "connecting" | "connected";
 export type AgentMode =
@@ -32,6 +40,7 @@ export type VoiceConsoleState = {
   inputLevel: number;
   customerContext: string;
   callId: string | null;
+  callTiming: CallTimingState;
   controlHandoff: ControlHandoff;
   serverCallSetup: ServerCallSetup;
   serverToolsLabel: "Server-side only";
@@ -39,11 +48,12 @@ export type VoiceConsoleState = {
 };
 
 export type VoiceConsoleAction =
-  | { type: "start"; at?: string }
-  | { type: "stop"; at?: string }
-  | { type: "toggleMute"; at?: string }
-  | { type: "reset"; at?: string }
-  | { type: "clearActivity"; at?: string };
+  | { type: "start"; at?: string; nowMs?: number }
+  | { type: "stop"; at?: string; nowMs?: number }
+  | { type: "toggleMute"; at?: string; nowMs?: number }
+  | { type: "reset"; at?: string; nowMs?: number }
+  | { type: "clearActivity"; at?: string; nowMs?: number }
+  | { type: "tick"; at?: string; nowMs?: number };
 
 export type VoiceConsoleController = {
   getInitialState: () => VoiceConsoleState;
@@ -69,6 +79,7 @@ export function createInitialVoiceConsoleState(
     inputLevel: 12,
     customerContext: "No caller identified yet",
     callId: null,
+    callTiming: createIdleCallTiming(clockTimeToMs(at)),
     controlHandoff: "pending",
     serverCallSetup: "not-created",
     serverToolsLabel: "Server-side only",
@@ -81,6 +92,7 @@ export function applyVoiceConsoleAction(
   action: VoiceConsoleAction
 ): VoiceConsoleState {
   const at = action.at ?? currentClockTime();
+  const nowMs = action.nowMs ?? clockTimeToMs(at);
 
   if (action.type === "start") {
     if (state.sessionStatus === "connected") {
@@ -104,6 +116,7 @@ export function applyVoiceConsoleAction(
         isMuted: false,
         inputLevel: 44,
         callId: state.callId ?? createCallId(at),
+        callTiming: startCallTiming(state.callTiming, nowMs),
         controlHandoff: "attached",
         serverCallSetup: "created"
       },
@@ -139,6 +152,7 @@ export function applyVoiceConsoleAction(
         microphonePermission: "not-requested",
         isMuted: true,
         inputLevel: 0,
+        callTiming: endCallTiming(state.callTiming, nowMs),
         controlHandoff: "pending",
         serverCallSetup: "not-created"
       },
@@ -189,6 +203,7 @@ export function applyVoiceConsoleAction(
   if (action.type === "reset") {
     return {
       ...createInitialVoiceConsoleState(DEFAULT_EVENT_TIME),
+      callTiming: createIdleCallTiming(nowMs),
       events: [
         {
           id: `console-reset-${at}`,
@@ -200,6 +215,13 @@ export function applyVoiceConsoleAction(
         },
         ...seedActivityEvents(DEFAULT_EVENT_TIME)
       ]
+    };
+  }
+
+  if (action.type === "tick") {
+    return {
+      ...state,
+      callTiming: tickCallTiming(state.callTiming, nowMs)
     };
   }
 
