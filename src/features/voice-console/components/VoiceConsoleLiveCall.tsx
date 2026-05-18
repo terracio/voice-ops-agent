@@ -1,4 +1,5 @@
 import { VoiceCallControls } from "./VoiceCallControls";
+import { VoiceConversationTimeline } from "./VoiceConversationTimeline";
 import {
   Panel,
   type VoiceConsoleViewActionHandler
@@ -52,18 +53,7 @@ export function VoiceConsoleLiveCall({
         </Panel>
 
         <Panel title="Conversation timeline" icon="activity">
-          <div className="timeline-skeleton" aria-label="Conversation timeline summary">
-            <TimelineLane
-              label="Caller"
-              tone="caller"
-              value={transcript.currentCallerText ? "Latest speech captured" : "No speech yet"}
-            />
-            <TimelineLane
-              label="Agent"
-              tone="agent"
-              value={transcript.currentAgentText ? "Latest speech captured" : "No speech yet"}
-            />
-          </div>
+          <VoiceConversationTimeline callTiming={state.callTiming} transcript={transcript} />
         </Panel>
 
         <Panel title="Current speech" icon="mic">
@@ -101,26 +91,6 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="metric-card">
       <span>{label}</span>
       <strong>{value}</strong>
-    </div>
-  );
-}
-
-function TimelineLane({
-  label,
-  tone,
-  value
-}: {
-  label: string;
-  tone: "agent" | "caller";
-  value: string;
-}) {
-  return (
-    <div className="timeline-lane">
-      <span>{label}</span>
-      <div className={`timeline-track ${tone}`}>
-        <i />
-      </div>
-      <small>{value}</small>
     </div>
   );
 }
