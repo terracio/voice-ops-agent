@@ -1,21 +1,21 @@
-import { AgentAvatar, Icon, Waveform } from "./voiceConsoleIcons";
+import { VoiceCallControls } from "./VoiceCallControls";
 import {
-  ControlButton,
   Panel,
   type VoiceConsoleViewActionHandler
 } from "./VoiceConsolePrimitives";
+import { VoiceCurrentAudioStatus } from "./VoiceCurrentAudioStatus";
+import { VoiceCurrentSpeech } from "./VoiceCurrentSpeech";
 import {
   formatEvidenceStatus,
   type VoiceConsoleEvidenceState
 } from "../evidence/voiceConsoleEvidence";
 import {
   toHandoffLabel,
-  toModeLabel,
-  toPermissionLabel,
   toStatusLabel
 } from "../evidence/voiceConsoleLabels";
 import type { VoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
 import type { VoiceConsoleState } from "../state/voiceConsoleController";
+import { buildLiveCallViewModel } from "../state/voiceConsoleViewModel";
 
 type VoiceConsoleLiveCallProps = {
   evidence: VoiceConsoleEvidenceState;
@@ -24,14 +24,14 @@ type VoiceConsoleLiveCallProps = {
   onAction: VoiceConsoleViewActionHandler;
 };
 
-const meterBars = Array.from({ length: 16 }, (_, index) => index);
-
 export function VoiceConsoleLiveCall({
   evidence,
   state,
   transcript,
   onAction
 }: VoiceConsoleLiveCallProps) {
+  const liveCall = buildLiveCallViewModel({ evidence, state });
+
   return (
     <section className="live-call-grid" aria-label="Live call cockpit">
       <div className="live-call-left">
@@ -45,28 +45,10 @@ export function VoiceConsoleLiveCall({
         </Panel>
 
         <Panel title="Current audio" icon="headset">
-          <div className="audio-cockpit">
-            <AgentAvatar />
-            <div className="audio-cockpit-main">
-              <div className="agent-heading-row">
-                <div>
-                  <h3>MealPlan Agent</h3>
-                  <p>
-                    Mode <span className="soft-chip">{toModeLabel(state.agentMode)}</span>
-                  </p>
-                </div>
-                <span className="mode-pill">{toModeLabel(state.agentMode)}</span>
-              </div>
-              <Waveform />
-              <div className="audio-output">
-                <span className="mini-icon" aria-hidden="true">
-                  <Icon name="speaker" />
-                </span>
-                <span>{state.assistantAudioLabel}</span>
-              </div>
-            </div>
-          </div>
-          <CallerAudioStatus state={state} />
+          <VoiceCurrentAudioStatus
+            agentStatus={liveCall.agentAudioStatus}
+            state={state}
+          />
         </Panel>
 
         <Panel title="Conversation timeline" icon="activity">
@@ -85,37 +67,10 @@ export function VoiceConsoleLiveCall({
         </Panel>
 
         <Panel title="Current speech" icon="mic">
-          <div className="speech-grid">
-            <LiveTranscript
-              actor="caller"
-              label="Caller"
-              text={transcript.currentCallerText}
-            />
-            <LiveTranscript
-              actor="agent"
-              label="MealPlan Agent"
-              text={transcript.currentAgentText}
-            />
-          </div>
+          <VoiceCurrentSpeech speech={liveCall.speech} />
         </Panel>
 
-        <div className="call-controls" aria-label="Call controls">
-          <PrimaryCallButton state={state} onAction={onAction} />
-          <ControlButton
-            label="Mute"
-            detail={state.isMuted ? "Mic muted" : "Mute mic"}
-            icon="mic"
-            disabled={state.sessionStatus !== "connected"}
-            pressed={state.isMuted}
-            onClick={() => onAction({ type: "toggleMute" })}
-          />
-          <ControlButton
-            label="Reset"
-            detail="Reset session"
-            icon="reset"
-            onClick={() => onAction({ type: "reset" })}
-          />
-        </div>
+        <VoiceCallControls state={state} onAction={onAction} />
       </div>
 
       <aside className="live-call-right" aria-label="Agent action and safety">
@@ -138,63 +93,6 @@ export function VoiceConsoleLiveCall({
         </Panel>
       </aside>
     </section>
-  );
-}
-
-function CallerAudioStatus({ state }: { state: VoiceConsoleState }) {
-  const activeBars = Math.round((state.inputLevel / 100) * meterBars.length);
-  return (
-    <div className="caller-grid live-caller-grid">
-      <div className="caller-mic" aria-label="Caller microphone">
-        <span className="caller-avatar" aria-hidden="true">
-          <Icon name="mic" />
-        </span>
-        <div>
-          <p className="field-title">Caller</p>
-          <p className={`field-value ${state.microphonePermission}`}>
-            <Icon name={state.microphonePermission === "granted" ? "check" : "question"} />
-            {toPermissionLabel(state.microphonePermission)}
-          </p>
-        </div>
-      </div>
-      <div className="input-meter">
-        <p className="field-title">Input level</p>
-        <div className="meter" aria-label={`Input level ${state.inputLevel} percent`}>
-          {meterBars.map((bar) => (
-            <span className={bar < activeBars ? "active" : undefined} key={bar} />
-          ))}
-        </div>
-      </div>
-      <div className="caller-status">
-        <p className="field-title">Status</p>
-        <p className="mute-state">
-          <span className="mute-icon" aria-hidden="true">
-            <Icon name="mic" />
-          </span>
-          {state.isMuted ? "Muted" : "Unmuted"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function PrimaryCallButton({
-  state,
-  onAction
-}: {
-  state: VoiceConsoleState;
-  onAction: VoiceConsoleViewActionHandler;
-}) {
-  const active = state.sessionStatus !== "disconnected";
-  const label = active ? "Hang up" : state.callId ? "Call again" : "Call";
-  return (
-    <ControlButton
-      label={label}
-      detail={active ? "End audio" : "Ring MealPlan"}
-      icon={active ? "phone-off" : "phone"}
-      tone={active ? "neutral" : "primary"}
-      onClick={() => onAction({ type: active ? "stop" : "start" })}
-    />
   );
 }
 
@@ -223,25 +121,6 @@ function TimelineLane({
         <i />
       </div>
       <small>{value}</small>
-    </div>
-  );
-}
-
-function LiveTranscript({
-  actor,
-  label,
-  text
-}: {
-  actor: "agent" | "caller";
-  label: string;
-  text: string;
-}) {
-  return (
-    <div className={`live-transcript ${actor}`}>
-      <p className="field-title">{label}</p>
-      <p className={text ? "live-transcript-text" : "live-transcript-empty"}>
-        {text || "Waiting for transcript evidence."}
-      </p>
     </div>
   );
 }
