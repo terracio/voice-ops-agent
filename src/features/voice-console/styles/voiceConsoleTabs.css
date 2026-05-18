@@ -164,10 +164,20 @@
   padding: 14px;
 }
 
-.action-banner.tool-running,
-.action-banner.waiting-for-confirmation {
+.action-banner.pending,
+.action-banner.warning {
   background: #fff1db;
   color: #b45309;
+}
+
+.action-banner.success {
+  background: #dff4f1;
+  color: #00675d;
+}
+
+.action-banner.error {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .action-banner strong {
@@ -178,6 +188,7 @@
 .skeleton-copy {
   color: #0f172a;
 }
+
 
 @media (max-width: 1100px) {
   .live-call-grid,

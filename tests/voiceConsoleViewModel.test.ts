@@ -21,6 +21,7 @@ describe("live call view model", () => {
     expect(model.cost).toMatchObject({ label: "$0.00" });
     expect(model.customer.identityStatus).toBe("unknown");
     expect(model.customer.summaryLabel).toBe("No customer identified");
+    expect(model.actionBanner.label).toBe("Ready to start call");
     expect(model.tools).toEqual([]);
     expect(model.speech.caller.text).toBe("");
     expect(model.speech.agent.text).toBe("");

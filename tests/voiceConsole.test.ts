@@ -60,6 +60,11 @@ describe("voice console UI shell", () => {
     expect(html).not.toContain("Live activity");
     expect(html).not.toContain("Audit log");
     expect(html).not.toContain("Before/after diff");
+    expect(html).toContain("Ready to start call");
+    expect(html).toContain("No customer identified");
+    expect(html).toContain("Private reads and writes blocked");
+    expect(html).toContain("No pending ChangeSet preview");
+    expect(html).toContain("Identity policy active");
   });
 
   it("renders transcript and evidence tabs from server evidence", () => {
@@ -208,6 +213,7 @@ describe("voice console UI shell", () => {
     const browserFiles = [
       "src/app/page.tsx",
       "src/features/voice-console/components/VoiceConsole.tsx",
+      "src/features/voice-console/components/VoiceAgentSafetyPanel.tsx",
       "src/features/voice-console/components/VoiceConsoleLiveCall.tsx",
       "src/features/voice-console/components/VoiceConsolePrimitives.tsx",
       "src/features/voice-console/components/VoiceEvidencePanels.tsx",
