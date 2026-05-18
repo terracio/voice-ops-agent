@@ -1,22 +1,16 @@
 "use client";
 
 import { useRef, useState, type RefObject } from "react";
-import { Icon, type IconName } from "./voiceConsoleIcons";
 import {
   VoiceToolEvidencePanel,
   VoiceTranscriptEvidencePanel
 } from "./VoiceEvidencePanels";
-import { VoiceConsoleLiveCall } from "./VoiceConsoleLiveCall";
 import { VoiceConsoleTracePanel } from "./VoiceConsoleTracePanel";
-import {
-  StatusPair,
-  type VoiceConsoleViewActionHandler
-} from "./VoiceConsolePrimitives";
+import { type VoiceConsoleViewActionHandler } from "./VoiceConsolePrimitives";
+import { HeaderStatus, type VoiceConsoleTab } from "./HeaderStatus";
+import { LiveCallView } from "./LiveCallView";
 import { useRealtimeEvidence } from "../hooks/useRealtimeEvidence";
 import { useVoiceConsoleRealtime } from "../hooks/useVoiceConsoleRealtime";
-import {
-  toStatusLabel
-} from "../evidence/voiceConsoleLabels";
 import {
   type VoiceConsoleController,
   type VoiceConsoleState
@@ -26,6 +20,10 @@ import {
   type VoiceConsoleEvidenceState
 } from "../evidence/voiceConsoleEvidence";
 import { buildVoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
+import {
+  buildPrototypeLiveCallViewModel,
+  type CallControlAction
+} from "../models/liveCallViewModel";
 
 type VoiceConsoleProps = {
   controller?: VoiceConsoleController;
@@ -38,15 +36,6 @@ type VoiceConsoleViewProps = {
   state: VoiceConsoleState;
   onAction: VoiceConsoleViewActionHandler;
 };
-
-type VoiceConsoleTab = "live-call" | "transcript" | "evidence" | "trace";
-
-const tabs: Array<{ icon: IconName; id: VoiceConsoleTab; label: string }> = [
-  { icon: "activity", id: "live-call", label: "Live Call" },
-  { icon: "speaker", id: "transcript", label: "Transcript" },
-  { icon: "shield", id: "evidence", label: "Evidence" },
-  { icon: "hash", id: "trace", label: "Trace" }
-];
 
 export function VoiceConsole({
   controller
@@ -79,63 +68,45 @@ export function VoiceConsoleView({
   onAction
 }: VoiceConsoleViewProps) {
   const [activeTab, setActiveTab] = useState<VoiceConsoleTab>(initialTab);
-  const statusLabel = toStatusLabel(state.sessionStatus);
   const transcript = buildVoiceTranscriptState(evidence.transcript);
+  const liveCall = buildPrototypeLiveCallViewModel({ evidence, state });
+  const onCallAction = (action: CallControlAction) => {
+    if (action === "call") void onAction({ type: "start" });
+    if (action === "hang_up") void onAction({ type: "stop" });
+    if (action === "mute" || action === "unmute") void onAction({ type: "toggleMute" });
+    if (action === "reset") void onAction({ type: "reset" });
+  };
+
+  if (activeTab === "live-call") {
+    return (
+      <>
+        <audio ref={remoteAudioRef} className="hidden" />
+        <main aria-labelledby="live-call-tab" id="live-call-panel" role="tabpanel">
+          <LiveCallView
+            activeTab={activeTab}
+            viewModel={liveCall}
+            onAction={onCallAction}
+            onTabSelect={setActiveTab}
+          />
+        </main>
+      </>
+    );
+  }
 
   return (
-    <main className="voice-shell">
-      <audio ref={remoteAudioRef} className="remote-audio" />
-      <header className="topbar" aria-label="Voice console status">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <Icon name="brand" />
-          </span>
-          <h1>MealPlan VoiceOps</h1>
-        </div>
-        <nav
-          className="tab-shell topbar-tabs"
-          aria-label="Voice console sections"
-          role="tablist"
-        >
-          {tabs.map((tab) => (
-            <button
-              aria-controls={`${tab.id}-panel`}
-              aria-selected={activeTab === tab.id}
-              className="tab-button"
-              id={`${tab.id}-tab`}
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              role="tab"
-              type="button"
-            >
-              <Icon name={tab.icon} />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-        <div className="topbar-meta" aria-label="Session configuration">
-          <StatusPair label="Model" value={state.model} tone="neutral" />
-          <div className={`connection-state ${state.sessionStatus}`}>
-            <span className="status-dot" aria-hidden="true" />
-            <span>{statusLabel}</span>
-          </div>
-        </div>
-      </header>
-
+    <main className="min-h-screen bg-white text-gray-900">
+      <audio ref={remoteAudioRef} className="hidden" />
+      <HeaderStatus
+        activeTab={activeTab}
+        connection={liveCall.connection}
+        onTabSelect={setActiveTab}
+      />
       <section
         aria-labelledby={`${activeTab}-tab`}
-        className="tab-panel"
+        className="p-6 bg-white min-h-[calc(100vh-64px)]"
         id={`${activeTab}-panel`}
         role="tabpanel"
       >
-        {activeTab === "live-call" ? (
-          <VoiceConsoleLiveCall
-            evidence={evidence}
-            state={state}
-            transcript={transcript}
-            onAction={onAction}
-          />
-        ) : null}
         {activeTab === "transcript" ? (
           <VoiceTranscriptEvidencePanel
             evidence={evidence}

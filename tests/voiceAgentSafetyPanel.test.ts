@@ -13,45 +13,47 @@ describe("voice agent safety panel", () => {
     const html = renderLiveCall();
 
     expect(html).toContain("Waiting for identifier");
-    expect(html).toContain("No customer identified");
-    expect(html).toContain("Private reads and writes blocked");
-    expect(html).toContain("Identity policy active");
+    expect(html).toContain("Unknown Customer");
+    expect(html).toContain("Private reads &amp; writes blocked");
+    expect(html).toContain("Private reads and writes require confirmed identity.");
   });
 
-  it("renders confirmed preview, compact tools, and policy blockers without raw JSON", () => {
+  it("renders confirmed preview, compact tools, and confirmation boundary without raw JSON", () => {
     const html = renderLiveCall(safetyEvidence());
 
-    expect(html).toContain("Confirmed: Maya Chen");
-    expect(html).toContain("Customer ID");
+    expect(html).toContain("Maya Chen");
     expect(html).toContain("cus_001");
     expect(html).toContain("Balanced Weekly");
-    expect(html).toContain("Allergy risk");
-    expect(html).toContain("Payment failed");
-    expect(html).toContain("Waiting for confirmation");
-    expect(html).toContain("Previewed");
-    expect(html).toContain("Update Customization");
-    expect(html).toContain("spice_level");
+    expect(html).toContain("Allergy");
+    expect(html).toContain("warning");
+    expect(html).toContain("Payment");
+    expect(html).toContain("error");
+    expect(html).toContain("Blocked by P004_MISSING_CONFIRMATION");
+    expect(html).toContain("ChangeSet preview");
+    expect(html).toContain("Update customization");
     expect(html).toContain("normal");
     expect(html).toContain("spicy");
     expect(html).toContain("cs_spice");
-    expect(html).toContain("State v7");
-    expect(html).toContain("Required before commit");
-    expect(html).toContain("No state committed yet");
-    expect(html).toContain("Blocked by P004_MISSING_CONFIRMATION");
+    expect(html).toContain("7 -&gt; 8 pending");
+    expect(html).toContain("Confirmation required");
     expect(html).toContain("Commit requires explicit confirmation.");
+    expect(html).toContain("commit_change_set");
+    expect(html).toContain("Blocked");
+    expect(html).toContain("Customization update requires a preview delta.");
     expect(html).toContain("Policy P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
+    expect(html).not.toContain("Policies passed: identity, date, locked-date, preview.");
     expect(html).not.toContain("Input {");
     expect(html).not.toContain("Output {");
   });
 
-  it("renders committed ChangeSets without preview-only copy", () => {
+  it("renders committed ChangeSets without confirmation-required copy", () => {
     const html = renderLiveCall(committedSafetyEvidence());
 
-    expect(html).toContain("Committed");
-    expect(html).toContain("Satisfied");
-    expect(html).toContain("Committed after server confirmation and policy revalidation.");
-    expect(html).not.toContain("Preview only");
-    expect(html).not.toContain("No state committed yet");
+    expect(html).toContain("Maya Chen");
+    expect(html).toContain("Update customization");
+    expect(html).toContain("No deterministic policy blockers in current evidence.");
+    expect(html).not.toContain("Confirmation required");
+    expect(html).not.toContain("Preview shown. No state has been committed.");
   });
 });
 

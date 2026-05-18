@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   applyVoiceConsoleAction,
-  buildLiveCallViewModel,
   createInitialVoiceConsoleState
 } from "../src/features/voice-console";
 import { toVoiceConsoleEvidenceState } from "../src/features/voice-console/evidence/voiceConsoleEvidence";
+import { buildPrototypeLiveCallViewModel } from "../src/features/voice-console/models/liveCallViewModel";
 import {
   markRealtimeCallId,
   markRealtimeState,
@@ -14,14 +14,14 @@ import {
 describe("live call view model", () => {
   it("renders initial metrics without customer or tool evidence", () => {
     const state = createInitialVoiceConsoleState("10:00:00");
-    const model = buildLiveCallViewModel({ state });
+    const model = buildPrototypeLiveCallViewModel({ state });
 
-    expect(model.connection).toMatchObject({ label: "Ready", state: "ready" });
+    expect(model.connection.status).toBe("disconnected");
     expect(model.elapsedLabel).toBe("00:00");
-    expect(model.cost).toMatchObject({ label: "$0.00" });
-    expect(model.customer.identityStatus).toBe("unknown");
-    expect(model.customer.summaryLabel).toBe("No customer identified");
-    expect(model.actionBanner.label).toBe("Ready to start call");
+    expect(model.cost).toMatchObject({ isAvailable: false, label: "--" });
+    expect(model.customer.status).toBe("unknown");
+    expect(model.customer.name).toBe("No caller identified yet");
+    expect(model.actionBanner.title).toBe("Ready");
     expect(model.tools).toEqual([]);
     expect(model.speech.caller.text).toBe("");
     expect(model.speech.agent.text).toBe("");
@@ -46,16 +46,16 @@ describe("live call view model", () => {
       at: "10:02:05"
     });
 
-    expect(buildLiveCallViewModel({ state: ticked }).elapsedLabel).toBe("00:30");
-    expect(buildLiveCallViewModel({ state: stopped }).elapsedLabel).toBe("01:00");
-    expect(buildLiveCallViewModel({ state: laterTick }).elapsedLabel).toBe("01:00");
-    expect(buildLiveCallViewModel({ state: stopped }).connection.state).toBe("ended");
+    expect(buildPrototypeLiveCallViewModel({ state: ticked }).elapsedLabel).toBe("00:30");
+    expect(buildPrototypeLiveCallViewModel({ state: stopped }).elapsedLabel).toBe("01:00");
+    expect(buildPrototypeLiveCallViewModel({ state: laterTick }).elapsedLabel).toBe("01:00");
+    expect(buildPrototypeLiveCallViewModel({ state: stopped }).connection.status).toBe("ended");
 
     const reset = applyVoiceConsoleAction(stopped, {
       type: "reset",
       at: "10:03:00"
     });
-    expect(buildLiveCallViewModel({ state: reset }).elapsedLabel).toBe("00:00");
+    expect(buildPrototypeLiveCallViewModel({ state: reset }).elapsedLabel).toBe("00:00");
   });
 
   it("shows active timing and identity policy for connected calls without identity", () => {
@@ -76,14 +76,13 @@ describe("live call view model", () => {
       at: "10:00:40",
       nowMs: 40_000
     });
-    const model = buildLiveCallViewModel({ state: ticked });
+    const model = buildPrototypeLiveCallViewModel({ state: ticked });
 
-    expect(model.connection.state).toBe("connected");
+    expect(model.connection.status).toBe("connected");
     expect(model.elapsedLabel).toBe("00:30");
-    expect(model.customer.identityStatus).toBe("unknown");
-    expect(model.policy.label).toBe("Identity policy active");
-    expect(model.policy.detail).toContain("Private reads and writes");
-    expect(model.actionBanner.label).toBe("Waiting for identifier");
+    expect(model.customer.status).toBe("unknown");
+    expect(model.policy.statusText).toContain("Private reads and writes");
+    expect(model.actionBanner.title).toBe("Waiting for identifier");
   });
 
   it("keeps uncertain lookup candidates out of pending confirmation state", () => {
@@ -120,12 +119,13 @@ describe("live call view model", () => {
         tool_name: "lookup_customer"
       }]
     });
-    const model = buildLiveCallViewModel({ evidence, state });
+    const model = buildPrototypeLiveCallViewModel({ evidence, state });
 
-    expect(model.customer.identityStatus).toBe("uncertain");
-    expect(model.customer.summaryLabel).toBe("Identity uncertain");
-    expect(model.customer.summaryLabel).not.toContain("Maya Chen");
-    expect(model.policy.label).toBe("Identity policy active");
+    expect(model.customer.status).toBe("uncertain");
+    expect(model.customer.name).toBe("Maya Chen");
+    expect(model.agentAudioStatus.callerPhone).toBe("Phone ending 0101");
+    expect(model.agentAudioStatus.callerPhone).not.toContain("+1 (415) 555");
+    expect(model.policy.statusText).toContain("Private reads and writes");
   });
 
   it("derives customer, ChangeSet, tool, and policy summaries from structured evidence", () => {
@@ -245,27 +245,22 @@ describe("live call view model", () => {
         turn_id: "turn_agent"
       }]
     });
-    const model = buildLiveCallViewModel({ evidence, state });
+    const model = buildPrototypeLiveCallViewModel({ evidence, state });
 
     expect(model.customer).toMatchObject({
-      identityStatus: "confirmed",
       name: "Maya Chen",
-      plan: "Balanced Weekly"
+      plan: "Balanced Weekly",
+      status: "confirmed"
     });
-    expect(model.customer.riskFlags).toContain("Allergy risk");
+    expect(model.customer.riskFlags).toContainEqual({ label: "Allergy", status: "warning" });
     expect(model.changeSet).toMatchObject({
       changeSetId: "cs_spice",
-      confirmationRequired: true,
-      operationLabel: "Update Customization",
-      stateVersionLabel: "State v7",
-      statusLabel: "Previewed"
+      operationType: "Update customization",
+      requiresConfirmation: true,
+      stateVersion: "7 -> 8 pending"
     });
-    expect(model.changeSet?.diffRows).toEqual([{
-      after: "spicy",
-      before: "normal",
-      field: "spice_level"
-    }]);
-    expect(model.policy.label).toBe("Blocked by P004_MISSING_CONFIRMATION");
+    expect(model.changeSet).toMatchObject({ afterState: "spicy", beforeState: "normal" });
+    expect(model.policy.statusText).toBe("Blocked by P004_MISSING_CONFIRMATION");
     expect(model.tools.map((tool) => tool.name)).toContain("preview_change_set");
     expect(model.speech.caller.text).toBe("Please make next week spicy.");
     expect(model.speech.agent.text).toBe("I can preview that change.");
@@ -331,14 +326,14 @@ describe("live call view model", () => {
         tool_name: "confirm_customer_identity"
       }]
     });
-    const model = buildLiveCallViewModel({ evidence, state });
+    const model = buildPrototypeLiveCallViewModel({ evidence, state });
 
     expect(model.changeSet).toMatchObject({
       changeSetId: "cs_spice",
-      confirmationRequired: false,
-      statusLabel: "Committed"
+      isActive: false,
+      requiresConfirmation: false
     });
-    expect(model.policy.label).toBe("Policies passed");
-    expect(model.policy.label).not.toContain("P004_MISSING_CONFIRMATION");
+    expect(model.policy.statusText).toBe("No deterministic policy blockers in current evidence.");
+    expect(model.policy.statusText).not.toContain("P004_MISSING_CONFIRMATION");
   });
 });

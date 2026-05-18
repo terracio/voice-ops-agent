@@ -1,79 +1,5 @@
-import type { ReactNode } from "react";
 import { Icon, type IconName } from "./voiceConsoleIcons";
 import type { VoiceConsoleAction, VoiceConsoleState } from "../state/voiceConsoleController";
-
-export function Panel({
-  title,
-  icon,
-  children
-}: {
-  title: string;
-  icon: IconName;
-  children: ReactNode;
-}) {
-  const titleId = `${slug(title)}-title`;
-  return (
-    <section className="console-panel" aria-labelledby={titleId}>
-      <div className="panel-title">
-        <Icon name={icon} />
-        <h2 id={titleId}>{title}</h2>
-      </div>
-      <div className="panel-body">{children}</div>
-    </section>
-  );
-}
-
-export function StatusPair({
-  label,
-  value,
-  tone
-}: {
-  label: string;
-  value: string;
-  tone: "teal" | "neutral";
-}) {
-  return (
-    <div className="status-pair">
-      <span>{label}</span>
-      <strong className={tone}>{value}</strong>
-    </div>
-  );
-}
-
-export function ControlButton({
-  label,
-  detail,
-  icon,
-  tone = "neutral",
-  disabled = false,
-  pressed,
-  onClick
-}: {
-  label: string;
-  detail: string;
-  icon: IconName;
-  tone?: "primary" | "neutral";
-  disabled?: boolean;
-  pressed?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-label={`${label}: ${detail}`}
-      aria-pressed={pressed}
-      className={`control-button ${tone}`}
-      disabled={disabled}
-      onClick={onClick}
-      type="button"
-    >
-      <Icon name={icon} />
-      <span>
-        <strong>{label}</strong>
-        <small>{detail}</small>
-      </span>
-    </button>
-  );
-}
 
 export function ActivityItem({
   event
@@ -127,8 +53,4 @@ function activityIcon(tone: VoiceConsoleState["events"][number]["tone"]): IconNa
   if (tone === "ready" || tone === "success") return "check";
   if (tone === "info") return "info";
   return "question";
-}
-
-function slug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

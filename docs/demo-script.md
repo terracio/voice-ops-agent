@@ -47,11 +47,11 @@ After pressing **Call**, point out:
 
 - the local browser ringback while the call is connecting,
 - microphone permission state,
-- call metrics and control handoff status,
+- call metrics, secure voice status, and the active call controls,
 - the agent's initial greeting once the Realtime data channel is ready,
-- current speech in the Live Call tab,
+- current audio status, the conversation timeline, and current speech in the Live Call tab,
 - full transcript, tool evidence, and trace diagnostics in their dedicated tabs,
-- customer context and safety placeholders in the right-side Live Call region.
+- the right-side safety region: agent action, customer summary, ChangeSet preview when present, tool timeline, and policy summary.
 
 The ringback is local browser UI audio only. It is not model audio and should not
 appear as transcript or evidence. The initial agent greeting is requested by the

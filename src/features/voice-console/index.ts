@@ -9,6 +9,7 @@ export {
 } from "./state/voiceConsoleController";
 export { elapsedCallMs } from "./state/voiceConsoleTiming";
 export {
-  buildLiveCallViewModel,
+  buildPrototypeLiveCallViewModel,
+  type CallControlAction,
   type LiveCallViewModel
-} from "./state/voiceConsoleViewModel";
+} from "./models/liveCallViewModel";

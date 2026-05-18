@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { VoiceConversationTimeline } from "../src/features/voice-console/components/VoiceConversationTimeline";
+import { ConversationTimeline } from "../src/features/voice-console/components/ConversationTimeline";
 import { toVoiceConsoleEvidenceState } from "../src/features/voice-console/evidence/voiceConsoleEvidence";
 import { buildVoiceTranscriptState } from "../src/features/voice-console/evidence/voiceConsoleTranscript";
 import {
@@ -9,26 +9,22 @@ import {
   formatTimelineTime
 } from "../src/features/voice-console/state/voiceConversationTimeline";
 import { clockTimeToMs } from "../src/features/voice-console/state/voiceConsoleTiming";
-import type { VoiceTranscriptState, VoiceTranscriptTurn } from "../src/features/voice-console/evidence/voiceConsoleTranscript";
+import type { VoiceTranscriptTurn } from "../src/features/voice-console/evidence/voiceConsoleTranscript";
 
 describe("conversation timeline", () => {
   it("renders fixed empty caller and agent lanes at initial elapsed time", () => {
-    const transcript: VoiceTranscriptState = {
-      currentAgentText: "",
-      currentCallerText: "",
-      history: []
-    };
     const html = renderToStaticMarkup(
-      React.createElement(VoiceConversationTimeline, {
-        callTiming: { nowMs: clockTimeToMs("10:00:00") },
-        transcript
+      React.createElement(ConversationTimeline, {
+        elapsedLabel: "00:00",
+        timeline: { agentSegments: [], callerSegments: [] }
       })
     );
 
-    expect(html).toContain("Conversation timeline, elapsed 00:00");
+    expect(html).toContain("Conversation Timeline");
+    expect(html).toContain("Approximate timeline");
     expect(html).toContain("Caller");
     expect(html).toContain("Agent");
-    expect(html.match(/No speech yet/g)).toHaveLength(2);
+    expect(html).toContain("Silent / thinking / tools");
     expect(html).toContain("00:00");
   });
 
@@ -102,30 +98,23 @@ describe("conversation timeline", () => {
   });
 
   it("renders bars, time ruler, and current marker for active calls", () => {
-    const transcript: VoiceTranscriptState = {
-      currentAgentText: "I can help with that.",
-      currentCallerText: "Please make my meals spicy next week.",
-      history: [
-        turn("caller-1", "user", "10:00:02", "Please make my meals spicy next week."),
-        turn("agent-1", "assistant", "10:00:05", "I can help with that.")
-      ]
-    };
     const html = renderToStaticMarkup(
-      React.createElement(VoiceConversationTimeline, {
-        callTiming: {
-          nowMs: clockTimeToMs("10:00:10"),
-          startedAtMs: clockTimeToMs("10:00:00")
-        },
-        transcript
+      React.createElement(ConversationTimeline, {
+        elapsedLabel: "00:10",
+        timeline: {
+          agentSegments: [{ startPct: 50, widthPct: 18 }],
+          callerSegments: [{ startPct: 20, widthPct: 25 }]
+        }
       })
     );
 
-    expect(html).toContain("conversation-ruler");
-    expect(html).toContain("conversation-marker");
-    expect(html).toContain("conversation-segment caller estimated");
-    expect(html).toContain("conversation-segment agent estimated");
-    expect(html).toContain("Caller speech from 00:02 to 00:04, estimated");
-    expect(html).toContain("Agent speech from 00:05 to 00:06, estimated");
+    expect(html).toContain("Caller speaking");
+    expect(html).toContain("Agent speaking");
+    expect(html).toContain("00:10");
+    expect(html).toContain("bg-green-500");
+    expect(html).toContain("bg-blue-500");
+    expect(html).toContain("left:20%;width:25%");
+    expect(html).toContain("left:50%;width:18%");
   });
 
   it("formats elapsed labels with minute and second precision", () => {

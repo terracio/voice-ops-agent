@@ -1,3 +1,8 @@
+.trace-stack {
+  display: grid;
+  gap: 12px;
+}
+
 .trace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);

@@ -20,12 +20,12 @@ describe("CODS-200 live call current audio, speech, and controls", () => {
 
     expect(initialHtml.match(/data-speech-slot=/g)).toHaveLength(2);
     expect(initialHtml).toContain("Caller speech will appear here.");
-    expect(initialHtml).toContain("Agent speech will appear here.");
+    expect(initialHtml).toContain("MealPlan Agent speech will appear here.");
     expect(initialHtml).toContain("Unavailable");
     expect(initialHtml).toContain("Ready");
     expect(controlButtonCount(initialHtml)).toBe(3);
     expect(controlOrder(initialHtml)).toEqual(["Call", "Mute", "Reset"]);
-    expect(initialHtml).toMatch(/aria-label="Mute: Mic muted"[^>]*disabled/);
+    expect(initialHtml).toMatch(/<button[^>]*disabled=""/);
 
     const active = applyVoiceConsoleAction(initial, {
       type: "start",
@@ -42,7 +42,7 @@ describe("CODS-200 live call current audio, speech, and controls", () => {
     expect(controlOrder(activeHtml)).toEqual(["Hang up", "Mute", "Reset"]);
     expect(activeHtml).toContain("Speaking");
     expect(activeHtml).toContain("Listening");
-    expect(activeHtml).not.toMatch(/aria-label="Mute: Mute mic"[^>]*disabled/);
+    expect(activeHtml).not.toMatch(/cursor-not-allowed/);
 
     const ended = applyVoiceConsoleAction(active, {
       type: "stop",
@@ -57,7 +57,7 @@ describe("CODS-200 live call current audio, speech, and controls", () => {
 
     expect(controlButtonCount(endedHtml)).toBe(3);
     expect(controlOrder(endedHtml)).toEqual(["Call again", "Mute", "Reset"]);
-    expect(endedHtml).toMatch(/aria-label="Mute: Mic muted"[^>]*disabled/);
+    expect(endedHtml).toMatch(/<button[^>]*disabled=""/);
   });
 
   it("keeps Live Call speech to the latest two slots instead of full history", () => {
@@ -125,10 +125,16 @@ describe("CODS-200 live call current audio, speech, and controls", () => {
 });
 
 function controlButtonCount(html: string): number {
-  return html.match(/class="control-button/g)?.length ?? 0;
+  return controlOrder(html).length;
 }
 
 function controlOrder(html: string): string[] {
-  return Array.from(html.matchAll(/class="control-button[^"]*"[^>]*>.*?<strong>(.*?)<\/strong>/g))
-    .map((match) => match[1] ?? "");
+  const controls = html.slice(html.indexOf("border-t border-gray-100 pt-6"));
+  return Array.from(controls.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g))
+    .slice(0, 3)
+    .map((match) => stripTags(match[1] ?? ""));
+}
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }

@@ -28,23 +28,30 @@ describe("voice console UI shell", () => {
     );
 
     expect(html).toContain("MealPlan VoiceOps");
+    expect(html).not.toContain("Ops Team");
     expect(html).toContain("Live Call");
     expect(html).toContain("Transcript");
     expect(html).toContain("Evidence");
     expect(html).toContain("Trace");
     expect(html).toContain("aria-selected=\"true\"");
-    expect(html).toContain("gpt-realtime-2");
     expect(html).toContain("Disconnected");
     expect(html).toContain("Call metrics");
     expect(html).toContain("Elapsed");
-    expect(html).toContain("Estimated cost");
-    expect(html).toContain("Current audio");
-    expect(html).toContain("Conversation timeline");
-    expect(html).toContain("Current speech");
-    expect(html).toContain("Agent action");
-    expect(html).toContain("Customer summary");
-    expect(html).toContain("ChangeSet preview");
+    expect(html).toContain("Est. cost");
+    expect(html).not.toContain("Secure transport");
+    expect(html).not.toContain("Encrypted in transit");
+    expect(html).not.toContain("End-to-end encrypted");
+    expect(html).toContain("aria-label=\"Current audio status\"");
+    expect(html).not.toContain(">Current Audio Status<");
+    expect(html).toContain("Conversation Timeline");
+    expect(html).toContain("Current Speech");
+    expect(html).toContain("aria-label=\"Agent action and safety\"");
+    expect(html).not.toContain("Agent Action / Safety");
+    expect(html).toContain("Unknown Customer");
     expect(html).toContain("Tool timeline");
+    expect(html).toContain("0 tool calls");
+    expect(html).toContain("No tool calls yet.");
+    expect(html).toContain("Initial session events only.");
     expect(html).toContain("Policy summary");
     expect(html).not.toContain("Tool and policy summary");
     expect(html).toContain("Call");
@@ -53,7 +60,6 @@ describe("voice console UI shell", () => {
     expect(html).not.toContain("Hang up");
     expect(html).not.toContain("Start session");
     expect(html).not.toContain("Stop session");
-    expect(html).toContain("Server-side only");
     expect(html).not.toContain("Transcript evidence");
     expect(html).not.toContain("Debug text only");
     expect(html).not.toContain("Input {");
@@ -61,11 +67,9 @@ describe("voice console UI shell", () => {
     expect(html).not.toContain("Live activity");
     expect(html).not.toContain("Audit log");
     expect(html).not.toContain("Before/after diff");
-    expect(html).toContain("Ready to start call");
-    expect(html).toContain("No customer identified");
-    expect(html).toContain("Private reads and writes blocked");
-    expect(html).toContain("No pending ChangeSet preview");
-    expect(html).toContain("Identity policy active");
+    expect(html).toContain("Waiting for call to start.");
+    expect(html).toContain("Private reads &amp; writes blocked");
+    expect(html).toContain("Private reads and writes require confirmed identity.");
   });
 
   it("renders transcript and evidence tabs from server evidence", () => {
@@ -165,6 +169,35 @@ describe("voice console UI shell", () => {
     expect(evidence.cost?.unavailableReasons[0]).toContain("No frozen pricing");
   });
 
+  it("renders precise non-zero cost labels in Live Call metrics", () => {
+    const state = createInitialVoiceConsoleState("10:51:24");
+    const evidence = toVoiceConsoleEvidenceState({
+      generated_at: "2026-05-14T09:00:00.000Z",
+      cost_telemetry: {
+        estimate_status: "available",
+        flags: [],
+        line_items: [],
+        model: "gpt-realtime-2",
+        pricing_last_verified_at: "2026-05-17",
+        source_event_count: 1,
+        total_usd: 0.0045,
+        transcription_model: "gpt-realtime-whisper",
+        unavailable_reasons: []
+      }
+    });
+
+    const html = renderToStaticMarkup(
+      React.createElement(VoiceConsoleView, {
+        evidence,
+        state,
+        onAction: () => undefined
+      })
+    );
+
+    expect(html).toContain("$0.0045");
+    expect(html).not.toMatch(/>\$0\.00<\/span><span[^>]*>Est\. cost/);
+  });
+
   it("drives visible call state through the mocked controller contract", () => {
     const initial = createInitialVoiceConsoleState("10:51:24");
     const unavailableMute = applyVoiceConsoleAction(initial, {
@@ -223,15 +256,22 @@ describe("voice console UI shell", () => {
   it("keeps browser code out of server-only domain and tool modules", () => {
     const browserFiles = [
       "src/app/page.tsx",
+      "src/features/voice-console/components/AgentVoiceMark.tsx",
+      "src/features/voice-console/components/AgentActionBanner.tsx",
+      "src/features/voice-console/components/CallControls.tsx",
+      "src/features/voice-console/components/CallMetrics.tsx",
+      "src/features/voice-console/components/ChangeSetPreview.tsx",
+      "src/features/voice-console/components/ConversationTimeline.tsx",
+      "src/features/voice-console/components/CurrentAudioStatus.tsx",
+      "src/features/voice-console/components/CurrentSpeech.tsx",
+      "src/features/voice-console/components/CustomerSummary.tsx",
+      "src/features/voice-console/components/HeaderStatus.tsx",
+      "src/features/voice-console/components/LiveCallView.tsx",
+      "src/features/voice-console/components/PolicySummary.tsx",
+      "src/features/voice-console/components/ToolTimeline.tsx",
       "src/features/voice-console/components/VoiceConsole.tsx",
-      "src/features/voice-console/components/VoiceAgentSafetyPanel.tsx",
-      "src/features/voice-console/components/VoiceCallControls.tsx",
-      "src/features/voice-console/components/VoiceConsoleLiveCall.tsx",
       "src/features/voice-console/components/VoiceConsolePrimitives.tsx",
       "src/features/voice-console/components/VoiceConsoleTracePanel.tsx",
-      "src/features/voice-console/components/VoiceConversationTimeline.tsx",
-      "src/features/voice-console/components/VoiceCurrentAudioStatus.tsx",
-      "src/features/voice-console/components/VoiceCurrentSpeech.tsx",
       "src/features/voice-console/components/VoiceEvidencePanels.tsx",
       "src/features/voice-console/components/voiceConsoleIcons.tsx",
       "src/features/voice-console/evidence/voiceConsoleEvidence.ts",
@@ -240,6 +280,7 @@ describe("voice console UI shell", () => {
       "src/features/voice-console/evidence/voiceConsoleTranscript.ts",
       "src/features/voice-console/hooks/useRealtimeEvidence.ts",
       "src/features/voice-console/hooks/useVoiceConsoleRealtime.ts",
+      "src/features/voice-console/models/liveCallViewModel.ts",
       "src/features/voice-console/state/voiceConversationTimeline.ts",
       "src/features/voice-console/state/voiceConsoleController.ts",
       "src/features/voice-console/state/voiceConsoleRealtimeState.ts",
@@ -339,6 +380,18 @@ describe("voice console UI shell", () => {
         "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Call again.",
       title: "Realtime session failed"
     });
+    const errorHtml = renderToStaticMarkup(
+      React.createElement(VoiceConsoleView, {
+        state: detailedError,
+        onAction: () => undefined
+      })
+    );
+    expect(errorHtml).toContain("Realtime session failed");
+    expect(errorHtml).toContain("Realtime error");
+    expect(errorHtml).toContain(
+      "Microphone permission was denied by the browser. Allow microphone access for localhost, then click Call again."
+    );
+    expect(errorHtml).not.toContain("Waiting for call to start.");
     expect(
       detailedError.events.some((event) => event.title === "Realtime error")
     ).toBe(false);
