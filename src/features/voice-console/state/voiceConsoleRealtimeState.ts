@@ -4,16 +4,22 @@ import type {
   ActivityTone,
   VoiceConsoleState
 } from "./voiceConsoleController";
+import {
+  endCallTiming,
+  startCallTiming
+} from "./voiceConsoleTiming";
 
 type RealtimeStateEvent = {
   at: string;
+  nowMs?: number;
   previousState?: RealtimeWebrtcControllerState;
   state: RealtimeWebrtcControllerState;
 };
 
 export function markRealtimeStartRequested(
   state: VoiceConsoleState,
-  at: string
+  at: string,
+  nowMs?: number
 ): VoiceConsoleState {
   if (state.sessionStatus !== "disconnected") {
     return addEvent(state, {
@@ -32,6 +38,7 @@ export function markRealtimeStartRequested(
       agentMode: "idle",
       assistantAudioLabel: "Ringing MealPlan",
       callId: null,
+      callTiming: { ...state.callTiming, nowMs: nowMs ?? state.callTiming.nowMs },
       controlHandoff: "pending",
       serverCallSetup: "not-created",
       inputLevel: 0,
@@ -52,7 +59,7 @@ export function markRealtimeState(
   state: VoiceConsoleState,
   event: RealtimeStateEvent
 ): VoiceConsoleState {
-  const next = statePatchForRealtimeState(state, event.state);
+  const next = statePatchForRealtimeState(state, event);
   const activity = activityForRealtimeState(event);
   return activity ? addEvent(next, activity) : next;
 }
@@ -148,7 +155,8 @@ export function markRealtimeRemoteAudio(
 export function markRealtimeError(
   state: VoiceConsoleState,
   message: string,
-  at: string
+  at: string,
+  nowMs?: number
 ): VoiceConsoleState {
   const detail = formatRealtimeErrorMessage(message);
 
@@ -159,6 +167,7 @@ export function markRealtimeError(
       assistantAudioLabel: "Realtime session error",
       callId: null,
       controlHandoff: "pending",
+      callTiming: endCallTiming(state.callTiming, nowMs),
       serverCallSetup: "not-created",
       inputLevel: 0,
       isMuted: true,
@@ -180,8 +189,9 @@ export function markRealtimeError(
 
 function statePatchForRealtimeState(
   state: VoiceConsoleState,
-  realtimeState: RealtimeWebrtcControllerState
+  event: RealtimeStateEvent
 ): VoiceConsoleState {
+  const realtimeState = event.state;
   if (realtimeState === "connecting") {
     return {
       ...state,
@@ -196,6 +206,7 @@ function statePatchForRealtimeState(
       ...state,
       agentMode: "listening",
       assistantAudioLabel: "Agent ready for caller audio",
+      callTiming: startCallTiming(state.callTiming, event.nowMs),
       controlHandoff: "attached",
       serverCallSetup: "created",
       inputLevel: state.isMuted ? 0 : 38,
@@ -236,6 +247,7 @@ function statePatchForRealtimeState(
       ...state,
       agentMode: "idle",
       assistantAudioLabel: "No audio playing",
+      callTiming: endCallTiming(state.callTiming, event.nowMs),
       controlHandoff: "pending",
       serverCallSetup: "not-created",
       inputLevel: 0,

@@ -1,3 +1,12 @@
+import {
+  toChangeSetItem,
+  toDiffItem,
+  toPolicyItem,
+  type EvidenceChangeSetDiffItem,
+  type EvidenceChangeSetItem,
+  type EvidencePolicyItem
+} from "./voiceConsoleStructuredEvidence";
+
 export type EvidencePollStatus = "idle" | "loading" | "ready" | "error";
 export type EvidenceToolStatus = "started" | "ok" | "blocked" | "error";
 
@@ -14,12 +23,15 @@ export type EvidenceToolItem = {
   at: string;
   id: string;
   input?: string;
+  inputData?: unknown;
   name: string;
   output?: string;
+  outputData?: unknown;
   policyId?: string;
   risk: string;
   status: EvidenceToolStatus;
   summary?: string;
+  toolError?: { code?: string; message?: string; policyId?: string };
 };
 
 export type EvidenceRealtimeItem = {
@@ -53,17 +65,23 @@ export type EvidenceCostTelemetry = {
 };
 
 export type VoiceConsoleEvidenceState = {
+  changeSets?: EvidenceChangeSetItem[];
   cost?: EvidenceCostTelemetry;
+  diffs?: EvidenceChangeSetDiffItem[];
   errorMessage?: string;
   events: EvidenceRealtimeItem[];
   lastUpdated?: string;
+  policies?: EvidencePolicyItem[];
   status: EvidencePollStatus;
   tools: EvidenceToolItem[];
   transcript: EvidenceTranscriptItem[];
 };
 
 export const EMPTY_VOICE_CONSOLE_EVIDENCE: VoiceConsoleEvidenceState = {
+  changeSets: [],
+  diffs: [],
   events: [],
+  policies: [],
   status: "idle",
   tools: [],
   transcript: []
@@ -82,9 +100,12 @@ export function toVoiceConsoleEvidenceState(
 ): VoiceConsoleEvidenceState {
   const record = isRecord(payload) ? payload : {};
   return {
+    changeSets: arrayValue(record.change_sets).map(toChangeSetItem),
     cost: toCostTelemetry(record.cost_telemetry),
+    diffs: arrayValue(record.diffs).map(toDiffItem),
     events: arrayValue(record.realtime_events).map(toRealtimeItem),
     lastUpdated: displayTime(record.generated_at),
+    policies: arrayValue(record.policies).map(toPolicyItem),
     status: "ready",
     tools: arrayValue(record.tools).map(toToolItem),
     transcript: arrayValue(record.transcript).map(toTranscriptItem)
@@ -118,12 +139,21 @@ function toToolItem(value: unknown, index: number): EvidenceToolItem {
     at: displayTime(item.created_at),
     id: stringValue(item.evidence_id) ?? stringValue(item.tool_call_id) ?? `tool-${index}`,
     input: compactJson(item.input),
+    inputData: item.input,
     name: stringValue(item.tool_name) ?? "unknown_tool",
     output: compactJson(item.output),
+    outputData: item.output,
     policyId: stringValue(toolError?.policy_id),
     risk: stringValue(item.risk) ?? "unknown",
     status: toolStatus(item.status),
-    summary: stringValue(item.result_summary) ?? stringValue(toolError?.message)
+    summary: stringValue(item.result_summary) ?? stringValue(toolError?.message),
+    toolError: toolError
+      ? {
+        code: stringValue(toolError.code),
+        message: stringValue(toolError.message),
+        policyId: stringValue(toolError.policy_id)
+      }
+      : undefined
   };
 }
 
@@ -234,6 +264,7 @@ function numberValue(value: unknown): number | undefined {
     ? value
     : undefined;
 }
+
 
 function formatUsd(value: number): string {
   const digits = value > 0 && value < 0.01 ? 4 : 2;

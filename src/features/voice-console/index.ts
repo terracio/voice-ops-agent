@@ -7,3 +7,8 @@ export {
   type VoiceConsoleController,
   type VoiceConsoleState
 } from "./state/voiceConsoleController";
+export { elapsedCallMs } from "./state/voiceConsoleTiming";
+export {
+  buildLiveCallViewModel,
+  type LiveCallViewModel
+} from "./state/voiceConsoleViewModel";
