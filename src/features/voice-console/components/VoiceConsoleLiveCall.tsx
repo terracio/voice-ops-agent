@@ -130,8 +130,11 @@ export function VoiceConsoleLiveCall({
           <p className="skeleton-copy">No pending ChangeSet preview.</p>
           <p className="safety-note">The browser can display deltas only after the server creates and validates them.</p>
         </Panel>
-        <Panel title="Tool and policy summary" icon="lock">
-          <ToolPolicySummary evidence={evidence} state={state} />
+        <Panel title="Tool timeline" icon="activity">
+          <ToolTimelineSummary evidence={evidence} state={state} />
+        </Panel>
+        <Panel title="Policy summary" icon="lock">
+          <PolicySummary />
         </Panel>
       </aside>
     </section>
@@ -252,7 +255,7 @@ function ActionBanner({ state }: { state: VoiceConsoleState }) {
   );
 }
 
-function ToolPolicySummary({
+function ToolTimelineSummary({
   evidence,
   state
 }: {
@@ -267,6 +270,17 @@ function ToolPolicySummary({
           ? `${latestTool.name} ${formatEvidenceStatus(latestTool.status).toLowerCase()}`
           : state.serverToolsLabel}
       </p>
+      <p className="safety-note">
+        Compact server tool status only. Full inputs and outputs stay in the Evidence tab.
+      </p>
+    </div>
+  );
+}
+
+function PolicySummary() {
+  return (
+    <div className="summary-stack">
+      <p className="skeleton-copy">Identity and write policies remain active.</p>
       <p className="safety-note">
         Policy enforcement and commits remain server-owned; this panel is display-only.
       </p>

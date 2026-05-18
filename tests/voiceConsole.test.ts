@@ -43,7 +43,9 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Agent action");
     expect(html).toContain("Customer summary");
     expect(html).toContain("ChangeSet preview");
-    expect(html).toContain("Tool and policy summary");
+    expect(html).toContain("Tool timeline");
+    expect(html).toContain("Policy summary");
+    expect(html).not.toContain("Tool and policy summary");
     expect(html).toContain("Call");
     expect(html).toContain("Mute");
     expect(html).toContain("Reset");
@@ -52,6 +54,9 @@ describe("voice console UI shell", () => {
     expect(html).not.toContain("Stop session");
     expect(html).toContain("Server-side only");
     expect(html).not.toContain("Transcript evidence");
+    expect(html).not.toContain("Debug text only");
+    expect(html).not.toContain("Input {");
+    expect(html).not.toContain("Output {");
     expect(html).not.toContain("Live activity");
     expect(html).not.toContain("Audit log");
     expect(html).not.toContain("Before/after diff");
