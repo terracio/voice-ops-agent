@@ -7,16 +7,14 @@ import {
   VoiceTranscriptEvidencePanel
 } from "./VoiceEvidencePanels";
 import { VoiceConsoleLiveCall } from "./VoiceConsoleLiveCall";
+import { VoiceConsoleTracePanel } from "./VoiceConsoleTracePanel";
 import {
-  ActivityItem,
   StatusPair,
-  TechItem,
   type VoiceConsoleViewActionHandler
 } from "./VoiceConsolePrimitives";
 import { useRealtimeEvidence } from "../hooks/useRealtimeEvidence";
 import { useVoiceConsoleRealtime } from "../hooks/useVoiceConsoleRealtime";
 import {
-  toHandoffLabel,
   toStatusLabel
 } from "../evidence/voiceConsoleLabels";
 import {
@@ -144,59 +142,13 @@ export function VoiceConsoleView({
         ) : null}
         {activeTab === "evidence" ? <VoiceToolEvidencePanel evidence={evidence} /> : null}
         {activeTab === "trace" ? (
-          <VoiceConsoleTrace state={state} onAction={onAction} />
+          <VoiceConsoleTracePanel
+            evidence={evidence}
+            state={state}
+            onAction={onAction}
+          />
         ) : null}
       </section>
     </main>
-  );
-}
-
-function VoiceConsoleTrace({
-  state,
-  onAction
-}: {
-  state: VoiceConsoleState;
-  onAction: VoiceConsoleViewActionHandler;
-}) {
-  return (
-    <div className="trace-stack">
-      <section className="activity-panel" aria-labelledby="activity-heading">
-        <div className="panel-title activity-title">
-          <div>
-            <Icon name="activity" />
-            <h2 id="activity-heading">Live activity</h2>
-          </div>
-          <button
-            className="clear-button"
-            type="button"
-            onClick={() => onAction({ type: "clearActivity" })}
-          >
-            <Icon name="trash" />
-            <span>Clear</span>
-          </button>
-        </div>
-        <ol className="activity-feed" aria-label="Live controller activity">
-          {state.events.map((event) => (
-            <ActivityItem event={event} key={event.id} />
-          ))}
-        </ol>
-      </section>
-
-      <section className="technical-strip" aria-label="Technical state">
-        <TechItem icon="hash" label="Call ID" value={state.callId ?? "-"} />
-        <TechItem
-          icon="link"
-          label="Control handoff"
-          value={toHandoffLabel(state.controlHandoff)}
-          badge={state.controlHandoff === "pending" ? "Pending" : "Attached"}
-        />
-        <TechItem
-          icon="shield"
-          label="Server call setup"
-          value={state.serverCallSetup === "created" ? "Ready" : "-"}
-        />
-        <TechItem icon="lock" label="Tools" value={state.serverToolsLabel} />
-      </section>
-    </div>
   );
 }

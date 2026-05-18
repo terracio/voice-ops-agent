@@ -39,6 +39,38 @@ export type EvidenceChangeSetDiffItem = {
   status: string;
 };
 
+export type EvidenceConfirmationItem = {
+  at: string;
+  changeSetId?: string;
+  confirmationId?: string;
+  customerId?: string;
+  id: string;
+  reason?: string;
+  sourceTurnId?: string;
+  status: string;
+  transcriptExcerpt?: string;
+  type?: string;
+};
+
+export type EvidenceAuditItem = {
+  actor: string;
+  at: string;
+  changeSetId?: string;
+  customerId?: string;
+  eventId: string;
+  eventType: string;
+  id: string;
+  policyId?: string;
+  summary: string;
+  toolName?: string;
+};
+
+export type EvidenceLimitationItem = {
+  code: string;
+  message: string;
+  severity: "info" | "warning";
+};
+
 export function toPolicyItem(value: unknown, index: number): EvidencePolicyItem {
   const item = isRecord(value) ? value : {};
   const result = toPolicyResult(item.result);
@@ -84,6 +116,59 @@ export function toDiffItem(
     field: stringValue(item.field) ?? "unknown",
     operation: item.operation,
     status: stringValue(item.status) ?? "unknown"
+  };
+}
+
+export function toConfirmationItem(
+  value: unknown,
+  index: number
+): EvidenceConfirmationItem {
+  const item = isRecord(value) ? value : {};
+  const confirmation = isRecord(item.confirmation) ? item.confirmation : undefined;
+  const source = isRecord(item.source) ? item.source : {};
+  return {
+    at: displayTime(item.created_at),
+    changeSetId: stringValue(confirmation?.change_set_id) ?? stringValue(item.change_set_id) ?? stringValue(source.change_set_id),
+    confirmationId: stringValue(confirmation?.confirmation_id) ?? stringValue(source.confirmation_id),
+    customerId: stringValue(confirmation?.customer_id) ?? stringValue(item.customer_id) ?? stringValue(source.customer_id),
+    id: stringValue(item.evidence_id) ?? stringValue(confirmation?.confirmation_id) ?? `confirmation-${index}`,
+    reason: stringValue(item.reason),
+    sourceTurnId: stringValue(confirmation?.source_user_turn_id) ?? stringValue(source.turn_id),
+    status: stringValue(item.status) ?? "unknown",
+    transcriptExcerpt: stringValue(confirmation?.transcript_excerpt),
+    type: stringValue(confirmation?.confirmation_type)
+  };
+}
+
+export function toAuditItem(value: unknown, index: number): EvidenceAuditItem {
+  const item = isRecord(value) ? value : {};
+  const event = isRecord(item.audit_event) ? item.audit_event : {};
+  const source = isRecord(item.source) ? item.source : {};
+  return {
+    actor: stringValue(event.actor) ?? "system",
+    at: displayTime(item.created_at) === "--:--:--"
+      ? displayTime(event.timestamp)
+      : displayTime(item.created_at),
+    changeSetId: stringValue(event.change_set_id) ?? stringValue(source.change_set_id),
+    customerId: stringValue(event.customer_id) ?? stringValue(source.customer_id),
+    eventId: stringValue(event.event_id) ?? `audit-${index}`,
+    eventType: stringValue(event.event_type) ?? "audit_event",
+    id: stringValue(item.evidence_id) ?? stringValue(event.event_id) ?? `audit-${index}`,
+    policyId: stringValue(source.policy_id),
+    summary: auditSummary(event),
+    toolName: stringValue(event.tool_name)
+  };
+}
+
+export function toLimitationItem(value: unknown): EvidenceLimitationItem | undefined {
+  const item = isRecord(value) ? value : {};
+  const code = stringValue(item.code);
+  const message = stringValue(item.message);
+  if (!code || !message) return undefined;
+  return {
+    code,
+    message,
+    severity: item.severity === "warning" ? "warning" : "info"
   };
 }
 
@@ -137,4 +222,14 @@ function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
     ? value
     : undefined;
+}
+
+function auditSummary(event: Record<string, unknown>): string {
+  const type = stringValue(event.event_type) ?? "audit_event";
+  const toolName = stringValue(event.tool_name);
+  const changeSetId = stringValue(event.change_set_id);
+  if (toolName && changeSetId) return `${type} via ${toolName} for ${changeSetId}`;
+  if (toolName) return `${type} via ${toolName}`;
+  if (changeSetId) return `${type} for ${changeSetId}`;
+  return type;
 }

@@ -20,7 +20,8 @@
 .realtime-events,
 .cost-heading,
 .cost-models,
-.cost-breakdown li {
+.cost-breakdown li,
+.diff-list li {
   display: flex;
   align-items: center;
 }
@@ -41,7 +42,11 @@
 .tool-details,
 .tool-item code,
 .estimated-cost small,
-.cost-note {
+.cost-note,
+.evidence-section h3,
+.evidence-list span,
+.diff-list small,
+.audit-list span {
   color: #4b5565;
   font-size: 0.84rem;
 }
@@ -49,6 +54,22 @@
 .evidence-body { padding: 16px 18px 18px; }
 .evidence-state { margin: 0 0 12px; }
 .evidence-state.error { color: #b42318; }
+
+.evidence-section {
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid #d8dee8;
+  padding: 0 0 16px;
+}
+
+.evidence-section + .evidence-section { padding-top: 16px; }
+.evidence-section:last-child { border-bottom: 0; padding-bottom: 0; }
+.evidence-section h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
 
 .estimated-cost {
   display: grid;
@@ -115,18 +136,25 @@
 .cost-breakdown li strong { min-width: 64px; text-align: right; }
 
 .transcript-list,
-.tool-timeline {
+.tool-timeline,
+.evidence-list,
+.audit-list,
+.diff-list {
   display: grid;
   gap: 12px;
-  max-height: 320px;
   overflow: auto;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.transcript-list,
+.tool-timeline { max-height: 420px; }
+
 .transcript-item,
-.tool-item {
+.tool-item,
+.evidence-list li,
+.audit-list li {
   border: 1px solid #d8dee8;
   border-radius: 8px;
   padding: 14px;
@@ -183,6 +211,51 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.evidence-list li,
+.audit-list li {
+  display: grid;
+  gap: 6px;
+  background: #f8fafc;
+}
+
+.evidence-list p,
+.audit-list p {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #0f172a;
+  line-height: 1.42;
+}
+
+.policy-item.block,
+.policy-item.escalate {
+  border-left: 4px solid #b42318;
+}
+
+.policy-item.warning {
+  border-left: 4px solid #b45309;
+}
+
+.diff-list {
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.diff-list li {
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 6px;
+  background: #f6f8fb;
+  padding: 9px 10px;
+}
+
+.diff-list span,
+.diff-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.diff-list small { flex: 1; text-align: center; }
+
 .empty-evidence {
   gap: 10px;
   min-height: 76px;
@@ -201,4 +274,16 @@
 
 @media (max-width: 1100px) {
   .evidence-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .cost-heading,
+  .diff-list li {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .diff-list small {
+    text-align: left;
+  }
 }

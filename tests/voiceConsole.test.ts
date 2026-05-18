@@ -94,29 +94,33 @@ describe("voice console UI shell", () => {
       })
     );
 
-    expect(transcriptHtml).toContain("Debug text only");
-    expect(transcriptHtml).toContain("Transcript evidence");
+    expect(transcriptHtml).toContain("Diagnostic transcript only");
+    expect(transcriptHtml).toContain("Transcript history");
     expect(transcriptHtml).toContain("Please make my meals spicy next week.");
     expect(transcriptHtml).toContain("I can help with that.");
+    expect(evidenceHtml).toContain("Operational evidence");
     expect(evidenceHtml).toContain("Tool timeline");
     expect(evidenceHtml).toContain("preview_change_set");
     expect(evidenceHtml).toContain("Blocked");
     expect(evidenceHtml).toContain("P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
-    expect(evidenceHtml).toContain("Estimated cost");
-    expect(evidenceHtml).toContain("$0.0045");
-    expect(evidenceHtml).toContain("Partial local estimate");
-    expect(evidenceHtml).toContain("gpt-realtime-whisper");
-    expect(evidenceHtml).toContain("Transcription audio");
-    expect(evidenceHtml).toContain("response.done");
-    expect(evidenceHtml).toContain("error: invalid_request_error");
+    expect(evidenceHtml).toContain("Policies");
+    expect(evidenceHtml).toContain("P004_MISSING_CONFIRMATION");
+    expect(evidenceHtml).toContain("ChangeSets and diffs");
+    expect(evidenceHtml).toContain("cs_001");
+    expect(evidenceHtml).toContain("Confirmations and audit");
+    expect(evidenceHtml).toContain("policy_block");
+    expect(evidenceHtml).not.toContain("Estimated cost");
+    expect(evidenceHtml).not.toContain("response.done");
     expect(evidenceHtml).not.toContain("completed successfully");
   });
 
   it("renders trace diagnostics without mixing them into the Live Call tab", () => {
     const state = createInitialVoiceConsoleState("10:51:24");
+    const evidence = createVoiceConsoleEvidenceFixture();
     const html = renderToStaticMarkup(
       React.createElement(VoiceConsoleView, {
         state,
+        evidence,
         initialTab: "trace",
         onAction: () => undefined
       })
@@ -127,6 +131,12 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Control handoff");
     expect(html).toContain("Server call setup");
     expect(html).toContain("Server-side only");
+    expect(html).toContain("Realtime events");
+    expect(html).toContain("response.done");
+    expect(html).toContain("error: invalid_request_error");
+    expect(html).toContain("Cost telemetry");
+    expect(html).toContain("$0.0045");
+    expect(html).toContain("gpt-realtime-whisper");
   });
 
   it("maps unavailable cost telemetry without fabricating a zero total", () => {
@@ -214,15 +224,22 @@ describe("voice console UI shell", () => {
       "src/app/page.tsx",
       "src/features/voice-console/components/VoiceConsole.tsx",
       "src/features/voice-console/components/VoiceAgentSafetyPanel.tsx",
+      "src/features/voice-console/components/VoiceCallControls.tsx",
       "src/features/voice-console/components/VoiceConsoleLiveCall.tsx",
       "src/features/voice-console/components/VoiceConsolePrimitives.tsx",
+      "src/features/voice-console/components/VoiceConsoleTracePanel.tsx",
+      "src/features/voice-console/components/VoiceConversationTimeline.tsx",
+      "src/features/voice-console/components/VoiceCurrentAudioStatus.tsx",
+      "src/features/voice-console/components/VoiceCurrentSpeech.tsx",
       "src/features/voice-console/components/VoiceEvidencePanels.tsx",
       "src/features/voice-console/components/voiceConsoleIcons.tsx",
       "src/features/voice-console/evidence/voiceConsoleEvidence.ts",
       "src/features/voice-console/evidence/voiceConsoleLabels.ts",
+      "src/features/voice-console/evidence/voiceConsoleStructuredEvidence.ts",
       "src/features/voice-console/evidence/voiceConsoleTranscript.ts",
       "src/features/voice-console/hooks/useRealtimeEvidence.ts",
       "src/features/voice-console/hooks/useVoiceConsoleRealtime.ts",
+      "src/features/voice-console/state/voiceConversationTimeline.ts",
       "src/features/voice-console/state/voiceConsoleController.ts",
       "src/features/voice-console/state/voiceConsoleRealtimeState.ts",
       "src/realtime/browser/ringback.ts"

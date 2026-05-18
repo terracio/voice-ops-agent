@@ -35,7 +35,7 @@ export function VoiceTranscriptEvidencePanel({
   transcript = normalizeTranscriptTurns(evidence.transcript)
 }: VoiceEvidencePanelsProps) {
   return (
-    <EvidencePanel title="Transcript evidence" note="Debug text only">
+    <EvidencePanel title="Transcript history" note="Diagnostic transcript only">
       <EvidenceStateLine evidence={evidence} />
       {transcript.length === 0 ? (
         <EmptyEvidence message="No transcript evidence for this call yet." />
@@ -66,31 +66,95 @@ export function VoiceToolEvidencePanel({
   evidence?: VoiceConsoleEvidenceState;
 }) {
   return (
-    <EvidencePanel title="Tool timeline" note="Server-side evidence">
-      <EstimatedCost cost={evidence.cost} />
-      {evidence.tools.length === 0 ? (
-        <EmptyEvidence message="No server tool calls captured yet." />
-      ) : (
-        <ol className="tool-timeline">
-          {evidence.tools.map((tool) => (
-            <ToolTimelineItem tool={tool} key={tool.id} />
-          ))}
-        </ol>
-      )}
-      {evidence.events.length > 0 ? (
-        <div className="realtime-events" aria-label="Realtime event summaries">
-          {evidence.events.slice(-6).map((event) => (
-            <span className={`realtime-event ${event.severity}`} key={event.id}>
-              {event.label}
-            </span>
-          ))}
-        </div>
-      ) : null}
+    <EvidencePanel title="Operational evidence" note="Server-side evidence">
+      <EvidenceSection title="Tool timeline">
+        {evidence.tools.length === 0 ? (
+          <EmptyEvidence message="No server tool calls captured yet." />
+        ) : (
+          <ol className="tool-timeline">
+            {evidence.tools.map((tool) => (
+              <ToolTimelineItem tool={tool} key={tool.id} />
+            ))}
+          </ol>
+        )}
+      </EvidenceSection>
+      <EvidenceSection title="Policies">
+        {evidence.policies?.length ? (
+          <ol className="evidence-list">
+            {evidence.policies.map((policy) => (
+              <li className={`policy-item ${policy.result.severity}`} key={policy.id}>
+                <strong>{policy.policyId}</strong>
+                <span>{policy.stage} · {policy.result.passed ? "passed" : policy.result.severity}</span>
+                <p>{policy.result.message}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyEvidence message="No policy evidence captured yet." />
+        )}
+      </EvidenceSection>
+      <EvidenceSection title="ChangeSets and diffs">
+        {evidence.changeSets?.length ? (
+          <ol className="evidence-list">
+            {evidence.changeSets.map((changeSet) => (
+              <li className="change-set-item" key={changeSet.changeSetId}>
+                <strong>{changeSet.changeSetId}</strong>
+                <span>{changeSet.status} · {changeSet.customerId}</span>
+                <p>{changeSet.operations.length} operation(s)</p>
+                {changeSet.confirmationId ? <small>Confirmation {changeSet.confirmationId}</small> : null}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyEvidence message="No ChangeSet evidence captured yet." />
+        )}
+        {evidence.diffs?.length ? (
+          <ol className="diff-list" aria-label="ChangeSet diffs">
+            {evidence.diffs.map((diff) => (
+              <li key={`${diff.changeSetId}-${diff.field}-${diff.status}`}>
+                <span>{diff.field}</span>
+                <small>
+                  {readableEvidenceValue(diff.before)}
+                  {" -> "}
+                  {readableEvidenceValue(diff.after)}
+                </small>
+                <strong>{diff.status}</strong>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </EvidenceSection>
+      <EvidenceSection title="Confirmations and audit">
+        {evidence.confirmations?.length ? (
+          <ol className="evidence-list">
+            {evidence.confirmations.map((confirmation) => (
+              <li className="confirmation-item" key={confirmation.id}>
+                <strong>{confirmation.status}</strong>
+                <span>{confirmation.changeSetId ?? "No ChangeSet"} · {confirmation.type ?? "confirmation"}</span>
+                <p>{confirmation.transcriptExcerpt ?? confirmation.reason ?? "Confirmation evidence recorded."}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyEvidence message="No confirmation evidence captured yet." />
+        )}
+        {evidence.auditEvents?.length ? (
+          <ol className="audit-list" aria-label="Audit summaries">
+            {evidence.auditEvents.slice(-6).map((event) => (
+              <li key={event.id}>
+                <strong>{event.eventType}</strong>
+                <span>{event.actor} · {event.at}</span>
+                <p>{event.summary}</p>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </EvidenceSection>
     </EvidencePanel>
   );
 }
 
-function EstimatedCost({ cost }: { cost?: EvidenceCostTelemetry }) {
+export function EstimatedCost({ cost }: { cost?: EvidenceCostTelemetry }) {
   const speechItems = costItems(cost, "speech_to_speech");
   const transcriptionItems = costItems(cost, "input_transcription");
   const unavailable = !cost || cost.estimateStatus === "unavailable";
@@ -117,6 +181,21 @@ function EstimatedCost({ cost }: { cost?: EvidenceCostTelemetry }) {
       {unavailable ? <p className="cost-note">{reason}</p> : null}
       <CostBreakdown title="Speech-to-speech" items={speechItems} />
       <CostBreakdown title="Transcription" items={transcriptionItems} />
+    </section>
+  );
+}
+
+function EvidenceSection({
+  children,
+  title
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="evidence-section">
+      <h3>{title}</h3>
+      {children}
     </section>
   );
 }
@@ -225,6 +304,12 @@ function EmptyEvidence({ message }: { message: string }) {
       <span>{message}</span>
     </div>
   );
+}
+
+function readableEvidenceValue(value: unknown): string {
+  if (value === undefined || value === null) return "-";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
 }
 
 function costItems(

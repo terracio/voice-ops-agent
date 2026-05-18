@@ -1,9 +1,15 @@
 import {
+  toAuditItem,
   toChangeSetItem,
+  toConfirmationItem,
   toDiffItem,
+  toLimitationItem,
   toPolicyItem,
+  type EvidenceAuditItem,
   type EvidenceChangeSetDiffItem,
   type EvidenceChangeSetItem,
+  type EvidenceConfirmationItem,
+  type EvidenceLimitationItem,
   type EvidencePolicyItem
 } from "./voiceConsoleStructuredEvidence";
 
@@ -66,22 +72,32 @@ export type EvidenceCostTelemetry = {
 };
 
 export type VoiceConsoleEvidenceState = {
+  auditEvents?: EvidenceAuditItem[];
+  callId?: string;
   changeSets?: EvidenceChangeSetItem[];
+  confirmations?: EvidenceConfirmationItem[];
   cost?: EvidenceCostTelemetry;
   diffs?: EvidenceChangeSetDiffItem[];
   errorMessage?: string;
   events: EvidenceRealtimeItem[];
   lastUpdated?: string;
+  limitations?: EvidenceLimitationItem[];
   policies?: EvidencePolicyItem[];
+  runId?: string;
+  schemaVersion?: string;
+  snapshotStatus?: string;
   status: EvidencePollStatus;
   tools: EvidenceToolItem[];
   transcript: EvidenceTranscriptItem[];
 };
 
 export const EMPTY_VOICE_CONSOLE_EVIDENCE: VoiceConsoleEvidenceState = {
+  auditEvents: [],
   changeSets: [],
+  confirmations: [],
   diffs: [],
   events: [],
+  limitations: [],
   policies: [],
   status: "idle",
   tools: [],
@@ -101,12 +117,22 @@ export function toVoiceConsoleEvidenceState(
 ): VoiceConsoleEvidenceState {
   const record = isRecord(payload) ? payload : {};
   return {
+    auditEvents: arrayValue(record.audit_events).map(toAuditItem),
+    callId: stringValue(record.call_id),
     changeSets: arrayValue(record.change_sets).map(toChangeSetItem),
+    confirmations: arrayValue(record.confirmations).map(toConfirmationItem),
     cost: toCostTelemetry(record.cost_telemetry),
     diffs: arrayValue(record.diffs).map(toDiffItem),
     events: arrayValue(record.realtime_events).map(toRealtimeItem),
     lastUpdated: displayTime(record.generated_at),
+    limitations: arrayValue(record.limitations).flatMap((item) => {
+      const limitation = toLimitationItem(item);
+      return limitation ? [limitation] : [];
+    }),
     policies: arrayValue(record.policies).map(toPolicyItem),
+    runId: stringValue(record.run_id),
+    schemaVersion: stringValue(record.schema_version),
+    snapshotStatus: stringValue(record.status),
     status: "ready",
     tools: arrayValue(record.tools).map(toToolItem),
     transcript: arrayValue(record.transcript).map(toTranscriptItem)

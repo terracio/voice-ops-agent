@@ -4,6 +4,7 @@ import "../features/voice-console/styles/voiceConsole.css";
 import "../features/voice-console/styles/voiceConsoleEvidence.css";
 import "../features/voice-console/styles/voiceConsoleSafetyPanel.css";
 import "../features/voice-console/styles/voiceConsoleTabs.css";
+import "../features/voice-console/styles/voiceConsoleTrace.css";
 import "../features/voice-console/styles/voiceConsoleResponsive.css";
 import "../features/voice-console/styles/voiceConsoleTranscript.css";
 

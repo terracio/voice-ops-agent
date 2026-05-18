@@ -55,6 +55,63 @@ export function createVoiceConsoleEvidenceFixture(): VoiceConsoleEvidenceState {
       summary: "Customization update requires a preview delta.",
       policyId: "P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA"
     }],
+    policies: [{
+      at: "09:00:04",
+      id: "policy_missing_confirmation",
+      policyId: "P004_MISSING_CONFIRMATION",
+      result: {
+        message: "Commit requires explicit confirmation.",
+        passed: false,
+        policyId: "P004_MISSING_CONFIRMATION",
+        severity: "block"
+      },
+      stage: "commit"
+    }],
+    changeSets: [{
+      at: "09:00:04",
+      blockingPolicyIds: ["P004_MISSING_CONFIRMATION"],
+      changeSetId: "cs_001",
+      customerId: "cus_001",
+      expectedStateVersion: 7,
+      operations: [{
+        field: "spice_level",
+        next_value: "spicy",
+        previous_value: "normal",
+        type: "update_customization"
+      }],
+      policyResults: [],
+      status: "previewed"
+    }],
+    diffs: [{
+      after: "spicy",
+      at: "09:00:04",
+      before: "normal",
+      changeSetId: "cs_001",
+      customerId: "cus_001",
+      diffKind: "customization",
+      field: "spice_level",
+      status: "proposed"
+    }],
+    confirmations: [{
+      at: "09:00:06",
+      changeSetId: "cs_001",
+      customerId: "cus_001",
+      id: "confirmation_missing",
+      reason: "Explicit confirmation has not been captured.",
+      status: "missing"
+    }],
+    auditEvents: [{
+      actor: "policy",
+      at: "09:00:05",
+      changeSetId: "cs_001",
+      customerId: "cus_001",
+      eventId: "audit_1",
+      eventType: "policy_block",
+      id: "audit_1",
+      policyId: "P004_MISSING_CONFIRMATION",
+      summary: "policy_block via commit_change_set for cs_001",
+      toolName: "commit_change_set"
+    }],
     events: [{
       at: "09:00:01",
       eventType: "response.done",
