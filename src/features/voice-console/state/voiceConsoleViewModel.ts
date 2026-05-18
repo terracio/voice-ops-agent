@@ -6,10 +6,13 @@ import {
 } from "../evidence/voiceConsoleEvidence";
 import type {
   EvidenceChangeSetDiffItem,
-  EvidenceChangeSetItem,
-  EvidencePolicyItem
+  EvidenceChangeSetItem
 } from "../evidence/voiceConsoleStructuredEvidence";
 import { buildVoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
+import {
+  currentChangeSetBlocker,
+  latestChangeSet
+} from "./voiceConsoleChangeSetStatus";
 import {
   type AgentMode,
   type VoiceConsoleState
@@ -20,6 +23,7 @@ import {
   costStatusLabel,
   displayUnknown,
   formatElapsed,
+  numberValue,
   operationLabel,
   recordValue,
   stringValue,
@@ -98,8 +102,9 @@ export function buildLiveCallViewModel(options: {
   const connection = connectionState(options.state);
   const tools = evidence.tools.map(toToolRow);
   const customer = customerSummary(evidence, options.state);
-  const changeSet = changeSetSummary(evidence.changeSets ?? [], evidence.diffs ?? []);
-  const policy = policySummary(evidence.policies ?? [], customer.identityStatus, changeSet);
+  const activeChangeSet = latestChangeSet(evidence.changeSets ?? []);
+  const changeSet = changeSetSummary(activeChangeSet, evidence.diffs ?? []);
+  const policy = policySummary(customer.identityStatus, activeChangeSet, changeSet);
 
   return {
     actionBanner: actionBanner(options.state, tools, customer.identityStatus, policy),
@@ -182,24 +187,34 @@ function customerSummary(
   }
 
   const candidates = arrayValue(lookup?.candidates);
-  const candidate = recordValue(candidates[0]);
-  if (candidate) {
-    const name = stringValue(candidate.name);
+  const [candidate] = candidates;
+  const candidateRecord = recordValue(candidate);
+  const hasSingleConfirmedCandidate =
+    candidates.length === 1 &&
+    numberValue(lookup?.candidate_count) === 1 &&
+    stringValue(candidateRecord?.identity_confidence) === "confirmed";
+
+  if (
+    lookup &&
+    (stringValue(lookup.identity_status) === "uncertain" ||
+      !hasSingleConfirmedCandidate)
+  ) {
+    return {
+      detail: "Clarify identity before private reads or writes.",
+      identityStatus: "uncertain",
+      riskFlags: ["Private reads blocked", "Writes blocked"],
+      summaryLabel: "Identity uncertain"
+    };
+  }
+
+  if (candidateRecord) {
+    const name = stringValue(candidateRecord.name);
     return {
       detail: "Lookup candidate requires explicit caller confirmation.",
       identityStatus: "pending",
       name,
       riskFlags: ["Private reads blocked", "Writes blocked"],
       summaryLabel: name ? `Pending confirmation: ${name}` : "Pending confirmation"
-    };
-  }
-
-  if (stringValue(lookup?.identity_status) === "uncertain") {
-    return {
-      detail: "Clarify identity before private reads or writes.",
-      identityStatus: "uncertain",
-      riskFlags: ["Private reads blocked", "Writes blocked"],
-      summaryLabel: "Identity uncertain"
     };
   }
 
@@ -212,10 +227,9 @@ function customerSummary(
 }
 
 function changeSetSummary(
-  changeSets: EvidenceChangeSetItem[],
+  changeSet: EvidenceChangeSetItem | undefined,
   diffs: EvidenceChangeSetDiffItem[]
 ): LiveCallViewModel["changeSet"] | undefined {
-  const changeSet = latestChangeSet(changeSets);
   if (!changeSet) return undefined;
   const relatedDiffs = diffs.filter((diff) => diff.changeSetId === changeSet.changeSetId);
   return {
@@ -235,16 +249,16 @@ function changeSetSummary(
 }
 
 function policySummary(
-  policies: EvidencePolicyItem[],
   identityStatus: LiveCallIdentityStatus,
-  changeSet: LiveCallViewModel["changeSet"]
+  changeSetEvidence: EvidenceChangeSetItem | undefined,
+  changeSetSummary: LiveCallViewModel["changeSet"]
 ): LiveCallViewModel["policy"] {
-  const blocked = [...policies].reverse().find((policy) => !policy.result.passed);
+  const blocked = currentChangeSetBlocker(changeSetEvidence);
   if (blocked) {
     return {
-      detail: blocked.result.message,
+      detail: blocked.message,
       label: `Blocked by ${blocked.policyId}`,
-      tone: blocked.result.severity === "escalate" ? "error" : "warning"
+      tone: blocked.severity === "escalate" ? "error" : "warning"
     };
   }
   if (identityStatus !== "confirmed") {
@@ -254,7 +268,7 @@ function policySummary(
       tone: "pending"
     };
   }
-  if (changeSet?.confirmationRequired) {
+  if (changeSetSummary?.confirmationRequired) {
     return {
       detail: "Commit remains blocked until explicit confirmation is captured server-side.",
       label: "Confirmation required",
@@ -302,12 +316,6 @@ function riskFlags(customer?: Record<string, unknown>, payment?: Record<string, 
   const paymentStatus = stringValue(payment?.payment_status);
   if (paymentStatus === "failed" || paymentStatus === "past_due") flags.push(`Payment ${paymentStatus.replace("_", " ")}`);
   return flags;
-}
-
-function latestChangeSet(changeSets: EvidenceChangeSetItem[]) {
-  return [...changeSets].reverse().find((changeSet) =>
-    ["draft", "previewed", "confirmed", "blocked"].includes(changeSet.status)
-  ) ?? changeSets.at(-1);
 }
 
 function agentAudioStatus(mode: AgentMode): LiveCallViewModel["agentAudioStatus"] {

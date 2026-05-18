@@ -85,6 +85,48 @@ describe("live call view model", () => {
     expect(model.actionBanner.label).toBe("Waiting for identifier");
   });
 
+  it("keeps uncertain lookup candidates out of pending confirmation state", () => {
+    const state = createInitialVoiceConsoleState("10:00:00");
+    const evidence = toVoiceConsoleEvidenceState({
+      tools: [{
+        created_at: "2026-05-18T09:00:01.000Z",
+        evidence_id: "tool_lookup",
+        output: {
+          audit_event_ids: ["audit_lookup"],
+          data: {
+            candidate_count: 2,
+            candidates: [{
+              customer_id: "cus_001",
+              identity_confidence: "confirmed",
+              name: "Maya Chen",
+              phone_last4: "0101"
+            }, {
+              customer_id: "cus_101",
+              identity_confidence: "uncertain",
+              name: "Maya Chandra",
+              phone_last4: "2222"
+            }],
+            identity_status: "uncertain",
+            policy_ids: ["P001_IDENTITY_UNCERTAIN"],
+            write_blocked: true
+          },
+          ok: true
+        },
+        result_summary: "Multiple possible customers found.",
+        risk: "read",
+        status: "ok",
+        tool_call_id: "call_lookup",
+        tool_name: "lookup_customer"
+      }]
+    });
+    const model = buildLiveCallViewModel({ evidence, state });
+
+    expect(model.customer.identityStatus).toBe("uncertain");
+    expect(model.customer.summaryLabel).toBe("Identity uncertain");
+    expect(model.customer.summaryLabel).not.toContain("Maya Chen");
+    expect(model.policy.label).toBe("Identity policy active");
+  });
+
   it("derives customer, ChangeSet, tool, and policy summaries from structured evidence", () => {
     const state = applyVoiceConsoleAction(createInitialVoiceConsoleState("10:00:00"), {
       type: "start",
@@ -226,5 +268,76 @@ describe("live call view model", () => {
     expect(model.tools.map((tool) => tool.name)).toContain("preview_change_set");
     expect(model.speech.caller.text).toBe("Please make next week spicy.");
     expect(model.speech.agent.text).toBe("I can preview that change.");
+  });
+
+  it("does not report stale historical policy blockers after commit", () => {
+    const state = createInitialVoiceConsoleState("10:00:00");
+    const evidence = toVoiceConsoleEvidenceState({
+      change_sets: [{
+        blocking_policy_ids: ["P004_MISSING_CONFIRMATION"],
+        change_set_id: "cs_spice",
+        created_at: "2026-05-18T09:00:04.000Z",
+        customer_id: "cus_001",
+        expected_state_version: 7,
+        operations: [{ field: "spice_level", next_value: "spicy", type: "update_customization" }],
+        policy_results: [{
+          message: "Commit requires explicit confirmation.",
+          passed: false,
+          policy_id: "P004_MISSING_CONFIRMATION",
+          severity: "block"
+        }],
+        status: "previewed"
+      }, {
+        blocking_policy_ids: [],
+        change_set_id: "cs_spice",
+        confirmation_id: "conf_spice",
+        created_at: "2026-05-18T09:00:08.000Z",
+        customer_id: "cus_001",
+        expected_state_version: 7,
+        operations: [{ field: "spice_level", next_value: "spicy", type: "update_customization" }],
+        policy_results: [],
+        status: "committed"
+      }],
+      policies: [{
+        created_at: "2026-05-18T09:00:05.000Z",
+        evidence_id: "policy_missing_confirmation",
+        policy_id: "P004_MISSING_CONFIRMATION",
+        result: {
+          message: "Commit requires explicit confirmation.",
+          passed: false,
+          policy_id: "P004_MISSING_CONFIRMATION",
+          severity: "block"
+        },
+        stage: "commit"
+      }],
+      tools: [{
+        created_at: "2026-05-18T09:00:01.000Z",
+        evidence_id: "tool_confirm",
+        output: {
+          audit_event_ids: ["audit_confirm"],
+          data: {
+            customer_id: "cus_001",
+            identity_status: "confirmed",
+            name: "Maya Chen",
+            phone_last4: "0101"
+          },
+          ok: true
+        },
+        result_summary: "Identity confirmed.",
+        risk: "read",
+        status: "ok",
+        tool_call_id: "call_confirm",
+        tool_name: "confirm_customer_identity"
+      }]
+    });
+    const model = buildLiveCallViewModel({ evidence, state });
+
+    expect(model.changeSet).toMatchObject({
+      changeSetId: "cs_spice",
+      confirmationRequired: false,
+      statusLabel: "Committed"
+    });
+    expect(model.policy.label).toBe("Policies passed");
+    expect(model.policy.label).not.toContain("P004_MISSING_CONFIRMATION");
   });
 });
