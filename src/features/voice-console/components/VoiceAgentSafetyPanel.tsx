@@ -137,7 +137,7 @@ function ChangeSetPreview({
         <p className="safety-note">No before/after rows are available yet.</p>
       )}
       <p className="safety-note">
-        Preview only: the server must revalidate state and policy before commit.
+        {changeSetSafetyNote(changeSet)}
       </p>
     </div>
   );
@@ -222,6 +222,16 @@ function accessLabel(status: LiveCallIdentityStatus): string {
   return status === "confirmed"
     ? "Private reads and approved previews available"
     : "Private reads and writes blocked";
+}
+
+function changeSetSafetyNote(changeSet: NonNullable<LiveCallViewModel["changeSet"]>): string {
+  if (changeSet.confirmationRequired) {
+    return "No state committed yet; the server must revalidate state and policy before commit.";
+  }
+  if (changeSet.statusLabel === "Committed") {
+    return "Committed after server confirmation and policy revalidation.";
+  }
+  return "Confirmation satisfied; no pending commit blocker in current evidence.";
 }
 
 function readableValue(value: string): string {

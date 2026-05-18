@@ -36,12 +36,22 @@ describe("voice agent safety panel", () => {
     expect(html).toContain("cs_spice");
     expect(html).toContain("State v7");
     expect(html).toContain("Required before commit");
-    expect(html).toContain("Preview only");
+    expect(html).toContain("No state committed yet");
     expect(html).toContain("Blocked by P004_MISSING_CONFIRMATION");
     expect(html).toContain("Commit requires explicit confirmation.");
     expect(html).toContain("Policy P011_CUSTOMIZATION_OVERWRITE_REQUIRES_DELTA");
     expect(html).not.toContain("Input {");
     expect(html).not.toContain("Output {");
+  });
+
+  it("renders committed ChangeSets without preview-only copy", () => {
+    const html = renderLiveCall(committedSafetyEvidence());
+
+    expect(html).toContain("Committed");
+    expect(html).toContain("Satisfied");
+    expect(html).toContain("Committed after server confirmation and policy revalidation.");
+    expect(html).not.toContain("Preview only");
+    expect(html).not.toContain("No state committed yet");
   });
 });
 
@@ -97,6 +107,38 @@ function safetyEvidence() {
       paymentStatusTool(),
       blockedCommitTool()
     ]
+  });
+}
+
+function committedSafetyEvidence() {
+  return toVoiceConsoleEvidenceState({
+    change_sets: [{
+      blocking_policy_ids: [],
+      change_set_id: "cs_spice",
+      confirmation_id: "conf_spice",
+      created_at: "2026-05-18T09:00:08.000Z",
+      customer_id: "cus_001",
+      expected_state_version: 7,
+      operations: [{
+        field: "spice_level",
+        next_value: "spicy",
+        previous_value: "normal",
+        type: "update_customization"
+      }],
+      policy_results: [],
+      status: "committed"
+    }],
+    diffs: [{
+      after: "spicy",
+      before: "normal",
+      change_set_id: "cs_spice",
+      created_at: "2026-05-18T09:00:08.000Z",
+      customer_id: "cus_001",
+      diff_kind: "customization",
+      field: "spice_level",
+      status: "written"
+    }],
+    tools: [confirmedIdentityTool(), customerStateTool()]
   });
 }
 
