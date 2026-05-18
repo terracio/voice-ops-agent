@@ -13,6 +13,7 @@ export type EvidenceToolStatus = "started" | "ok" | "blocked" | "error";
 export type EvidenceTranscriptItem = {
   actor: "assistant" | "system" | "user";
   at: string;
+  createdAtMs?: number;
   id: string;
   kind: string;
   text: string;
@@ -125,6 +126,7 @@ function toTranscriptItem(value: unknown, index: number): EvidenceTranscriptItem
   return {
     actor: actorValue(item.actor),
     at: displayTime(item.created_at),
+    createdAtMs: timestampMs(item.created_at),
     id: stringValue(item.evidence_id) ?? `transcript-${index}`,
     kind: stringValue(item.transcript_kind) ?? "realtime_transcript",
     text: stringValue(item.text) ?? "",
@@ -210,6 +212,13 @@ function displayTime(value: unknown): string {
     minute: "2-digit",
     second: "2-digit"
   }).format(date);
+}
+
+function timestampMs(value: unknown): number | undefined {
+  const raw = stringValue(value);
+  if (!raw) return undefined;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : undefined;
 }
 
 function compactJson(value: unknown): string | undefined {

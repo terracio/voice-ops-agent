@@ -36,7 +36,7 @@ export function buildConversationTimelineModel(options: {
   const speechTurns = options.turns.filter((turn) =>
     (turn.actor === "assistant" || turn.actor === "user") && turn.text.trim()
   );
-  const parsedTimes = speechTurns.map((turn) => parseEvidenceTimeMs(turn.at));
+  const parsedTimes = speechTurns.map((turn) => turn.createdAtMs ?? parseEvidenceTimeMs(turn.at));
   const baseMs = timelineBaseMs(options.callStartedAtMs, parsedTimes);
   const segments = speechTurns
     .map((turn, index) =>

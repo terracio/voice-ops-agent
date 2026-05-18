@@ -5,6 +5,7 @@ export type TranscriptSpeaker = "assistant" | "system" | "user";
 export type VoiceTranscriptTurn = {
   actor: TranscriptSpeaker;
   at: string;
+  createdAtMs?: number;
   fragmentCount: number;
   id: string;
   kind: string;
@@ -44,6 +45,7 @@ export function normalizeTranscriptTurns(
       turns.set(key, {
         actor: item.actor,
         at: item.at,
+        createdAtMs: item.createdAtMs,
         fragmentCount: 1,
         id: key || item.id || `turn:${index}`,
         kind: item.kind,

@@ -2,6 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { VoiceConversationTimeline } from "../src/features/voice-console/components/VoiceConversationTimeline";
+import { toVoiceConsoleEvidenceState } from "../src/features/voice-console/evidence/voiceConsoleEvidence";
+import { buildVoiceTranscriptState } from "../src/features/voice-console/evidence/voiceConsoleTranscript";
 import {
   buildConversationTimelineModel,
   formatTimelineTime
@@ -73,6 +75,32 @@ describe("conversation timeline", () => {
     });
   });
 
+  it("uses raw transcript evidence timestamps instead of display labels for epoch call timing", () => {
+    const callStartedAtMs = Date.parse("2026-05-18T09:00:00.000Z");
+    const evidence = toVoiceConsoleEvidenceState({
+      transcript: [{
+        actor: "user",
+        created_at: "2026-05-18T09:00:30.000Z",
+        evidence_id: "tr_user_30s",
+        is_operational_source: false,
+        text: "I need to pause next week.",
+        transcript_kind: "realtime_transcript",
+        turn_id: "turn_user_30s"
+      }]
+    });
+    const transcript = buildVoiceTranscriptState(evidence.transcript);
+    const model = buildConversationTimelineModel({
+      callStartedAtMs,
+      elapsedMs: 45_000,
+      turns: transcript.history
+    });
+
+    expect(evidence.transcript[0]?.at).not.toBe("2026-05-18T09:00:30.000Z");
+    expect(transcript.history[0]?.createdAtMs).toBe(callStartedAtMs + 30_000);
+    expect(model.lanes[0]?.segments[0]?.startOffsetMs).toBe(30_000);
+    expect(model.lanes[0]?.segments[0]?.startOffsetMs).not.toBe(0);
+  });
+
   it("renders bars, time ruler, and current marker for active calls", () => {
     const transcript: VoiceTranscriptState = {
       currentAgentText: "I can help with that.",
@@ -115,6 +143,7 @@ function turn(
   return {
     actor,
     at,
+    createdAtMs: undefined,
     fragmentCount: 1,
     id,
     kind: "realtime_transcript",
