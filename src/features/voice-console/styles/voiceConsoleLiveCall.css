@@ -1,0 +1,48 @@
+.call-summary-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  height: 56px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 16px;
+  box-shadow: 0 10px 26px rgb(17 24 39 / 4%);
+}
+
+.call-summary-state,
+.call-summary-metrics,
+.call-summary-metrics > div {
+  display: flex;
+  align-items: center;
+}
+
+.call-summary-state {
+  gap: 10px;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.call-summary-state.connected .status-dot { background: #0f8c7d; }
+
+.call-summary-metrics {
+  gap: 24px;
+  margin: 0;
+}
+
+.call-summary-metrics > div {
+  gap: 10px;
+}
+
+.call-summary-metrics dt {
+  color: #4b5565;
+  font-size: 0.86rem;
+}
+
+.call-summary-metrics dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}

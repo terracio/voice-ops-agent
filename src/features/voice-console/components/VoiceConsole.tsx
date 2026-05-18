@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type RefObject } from "react";
-import { Icon } from "./voiceConsoleIcons";
+import { Icon, type IconName } from "./voiceConsoleIcons";
 import {
   VoiceToolEvidencePanel,
   VoiceTranscriptEvidencePanel
@@ -41,11 +41,11 @@ type VoiceConsoleViewProps = {
 
 type VoiceConsoleTab = "live-call" | "transcript" | "evidence" | "trace";
 
-const tabs: Array<{ id: VoiceConsoleTab; label: string }> = [
-  { id: "live-call", label: "Live Call" },
-  { id: "transcript", label: "Transcript" },
-  { id: "evidence", label: "Evidence" },
-  { id: "trace", label: "Trace" }
+const tabs: Array<{ icon: IconName; id: VoiceConsoleTab; label: string }> = [
+  { icon: "activity", id: "live-call", label: "Live Call" },
+  { icon: "speaker", id: "transcript", label: "Transcript" },
+  { icon: "shield", id: "evidence", label: "Evidence" },
+  { icon: "hash", id: "trace", label: "Trace" }
 ];
 
 export function VoiceConsole({
@@ -81,7 +81,6 @@ export function VoiceConsoleView({
   const [activeTab, setActiveTab] = useState<VoiceConsoleTab>(initialTab);
   const statusLabel = toStatusLabel(state.sessionStatus);
   const transcript = buildVoiceTranscriptState(evidence.transcript);
-  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? "Live Call";
 
   return (
     <main className="voice-shell">
@@ -93,32 +92,35 @@ export function VoiceConsoleView({
           </span>
           <h1>MealPlan VoiceOps</h1>
         </div>
+        <nav
+          className="tab-shell topbar-tabs"
+          aria-label="Voice console sections"
+          role="tablist"
+        >
+          {tabs.map((tab) => (
+            <button
+              aria-controls={`${tab.id}-panel`}
+              aria-selected={activeTab === tab.id}
+              className="tab-button"
+              id={`${tab.id}-tab`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              role="tab"
+              type="button"
+            >
+              <Icon name={tab.icon} />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
         <div className="topbar-meta" aria-label="Session configuration">
-          <StatusPair label="Tab" value={activeTabLabel} tone="teal" />
           <StatusPair label="Model" value={state.model} tone="neutral" />
-        </div>
-        <div className={`connection-state ${state.sessionStatus}`}>
-          <span className="status-dot" aria-hidden="true" />
-          <span>{statusLabel}</span>
+          <div className={`connection-state ${state.sessionStatus}`}>
+            <span className="status-dot" aria-hidden="true" />
+            <span>{statusLabel}</span>
+          </div>
         </div>
       </header>
-
-      <nav className="tab-shell" aria-label="Voice console sections" role="tablist">
-        {tabs.map((tab) => (
-          <button
-            aria-controls={`${tab.id}-panel`}
-            aria-selected={activeTab === tab.id}
-            className="tab-button"
-            id={`${tab.id}-tab`}
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            role="tab"
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
 
       <section
         aria-labelledby={`${activeTab}-tab`}

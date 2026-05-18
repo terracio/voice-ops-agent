@@ -25,6 +25,12 @@
     justify-content: flex-start;
   }
 
+  .topbar-tabs {
+    justify-self: stretch;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
   .topbar-meta,
   .call-controls,
   .caller-grid {
@@ -49,6 +55,10 @@
   .caller-grid,
   .topbar-meta {
     grid-template-columns: 1fr;
+  }
+
+  .topbar-tabs .tab-button {
+    flex: 0 0 auto;
   }
 
   .agent-heading-row,

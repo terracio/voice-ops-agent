@@ -1,4 +1,5 @@
 import { Panel } from "./VoiceConsolePrimitives";
+import { Icon, type IconName } from "./voiceConsoleIcons";
 import type {
   LiveCallIdentityStatus,
   LiveCallTone,
@@ -43,8 +44,13 @@ function ActionBanner({
 }) {
   return (
     <div className={`action-banner ${banner.tone}`}>
-      <strong>{banner.label}</strong>
-      <span>{banner.detail}</span>
+      <span className="action-banner-icon" aria-hidden="true">
+        <Icon name={toneIcon(banner.tone)} />
+      </span>
+      <div>
+        <strong>{banner.label}</strong>
+        <span>{banner.detail}</span>
+      </div>
     </div>
   );
 }
@@ -54,25 +60,30 @@ function CustomerSummary({
 }: {
   customer: LiveCallViewModel["customer"];
 }) {
+  const tone = identityTone(customer.identityStatus);
+  const displayName = customer.summaryLabel;
   return (
-    <div className="summary-stack">
-      <div className="summary-heading">
-        <span className={`status-chip ${identityTone(customer.identityStatus)}`}>
+    <div className={`customer-card ${tone}`}>
+      <div className="customer-card-header">
+        <span className="customer-avatar-compact" aria-hidden="true">
+          {customer.name ? customerInitial(customer.name) : <Icon name="user" />}
+        </span>
+        <div>
+          <strong>{displayName}</strong>
+          <span>{customer.detail}</span>
+        </div>
+        <span className={`status-chip ${tone}`}>
           {identityLabel(customer.identityStatus)}
         </span>
-        <strong>{customer.summaryLabel}</strong>
       </div>
-      <dl className="summary-list">
-        {customer.name ? <SummaryRow label="Name" value={customer.name} /> : null}
+
+      <dl className="customer-meta-grid">
         {customer.identityStatus === "confirmed" ? (
           <SummaryRow label="Customer ID" value={customer.detail} />
         ) : null}
         {customer.plan ? <SummaryRow label="Plan" value={customer.plan} /> : null}
         <SummaryRow label="Access" value={accessLabel(customer.identityStatus)} />
       </dl>
-      {customer.identityStatus !== "confirmed" ? (
-        <p className="safety-note">{customer.detail}</p>
-      ) : null}
       {customer.riskFlags.length > 0 ? (
         <ul className="risk-flag-list" aria-label="Customer risk flags">
           {customer.riskFlags.map((flag) => (
@@ -93,24 +104,32 @@ function ChangeSetPreview({
 }) {
   if (!changeSet) {
     return (
-      <div className="summary-stack">
-        <p className="skeleton-copy">No pending ChangeSet preview.</p>
-        <p className="safety-note">
-          No operational state has been committed in the current evidence.
-        </p>
+      <div className="empty-state-card">
+        <span aria-hidden="true">
+          <Icon name="shield" />
+        </span>
+        <div>
+          <p className="skeleton-copy">No pending ChangeSet preview.</p>
+          <p className="safety-note">
+            No operational state has been committed in the current evidence.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="summary-stack">
-      <div className="summary-heading">
+    <div className="changeset-card">
+      <div className="changeset-card-header">
+        <div>
+          <strong>{changeSet.operationLabel}</strong>
+          <span>{changeSetSafetyNote(changeSet)}</span>
+        </div>
         <span className={`status-chip ${changeSet.confirmationRequired ? "pending" : "success"}`}>
           {changeSet.statusLabel}
         </span>
-        <strong>{changeSet.operationLabel}</strong>
       </div>
-      <dl className="summary-list">
+      <dl className="changeset-meta-grid">
         <SummaryRow label="ChangeSet ID" value={changeSet.changeSetId} />
         <SummaryRow label="State version" value={changeSet.stateVersionLabel} />
         <SummaryRow
@@ -119,26 +138,19 @@ function ChangeSetPreview({
         />
       </dl>
       {changeSet.diffRows.length > 0 ? (
-        <div className="change-diff-table" role="table" aria-label="ChangeSet before and after">
-          <div role="row">
-            <span role="columnheader">Field</span>
-            <span role="columnheader">Before</span>
-            <span role="columnheader">After</span>
-          </div>
+        <div className="change-diff-list" role="list" aria-label="ChangeSet before and after">
           {changeSet.diffRows.map((row) => (
-            <div role="row" key={`${row.field}-${row.before}-${row.after}`}>
-              <span role="cell">{row.field}</span>
-              <span role="cell">{readableValue(row.before)}</span>
-              <span role="cell">{readableValue(row.after)}</span>
+            <div role="listitem" key={`${row.field}-${row.before}-${row.after}`}>
+              <strong>{row.field}</strong>
+              <span>{readableValue(row.before)}</span>
+              <span aria-hidden="true">→</span>
+              <span>{readableValue(row.after)}</span>
             </div>
           ))}
         </div>
       ) : (
         <p className="safety-note">No before/after rows are available yet.</p>
       )}
-      <p className="safety-note">
-        {changeSetSafetyNote(changeSet)}
-      </p>
     </div>
   );
 }
@@ -152,26 +164,39 @@ function ToolTimelineSummary({
 }) {
   if (tools.length === 0) {
     return (
-      <div className="summary-stack">
-        <p className="skeleton-copy">{serverToolsLabel}</p>
-        <p className="safety-note">
-          No server tool calls are present in current evidence.
-        </p>
+      <div className="empty-state-card">
+        <span aria-hidden="true">
+          <Icon name="activity" />
+        </span>
+        <div>
+          <p className="skeleton-copy">{serverToolsLabel}</p>
+          <p className="safety-note">
+            No server tool calls are present in current evidence.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <ol className="tool-summary-list" aria-label="Compact tool timeline">
-      {tools.slice(-5).map((tool) => (
-        <li key={tool.id}>
-          <div>
-            <strong>{tool.name}</strong>
-            <span>{tool.at}</span>
+    <ol className="tool-timeline-list" aria-label="Compact tool timeline">
+      {tools.slice(-7).map((tool) => (
+        <li className={`tool-timeline-item ${tool.status}`} key={tool.id}>
+          <span className="tool-timeline-marker" aria-hidden="true">
+            <Icon name={toolStatusIcon(tool.status)} />
+          </span>
+          <div className="tool-timeline-card">
+            <div className="tool-timeline-card-header">
+              <strong>{tool.name}</strong>
+              <span className={`status-chip ${tool.status}`}>{tool.status}</span>
+            </div>
+            <p>{tool.resultLabel}</p>
+            <div className="tool-timeline-meta">
+              <time>{tool.at}</time>
+              <span>{tool.risk}</span>
+              {tool.policyId ? <span>Policy {tool.policyId}</span> : null}
+            </div>
           </div>
-          <span className={`status-chip ${tool.status}`}>{tool.status}</span>
-          <p>{tool.resultLabel}</p>
-          {tool.policyId ? <small>Policy {tool.policyId}</small> : null}
         </li>
       ))}
     </ol>
@@ -184,14 +209,17 @@ function PolicySummary({
   policy: LiveCallViewModel["policy"];
 }) {
   return (
-    <div className="summary-stack">
-      <div className="summary-heading">
-        <span className={`status-chip ${policy.tone}`}>{policy.label}</span>
+    <div className={`policy-card ${policy.tone}`}>
+      <span className="policy-card-icon" aria-hidden="true">
+        <Icon name={toneIcon(policy.tone)} />
+      </span>
+      <div>
+        <strong>{policy.label}</strong>
+        <p>{policy.detail}</p>
+        <small>
+          Deterministic server policy state; blocked or failed tools stay visible here.
+        </small>
       </div>
-      <p className="skeleton-copy">{policy.detail}</p>
-      <p className="safety-note">
-        Deterministic server policy state; blocked or failed tools stay visible here.
-      </p>
     </div>
   );
 }
@@ -216,6 +244,24 @@ function identityTone(status: LiveCallIdentityStatus): LiveCallTone {
   if (status === "confirmed") return "success";
   if (status === "uncertain") return "warning";
   return "pending";
+}
+
+function customerInitial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || "?";
+}
+
+function toneIcon(tone: LiveCallTone): IconName {
+  if (tone === "success") return "check";
+  if (tone === "error" || tone === "warning") return "question";
+  if (tone === "pending") return "activity";
+  return "info";
+}
+
+function toolStatusIcon(status: LiveCallViewModel["tools"][number]["status"]): IconName {
+  if (status === "completed") return "check";
+  if (status === "blocked" || status === "failed") return "question";
+  if (status === "running" || status === "waiting") return "activity";
+  return "info";
 }
 
 function accessLabel(status: LiveCallIdentityStatus): string {

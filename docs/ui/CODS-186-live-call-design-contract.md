@@ -33,6 +33,126 @@ The Live Call tab must not become a raw evidence dump. It should show the state 
 human operator needs during the call: elapsed time, estimated cost, audio state,
 identity status, current tool/action, safety status, and the latest speech.
 
+## Implementation Data Contract
+
+The UI should treat the current TypeScript state/view-model files as the
+behavioral contract. Mocks are visual composition references only.
+
+### Primary Inputs
+
+`VoiceConsoleView` receives:
+
+- `state: VoiceConsoleState` from
+  `src/features/voice-console/state/voiceConsoleController.ts`.
+- `evidence: VoiceConsoleEvidenceState` from
+  `src/features/voice-console/evidence/voiceConsoleEvidence.ts`.
+- `onAction: VoiceConsoleViewActionHandler` for browser-local controls.
+
+`VoiceConsoleLiveCall` derives its display model through
+`buildLiveCallViewModel({ evidence, state })` in
+`src/features/voice-console/state/voiceConsoleViewModel.ts`.
+
+Do not make presentational components parse raw Realtime payloads directly.
+Parse evidence once in `voiceConsoleEvidence.ts`, derive display state in
+`voiceConsoleViewModel.ts`, then render the result.
+
+### Browser State Fields
+
+`VoiceConsoleState` is browser/session state only:
+
+- `sessionStatus`: `disconnected | connecting | connected`
+- `agentMode`: `idle | listening | speaking | tool-running | waiting-for-confirmation`
+- `assistantAudioLabel`
+- `microphonePermission`
+- `isMuted`
+- `inputLevel`
+- `callId`
+- `callTiming`
+- `controlHandoff`
+- `serverCallSetup`
+- `events`
+
+Use these fields for connection chrome, audio state, elapsed time, controls, and
+browser-local activity. They are not evidence of identity, policy, or writes.
+
+### Evidence Fields
+
+`VoiceConsoleEvidenceState` is server/evidence state:
+
+- `cost`
+- `transcript`
+- `tools`
+- `policies`
+- `changeSets`
+- `diffs`
+- `confirmations`
+- `auditEvents`
+- `events`
+
+Use these fields for customer identity summary, tool timeline, ChangeSet
+preview, policies, transcript history, and cost telemetry. Raw tool inputs and
+outputs belong in Evidence/Trace, not the Live Call tab.
+
+### Live Call View Model
+
+`LiveCallViewModel` is the preferred rendering surface for the Live Call tab:
+
+- `connection`
+- `elapsedLabel`
+- `cost`
+- `agentAudioStatus`
+- `speech`
+- `actionBanner`
+- `customer`
+- `changeSet`
+- `tools`
+- `policy`
+
+If a mock needs information not present in this model, add a small derived field
+there rather than reaching around the view model from a component.
+
+## Baseline States
+
+### Initial / Ready
+
+- `state.sessionStatus = "disconnected"`
+- `state.callId = null`
+- `evidence.status = "idle"` with empty arrays
+- identity summary shows unknown customer
+- private reads and writes are blocked
+- call controls show `Call`, disabled `Mute`, `Reset`
+- call summary shows elapsed `00:00` and unavailable or waiting cost
+
+### Connected / No Identity
+
+- `state.sessionStatus = "connected"`
+- `state.agentMode = "listening"` or a later active mode
+- `state.callTiming.startedAtMs` is set
+- identity is unknown, pending, or uncertain until explicit confirmation
+- caller/agent audio bridge stays visible
+- current speech may show latest caller/agent fragments
+- private reads and writes remain blocked until identity is confirmed
+
+### Confirmed Customer / ChangeSet Preview
+
+- server evidence includes successful `lookup_customer` and
+  `confirm_customer_identity`
+- customer summary shows confirmed name, customer ID, plan, and risk flags when
+  available
+- ChangeSet preview appears only when `changeSet` exists in the view model
+- preview must show operation, before/after rows, state version, and confirmation
+  requirement
+- no committed state should be implied unless evidence says the ChangeSet is
+  committed
+
+### Ended
+
+- `state.sessionStatus = "disconnected"`
+- `state.callId` may still be present
+- `state.callTiming.endedAtMs` is set
+- transcript, evidence, and timeline remain visible until `Reset`
+- call controls show `Call again`, disabled `Mute`, `Reset`
+
 ## Live Call Components
 
 ### Header Status
@@ -46,14 +166,18 @@ identity status, current tool/action, safety status, and the latest speech.
 
 - Shows elapsed call time.
 - Shows estimated realtime cost once telemetry is available.
-- Shows security/session status in plain operational language.
-- Metrics must remain visible in all Live Call states.
+- May show a short live-call status label.
+- Must remain a compact strip, not a full metric-card dashboard.
+- Do not duplicate session label, server setup, or control handoff here. Those
+  belong in Trace.
 
 ### Current Audio Status
 
 - Shows caller and MealPlan Agent as two endpoints.
 - Shows caller state: `idle`, `speaking`, `muted`, `unavailable`.
 - Shows agent state: `ready`, `listening`, `thinking`, `speaking`, `tooling`.
+- Renders caller and agent as stable endpoint nodes with a bridge waveform
+  between them.
 - Audio waves are live visual indicators only. They must not be treated as
   operational evidence.
 
@@ -130,6 +254,26 @@ identity status, current tool/action, safety status, and the latest speech.
   tools, policies, confirmations, writes, audit, and evidence.
 - Keep Live Call readable on laptop widths before adding decorative detail.
 - Prefer operational clarity over animation. Animations must not shift layout.
+
+## Design Worker Scope
+
+Allowed:
+
+- Presentational component structure under `src/features/voice-console/components`.
+- Feature CSS under `src/features/voice-console/styles`.
+- Small additions to `LiveCallViewModel` when the UI needs a derived display
+  field.
+- Tests that assert visible copy, states, and component presence.
+
+Avoid:
+
+- Changing server routes, Realtime tools, domain policies, or ChangeSet logic.
+- Parsing raw server payloads in visual components.
+- Hard-coding one mock state as static UI.
+- Moving full transcript, raw tool I/O, audit logs, or realtime diagnostics back
+  into the Live Call tab.
+- Treating transcript text, waveforms, or assistant copy as operational
+  authority.
 
 ## Worker Handoff Notes
 

@@ -8,12 +8,10 @@ import {
 import { VoiceCurrentAudioStatus } from "./VoiceCurrentAudioStatus";
 import { VoiceCurrentSpeech } from "./VoiceCurrentSpeech";
 import type { VoiceConsoleEvidenceState } from "../evidence/voiceConsoleEvidence";
-import {
-  toHandoffLabel,
-  toStatusLabel
-} from "../evidence/voiceConsoleLabels";
 import type { VoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
+import { formatTimelineTime } from "../state/voiceConversationTimeline";
 import type { VoiceConsoleState } from "../state/voiceConsoleController";
+import { elapsedCallMs } from "../state/voiceConsoleTiming";
 import { buildLiveCallViewModel } from "../state/voiceConsoleViewModel";
 
 type VoiceConsoleLiveCallProps = {
@@ -34,14 +32,7 @@ export function VoiceConsoleLiveCall({
   return (
     <section className="live-call-grid" aria-label="Live call cockpit">
       <div className="live-call-left">
-        <Panel title="Call metrics" icon="activity">
-          <div className="metrics-grid">
-            <Metric label="Session" value={state.sessionLabel} />
-            <Metric label="Connection" value={toStatusLabel(state.sessionStatus)} />
-            <Metric label="Estimated cost" value={costMetric(evidence)} />
-            <Metric label="Control handoff" value={toHandoffLabel(state.controlHandoff)} />
-          </div>
-        </Panel>
+        <CallSummaryStrip evidence={evidence} state={state} />
 
         <Panel title="Current audio" icon="headset">
           <VoiceCurrentAudioStatus
@@ -69,12 +60,30 @@ export function VoiceConsoleLiveCall({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function CallSummaryStrip({
+  evidence,
+  state
+}: {
+  evidence: VoiceConsoleEvidenceState;
+  state: VoiceConsoleState;
+}) {
   return (
-    <div className="metric-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+    <section className="call-summary-strip" aria-label="Call metrics">
+      <div className={`call-summary-state ${state.sessionStatus}`}>
+        <span className="status-dot" aria-hidden="true" />
+        <strong>Live call</strong>
+      </div>
+      <dl className="call-summary-metrics">
+        <div>
+          <dt>Elapsed</dt>
+          <dd>{formatTimelineTime(elapsedCallMs(state.callTiming))}</dd>
+        </div>
+        <div>
+          <dt>Estimated cost</dt>
+          <dd>{costMetric(evidence)}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 

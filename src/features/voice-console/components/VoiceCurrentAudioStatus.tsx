@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
-import { Icon, Waveform } from "./voiceConsoleIcons";
+import type { CSSProperties } from "react";
+import { Icon } from "./voiceConsoleIcons";
 import type { VoiceConsoleState } from "../state/voiceConsoleController";
 import type { LiveCallViewModel } from "../state/voiceConsoleViewModel";
 
 type CallerAudioStatus = "idle" | "speaking" | "muted" | "unavailable";
 
-const callerMeterBars = Array.from({ length: 12 }, (_, index) => index);
+const bridgeBars = [3, 8, 15, 9, 4, 2, 6, 18, 12, 5, 2, 7, 14, 9, 3];
 
 export function VoiceCurrentAudioStatus({
   agentStatus,
@@ -17,77 +17,92 @@ export function VoiceCurrentAudioStatus({
   const callerStatus = callerAudioStatus(state);
 
   return (
-    <div className="current-audio-status" aria-label="Current audio status">
-      <AudioEndpoint
+    <div
+      className={`current-audio-status caller-${callerStatus} agent-${agentStatus}`}
+      aria-label="Current audio status"
+    >
+      <AudioEntity
         detail={callerAudioDetail(callerStatus)}
         label="Caller"
         status={callerStatus}
         tone="caller"
-      >
-        <CallerMeter inputLevel={state.inputLevel} status={callerStatus} />
-      </AudioEndpoint>
-      <AudioEndpoint
+      />
+      <AudioBridge
+        agentActive={agentStatus === "listening" || agentStatus === "speaking"}
+        callerActive={callerStatus === "speaking"}
+        inputLevel={state.inputLevel}
+      />
+      <AudioEntity
         detail={state.assistantAudioLabel}
         label="MealPlan Agent"
         status={agentStatus}
         tone="agent"
-      >
-        <div className={`endpoint-wave ${agentStatus}`}>
-          <Waveform />
-        </div>
-      </AudioEndpoint>
+      />
     </div>
   );
 }
 
-function AudioEndpoint({
-  children,
+function AudioEntity({
   detail,
   label,
   status,
   tone
 }: {
-  children: ReactNode;
   detail: string;
   label: string;
   status: string;
   tone: "agent" | "caller";
 }) {
   return (
-    <div className={`audio-endpoint ${tone}`}>
-      <div className="audio-endpoint-heading">
-        <span className="endpoint-icon" aria-hidden="true">
-          <Icon name={tone === "caller" ? "mic" : "headset"} />
-        </span>
-        <div>
-          <h3>{label}</h3>
-          <p>{detail}</p>
-        </div>
-        <span className={`endpoint-status ${status}`}>
-          {statusLabel(status)}
-        </span>
+    <section className={`audio-entity ${tone}`} aria-label={`${label}: ${detail}`}>
+      <div className={`audio-entity-orb ${tone}`} aria-hidden="true">
+        {tone === "caller" ? <Icon name="user" /> : <span className="agent-orb-wave" />}
       </div>
-      {children}
+      <div className="audio-entity-copy">
+        <strong>{label}</strong>
+        <span className={`endpoint-status ${status}`}>{statusLabel(status)}</span>
+      </div>
+    </section>
+  );
+}
+
+function AudioBridge({
+  agentActive,
+  callerActive,
+  inputLevel
+}: {
+  agentActive: boolean;
+  callerActive: boolean;
+  inputLevel: number;
+}) {
+  return (
+    <div className="audio-bridge" aria-hidden="true">
+      <BridgeWave active={callerActive} inputLevel={inputLevel} tone="caller" />
+      <span className="audio-bridge-spine" />
+      <BridgeWave active={agentActive} inputLevel={agentActive ? 72 : 18} tone="agent" />
     </div>
   );
 }
 
-function CallerMeter({
+function BridgeWave({
+  active,
   inputLevel,
-  status
+  tone
 }: {
+  active: boolean;
   inputLevel: number;
-  status: CallerAudioStatus;
+  tone: "agent" | "caller";
 }) {
-  const activeBars = Math.round((inputLevel / 100) * callerMeterBars.length);
+  const activeBars = Math.max(2, Math.round((inputLevel / 100) * bridgeBars.length));
 
   return (
-    <div
-      className={`caller-meter ${status}`}
-      aria-label={`Caller input level ${inputLevel} percent`}
-    >
-      {callerMeterBars.map((bar) => (
-        <span className={bar < activeBars ? "active" : undefined} key={bar} />
+    <div className={`bridge-wave ${tone}${active ? " active" : ""}`}>
+      {bridgeBars.map((height, index) => (
+        <span
+          className={index < activeBars ? "active" : undefined}
+          key={`${tone}-${height}-${index}`}
+          style={{ "--bar-height": `${height}px` } as CSSProperties}
+        />
       ))}
     </div>
   );

@@ -1,29 +1,44 @@
 .tab-shell {
   display: flex;
-  gap: 8px;
-  border: 1px solid #d8dee8;
+  gap: 4px;
+  border: 1px solid #dbe3ee;
   border-radius: 8px;
   background: #ffffff;
-  padding: 6px;
+  padding: 5px;
   box-shadow: 0 12px 34px rgb(17 24 39 / 5%);
 }
 
+.topbar-tabs {
+  justify-self: center;
+  box-shadow: none;
+}
+
 .tab-button {
-  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #273245;
+  color: #3c4658;
   cursor: pointer;
-  padding: 0 18px;
+  padding: 0 15px;
   font: inherit;
   font-weight: 650;
 }
 
+.tab-button .icon {
+  width: 18px;
+  height: 18px;
+}
+
 .tab-button[aria-selected="true"] {
-  border-color: #0f8c7d;
-  background: #dff4f1;
-  color: #00675d;
+  border-color: #9ec5ff;
+  background: #eef5ff;
+  color: #1455c8;
+  box-shadow: 0 6px 16px rgb(20 85 200 / 9%);
 }
 
 .tab-button:focus-visible {
@@ -42,32 +57,19 @@
 
 .live-call-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.9fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 0.86fr);
+  gap: 14px;
 }
 
-.metrics-grid,
 .current-speech-grid,
 .speech-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .current-speech-grid,
 .speech-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-.metric-card {
-  display: grid;
-  gap: 8px;
-  min-height: 84px;
-  border: 1px solid #d8dee8;
-  border-radius: 8px;
-  background: #f6f8fb;
-  padding: 14px;
-}
-
-.metric-card span,
 .conversation-timeline-header span,
 .conversation-lane-label,
 .safety-note {
@@ -75,45 +77,12 @@
   font-size: 0.86rem;
 }
 
-.metric-card strong {
-  color: #0f172a;
-  font-size: 1.08rem;
-}
-
-.current-audio-status {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.audio-endpoint {
-  display: grid;
-  gap: 16px;
-  min-height: 178px;
-  border: 1px solid #d8dee8;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 16px;
-}
-
-.audio-endpoint.caller { border-left: 4px solid #0f8c7d; }
-.audio-endpoint.agent { border-left: 4px solid #1455c8; }
-
-.audio-endpoint-heading {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.audio-endpoint-heading h3,
 .current-speech-heading h3 {
   margin: 0;
   color: #0f172a;
   font-size: 1rem;
 }
 
-.audio-endpoint-heading p,
 .current-speech-heading p {
   overflow-wrap: anywhere;
   margin: 4px 0 0;
@@ -121,7 +90,6 @@
   font-size: 0.9rem;
 }
 
-.endpoint-icon,
 .speech-icon {
   display: grid;
   place-items: center;
@@ -130,68 +98,6 @@
   border-radius: 999px;
   background: #eef0f3;
   color: #172033;
-}
-
-.endpoint-status {
-  align-self: start;
-  border-radius: 999px;
-  background: #eef0f3;
-  color: #273245;
-  padding: 7px 11px;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.endpoint-status.speaking,
-.endpoint-status.listening {
-  background: #dff4f1;
-  color: #00675d;
-}
-
-.endpoint-status.thinking,
-.endpoint-status.tooling {
-  background: #fff1db;
-  color: #b45309;
-}
-
-.endpoint-status.muted,
-.endpoint-status.unavailable {
-  background: #f2f5f9;
-  color: #4b5565;
-}
-
-.caller-meter {
-  display: flex;
-  align-items: end;
-  gap: 7px;
-  height: 42px;
-}
-
-.caller-meter span {
-  width: 5px;
-  height: 28px;
-  border-radius: 999px;
-  background: #dfe3e9;
-}
-
-.caller-meter.speaking span.active { background: #0f8c7d; }
-.caller-meter.muted span.active,
-.caller-meter.unavailable span.active { background: #cbd5e1; }
-
-.endpoint-wave {
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-}
-
-.endpoint-wave.ready,
-.endpoint-wave.listening {
-  color: #1455c8;
-}
-
-.endpoint-wave.thinking,
-.endpoint-wave.tooling {
-  color: #b45309;
 }
 
 .audio-cockpit {
@@ -280,7 +186,7 @@
   position: relative;
   overflow: hidden;
   min-height: 36px;
-  border: 1px solid #d8dee8;
+  border: 1px solid #dbe3ee;
   border-radius: 8px;
   background:
     repeating-linear-gradient(
@@ -339,7 +245,7 @@
 .current-speech-slot,
 .live-transcript {
   min-height: 112px;
-  border: 1px solid #d8dee8;
+  border: 1px solid #dbe3ee;
   border-radius: 8px;
   padding: 14px;
 }
@@ -389,36 +295,6 @@
   margin-top: 0;
 }
 
-.action-banner {
-  display: grid;
-  gap: 6px;
-  border-radius: 8px;
-  background: #e9f1ff;
-  color: #1455c8;
-  padding: 14px;
-}
-
-.action-banner.pending,
-.action-banner.warning {
-  background: #fff1db;
-  color: #b45309;
-}
-
-.action-banner.success {
-  background: #dff4f1;
-  color: #00675d;
-}
-
-.action-banner.error {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.action-banner strong {
-  color: inherit;
-  font-size: 1.05rem;
-}
-
 .skeleton-copy {
   color: #0f172a;
 }
@@ -426,8 +302,6 @@
 
 @media (max-width: 1100px) {
   .live-call-grid,
-  .metrics-grid,
-  .current-audio-status,
   .current-speech-grid,
   .speech-grid {
     grid-template-columns: 1fr;

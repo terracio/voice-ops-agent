@@ -33,10 +33,11 @@ describe("voice console UI shell", () => {
     expect(html).toContain("Evidence");
     expect(html).toContain("Trace");
     expect(html).toContain("aria-selected=\"true\"");
-    expect(html).toContain("Local demo");
     expect(html).toContain("gpt-realtime-2");
     expect(html).toContain("Disconnected");
     expect(html).toContain("Call metrics");
+    expect(html).toContain("Elapsed");
+    expect(html).toContain("Estimated cost");
     expect(html).toContain("Current audio");
     expect(html).toContain("Conversation timeline");
     expect(html).toContain("Current speech");
