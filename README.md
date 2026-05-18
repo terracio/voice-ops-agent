@@ -174,6 +174,8 @@ pnpm eval -- --pass-k 3
 
 No OpenAI credentials required.
 
+GitHub Actions runs `pnpm lint`, `pnpm test`, `pnpm eval`, and `pnpm build` on pushes and pull requests to `main`. Realtime evals are intentionally manual because they require OpenAI credentials, API credits, and live audio/model behavior.
+
 Run realtime audio evals:
 
 ```bash
