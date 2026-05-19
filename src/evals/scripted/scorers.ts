@@ -1,5 +1,5 @@
 import { PolicyId, PolicyIdSchema, type PolicyIdValue } from "../../domain/schema";
-import { type EvalCase, type EvalCaseResult, type EvalScoringExpectations } from "../caseSchema";
+import { type EvalCase, type EvalCaseResult, type EvalScoringExpectations } from "./caseSchema";
 type AuditEvent = EvalCaseResult["audit_events"][number];
 type Score = EvalCaseResult["scores"][number];
 type Diagnostic = EvalCaseResult["diagnostics"][number];

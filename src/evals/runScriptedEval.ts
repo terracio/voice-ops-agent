@@ -9,7 +9,7 @@ import {
   type EvalCaseResult,
   type EvalMode,
   type EvalRunReport
-} from "./caseSchema";
+} from "./scripted/caseSchema";
 import {
   buildPassKAggregate,
   buildEvalReport,

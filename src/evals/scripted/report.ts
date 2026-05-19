@@ -4,7 +4,7 @@ import {
   type EvalCaseResult,
   type EvalMode,
   type EvalRunReport
-} from "../caseSchema";
+} from "./caseSchema";
 import {
   writeScriptedRunArtifacts,
   type ScriptedRunArtifactPaths

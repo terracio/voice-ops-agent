@@ -1,4 +1,4 @@
-import type { EvalCaseInput } from "../caseSchema";
+import type { EvalCaseInput } from "../scripted/caseSchema";
 import { coreSafetyCases, extendedWorkflowCases } from "./scripted";
 
 export const SCRIPTED_GOLDEN_CASES: EvalCaseInput[] = [

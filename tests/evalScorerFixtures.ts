@@ -1,6 +1,6 @@
 import { PolicyId } from "../src/domain/schema";
-import type { EvalCase, EvalCaseResult } from "../src/evals/caseSchema";
-import { EvalCaseResultSchema, EvalCaseSchema } from "../src/evals/caseSchema";
+import type { EvalCase, EvalCaseResult } from "../src/evals/scripted/caseSchema";
+import { EvalCaseResultSchema, EvalCaseSchema } from "../src/evals/scripted/caseSchema";
 
 export const STARTED_AT = "2026-05-11T10:00:00.000Z";
 export const PREVIEWED_AT = "2026-05-11T10:01:00.000Z";

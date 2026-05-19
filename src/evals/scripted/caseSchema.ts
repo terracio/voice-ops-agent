@@ -10,12 +10,12 @@ import {
   PlanSchema,
   PolicyIdSchema,
   ServiceDateSchema
-} from "../domain/schema";
-import { SEED_SCENARIO_IDS } from "../domain/seed";
+} from "../../domain/schema";
+import { SEED_SCENARIO_IDS } from "../../domain/seed";
 import {
   defaultScriptedRewardBasis,
   RewardBasisListSchema
-} from "./shared/rewardBasis";
+} from "../shared/rewardBasis";
 
 export const EvalModeSchema = z.enum(["scripted", "model"]);
 

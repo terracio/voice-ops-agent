@@ -7,7 +7,7 @@ import {
   EvalCaseSchema,
   type EvalCaseResult,
   type EvalRunReport
-} from "../src/evals/caseSchema";
+} from "../src/evals/scripted/caseSchema";
 import { runScriptedEval } from "../src/evals/runScriptedEval";
 
 const START = "2026-05-11T10:00:00.000Z";

@@ -10,12 +10,12 @@ import {
   resetDb,
   savePaymentFollowup
 } from "../src/domain/db";
-import type { EvalCase, EvalCaseResult } from "../src/evals/caseSchema";
+import type { EvalCase, EvalCaseResult } from "../src/evals/scripted/caseSchema";
 import {
   DEFAULT_EVAL_SCORING_EXPECTATIONS,
   EvalCaseSchema,
   EvalCaseResultSchema
-} from "../src/evals/caseSchema";
+} from "../src/evals/scripted/caseSchema";
 import { buildEvalReport, writeEvalReports } from "../src/evals/scripted/report";
 import { runScriptedEval } from "../src/evals/runScriptedEval";
 import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/shared/rewardBasis";

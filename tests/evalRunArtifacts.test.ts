@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   EvalCaseResultSchema,
   type EvalCaseResult
-} from "../src/evals/caseSchema";
+} from "../src/evals/scripted/caseSchema";
 import { buildEvalReport, writeEvalReports } from "../src/evals/scripted/report";
 
 const tempDirs: string[] = [];

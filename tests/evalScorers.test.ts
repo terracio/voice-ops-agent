@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PolicyId } from "../src/domain/schema";
-import type { EvalCaseResult } from "../src/evals/caseSchema";
+import type { EvalCaseResult } from "../src/evals/scripted/caseSchema";
 import { scoreCase } from "../src/evals/scripted/scoreCase";
 import {
   COMMITTED_AT,

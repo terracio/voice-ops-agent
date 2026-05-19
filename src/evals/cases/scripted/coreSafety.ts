@@ -1,5 +1,5 @@
 import { PolicyId, type PolicyIdValue } from "../../../domain/schema";
-import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../../caseSchema";
+import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../../scripted/caseSchema";
 
 type FinalState = NonNullable<EvalCase["expected"]["expected_final_state"]>;
 type ExpectedCustomer = FinalState["customer"];

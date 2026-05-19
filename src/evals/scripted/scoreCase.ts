@@ -3,7 +3,7 @@ import {
   EvalCaseSchema,
   type EvalCaseInput,
   type EvalCaseResult
-} from "../caseSchema";
+} from "./caseSchema";
 import { buildScriptedRewardAggregation } from "../shared/rewardAggregation";
 import { runScriptedEvalScorers } from "./scorers";
 

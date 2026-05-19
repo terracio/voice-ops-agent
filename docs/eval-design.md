@@ -36,7 +36,7 @@ Eval source is split by responsibility:
 
 ```text
 src/evals/cases/      Scenario catalog and suite manifests.
-src/evals/scripted/   Deterministic scripted runner, scorer, and reports.
+src/evals/scripted/   Deterministic scripted schemas, runner, scorer, and reports.
 src/evals/realtime/   Realtime audio loader, scorer, runner reports, and artifacts.
 src/evals/shared/     Reward vocabulary and run-artifact metadata shared by both.
 ```

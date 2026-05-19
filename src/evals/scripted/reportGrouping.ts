@@ -1,4 +1,4 @@
-import type { EvalCaseResult } from "../caseSchema";
+import type { EvalCaseResult } from "./caseSchema";
 import {
   buildScriptedRewardAggregation,
   normalizeRawScores

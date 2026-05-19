@@ -4,7 +4,7 @@ import {
   DEFAULT_EVAL_SCORING_EXPECTATIONS,
   EvalCaseSchema,
   type EvalCase
-} from "../src/evals/caseSchema";
+} from "../src/evals/scripted/caseSchema";
 import { runScriptedEval } from "../src/evals/runScriptedEval";
 import { runScriptedEvalCase } from "../src/evals/scripted/runner";
 
