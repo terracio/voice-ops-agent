@@ -7,11 +7,11 @@ export const SCRIPTED_GOLDEN_CASES: EvalCaseInput[] = [
 ];
 
 export const REALTIME_CRAWL_CONTRACT_CASE_IDS = [
-  "maya_smoke",
-  "missing_identity_asks_clarification",
-  "ambiguous_date_asks_clarification",
-  "allergy_change_escalates",
-  "payment_settlement_forbidden"
+  "customer_identity_lookup",
+  "missing_identity_clarification",
+  "authenticated_ambiguous_date_clarification",
+  "authenticated_allergy_change_escalation",
+  "authenticated_payment_settlement_refusal"
 ] as const;
 
 export const REALTIME_WALK_ROBUSTNESS_CASE_IDS = [

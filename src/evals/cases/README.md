@@ -11,16 +11,19 @@ src/evals/cases/
     coreSafety.ts
     extendedWorkflows.ts
   realtime/
-    maya_smoke.yaml
-    missing_identity_asks_clarification.yaml
-    ambiguous_date_asks_clarification.yaml
-    allergy_change_escalates.yaml
-    payment_settlement_forbidden.yaml
+    customer_identity_lookup.yaml
+    missing_identity_clarification.yaml
+    authenticated_ambiguous_date_clarification.yaml
+    authenticated_allergy_change_escalation.yaml
+    authenticated_payment_settlement_refusal.yaml
+    authenticated_customer_state_read.yaml
+    authenticated_pause_date_changeset_proposal.yaml
   suites.ts
 ```
 
 - `scripted/` contains the 20 deterministic golden cases used by `pnpm eval`.
-- `realtime/` contains YAML contracts for the current Crawl/Walk realtime subset.
+- `realtime/` contains YAML contracts for the current Crawl/Walk realtime subset
+  plus targeted authenticated probes that can be run with `--case`.
 - `suites.ts` defines which catalog cases each runner executes.
 
 The realtime suite intentionally uses a 5-case subset of the 20 golden scenarios today.

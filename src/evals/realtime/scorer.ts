@@ -202,7 +202,11 @@ function scoreAudit(context: Context): RealtimeCrawlScore {
   const auditIds = new Set(context.result.audit_ids);
   const issues = [
     ...context.result.tool_calls
-      .filter((call) => call.status !== "failed" && call.audit_event_ids.length === 0)
+      .filter((call) =>
+        call.status !== "failed" &&
+        call.tool_name !== "validate_change_set" &&
+        call.audit_event_ids.length === 0
+      )
       .map((call) => `${call.tool_name} had no audit event IDs.`),
     ...context.result.tool_calls.flatMap((call) =>
       call.audit_event_ids

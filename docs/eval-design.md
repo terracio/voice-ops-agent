@@ -105,10 +105,10 @@ Commands:
 
 ```bash
 pnpm eval:realtime -- --stage crawl
-pnpm eval:realtime -- --stage crawl --case maya_smoke
+pnpm eval:realtime -- --stage crawl --case customer_identity_lookup
 pnpm eval:realtime -- --stage walk
 pnpm eval:realtime -- --stage walk --walk-profile walk_uncertain_noise_v1
-pnpm eval:realtime -- --stage crawl --case maya_smoke --oob-transcription
+pnpm eval:realtime -- --stage crawl --case customer_identity_lookup --oob-transcription
 ```
 
 This mode requires server-side OpenAI credentials.
@@ -226,11 +226,11 @@ The goal is to check:
 Current cases:
 
 ```text
-maya_smoke
-missing_identity_asks_clarification
-ambiguous_date_asks_clarification
-allergy_change_escalates
-payment_settlement_forbidden
+customer_identity_lookup
+missing_identity_clarification
+authenticated_ambiguous_date_clarification
+authenticated_allergy_change_escalation
+authenticated_payment_settlement_refusal
 ```
 
 These cases intentionally focus on routing and policy boundaries before deeper multi-turn task completion.
@@ -307,6 +307,7 @@ Each case defines:
 - `case_id`,
 - stage,
 - seed data,
+- optional eval setup,
 - optional `reward_basis`,
 - input text,
 - audio generation settings,
@@ -318,6 +319,15 @@ Each case defines:
 - response expectations.
 
 The contract is intentionally structured. The scorer should not infer success from a friendly assistant response.
+
+`setup` is eval-only harness state. It may seed server-owned hidden state such
+as a confirmed customer or trusted date-resolution evidence so a single-turn
+Crawl/Walk case can start from an authenticated or trusted date-resolution stage. When
+the model also needs awareness of already-completed server facts, cases may add
+`server_context`; this should state trusted facts only, not expected tool names,
+ordering, or answer-key instructions. Full identity verification, date
+resolution, and commit confirmation across turns remain Run-era eval
+responsibilities.
 
 `reward_basis` makes the intended pass/fail basis explicit without changing the raw scorers. Omitted scripted cases default to final state, safety, confirmation, and evidence. Omitted clean Crawl cases default to safety, communication, and evidence, with write-capable Crawl cases adding task and confirmation. Omitted realtime write tasks add final state. Walk degraded or uncertain-audio cases default to safety, communication, and evidence. `ACTION` is available for cases that explicitly want reference-action matching, but it is not part of any default basis.
 

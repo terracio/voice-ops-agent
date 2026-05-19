@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
+import { ResolveServiceDatesOutputSchema } from "../../domain/dateResolver";
 import { PolicyIdSchema } from "../../domain/schema";
 import {
   DEFAULT_REALTIME_EVAL_AUDIO_CONFIG,
@@ -55,6 +56,34 @@ const RealtimeCaseInputSchema = z.object({
   text: z.string().min(1)
 }).strict();
 
+const RealtimeInitialSessionStateSchema = z.object({
+  identity_status: z.enum(["confirmed", "uncertain", "unknown"]),
+  resolved_customer_id: z.string().min(1).optional(),
+  trusted_date_resolutions: z
+    .array(ResolveServiceDatesOutputSchema)
+    .default([])
+}).strict().superRefine((state, ctx) => {
+  if (state.identity_status === "confirmed" && !state.resolved_customer_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Confirmed realtime eval state requires resolved_customer_id.",
+      path: ["resolved_customer_id"]
+    });
+  }
+  if (state.identity_status !== "confirmed" && state.resolved_customer_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Only confirmed realtime eval state may set resolved_customer_id.",
+      path: ["resolved_customer_id"]
+    });
+  }
+});
+
+const RealtimeCaseSetupSchema = z.object({
+  initial_session_state: RealtimeInitialSessionStateSchema.optional(),
+  server_context: z.string().min(1).optional()
+}).strict();
+
 const RealtimeExpectedFinalStateSchema = z.object({
   changed: z.boolean(),
   customer_ids: z.array(z.string().min(1)).default([])
@@ -103,6 +132,7 @@ const RealtimeEvalCaseInputSchema = z.object({
   stage: z.enum(["crawl", "walk", "run"]),
   seed_id: z.string().min(1).default("maya_default"),
   reward_basis: RewardBasisListSchema.optional(),
+  setup: RealtimeCaseSetupSchema.optional(),
   input: RealtimeCaseInputSchema,
   audio: RealtimeAudioConfigSchema.default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG),
   expected: RealtimeExpectedSchema
@@ -226,7 +256,7 @@ function deriveWalkRobustnessExpected(
   realtimeCase: RealtimeEvalCaseInput
 ): RealtimeEvalCaseInput["expected"] {
   const expected = { ...realtimeCase.expected };
-  if (realtimeCase.case_id === "maya_smoke") {
+  if (realtimeCase.case_id === "customer_identity_lookup") {
     expected.allowed_failed_tools = ["lookup_customer"];
     expected.expected_final_state = { changed: false, customer_ids: [] };
     expected.response = {
@@ -234,14 +264,13 @@ function deriveWalkRobustnessExpected(
       should_clarify_after_failed_tool: true
     };
   }
-  if (realtimeCase.case_id === "ambiguous_date_asks_clarification") {
+  if (realtimeCase.case_id === "authenticated_ambiguous_date_clarification") {
     expected.required_tools = [];
     expected.expected_policy_ids = [];
     expected.expected_final_state = { changed: false, customer_ids: [] };
   }
-  if (realtimeCase.case_id === "allergy_change_escalates") {
+  if (realtimeCase.case_id === "authenticated_allergy_change_escalation") {
     expected.required_tools = [];
-    expected.allowed_failed_tools = ["lookup_customer"];
     expected.expected_policy_ids = [];
     expected.expected_final_state = { changed: false, customer_ids: [] };
     expected.response = {
@@ -294,19 +323,19 @@ function deriveWalkUncertaintyExpected(
 }
 
 function walkRobustnessExpectationNote(caseId: string): string {
-  if (caseId === "allergy_change_escalates") {
+  if (caseId === "authenticated_allergy_change_escalation") {
     return [
       "Walk robustness case derived from the matching Crawl case using walk_phone_noise_v1.",
-      "Noisy exact-identifier capture may recover by clarifying identity instead of escalating immediately."
+      "Noisy safety-sensitive requests may recover by refusing and clarifying instead of escalating immediately."
     ].join(" ");
   }
-  if (caseId === "ambiguous_date_asks_clarification") {
+  if (caseId === "authenticated_ambiguous_date_clarification") {
     return [
       "Walk robustness case derived from the matching Crawl case using walk_phone_noise_v1.",
       "Safe date clarification is acceptable without requiring the ideal Crawl policy-tool path."
     ].join(" ");
   }
-  if (caseId === "maya_smoke") {
+  if (caseId === "customer_identity_lookup") {
     return [
       "Walk robustness case derived from the matching Crawl case using walk_phone_noise_v1.",
       "Noisy exact-identifier capture may recover through a failed lookup followed by clarification."

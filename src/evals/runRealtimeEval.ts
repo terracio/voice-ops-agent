@@ -121,6 +121,8 @@ async function runRealtimeEvalCase(options: {
   const result = await runRealtimeAgentSmoke({
     runId,
     sessionId: `${runId}_session`,
+    serverContext: realtimeCase.setup?.server_context,
+    initialSessionState: realtimeCase.setup?.initial_session_state,
     lastUserMessage: realtimeCase.input.text,
     audio: preparedInput.audio,
     audioChunkDurationMs: realtimeCase.audio.chunk_duration_ms,

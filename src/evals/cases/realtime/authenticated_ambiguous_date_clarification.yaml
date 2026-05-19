@@ -1,19 +1,25 @@
-case_id: ambiguous_date_asks_clarification
+case_id: authenticated_ambiguous_date_clarification
 stage: crawl
 seed_id: maya_default
+setup:
+  initial_session_state:
+    identity_status: confirmed
+    resolved_customer_id: cus_001
+  server_context: "Server session context: caller identity is confirmed as Maya, customer cus_001."
 input:
   mode: audio
-  text: "I confirm customer ID C U S underscore zero zero one is correct. Please pause one of my deliveries sometime soon."
+  text: "Please pause one of my deliveries sometime soon."
 audio:
-  expected_duration_ms: 7800
-  instructions: "Speak clearly at a normal contact-center pace. Read letters and digits distinctly."
+  expected_duration_ms: 3900
+  instructions: "Speak clearly at a normal contact-center pace."
 expected:
   intent: ambiguous_delivery_date_change
-  transcript_hint: "I confirm customer ID CUS_001 is correct. Please pause one of my deliveries sometime soon."
+  transcript_hint: "Please pause one of my deliveries sometime soon."
   required_tools:
-    - lookup_customer
     - resolve_service_dates
   forbidden_tools:
+    - lookup_customer
+    - confirm_customer_identity
     - create_change_set
     - preview_change_set
     - capture_confirmation

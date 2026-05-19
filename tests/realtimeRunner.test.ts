@@ -11,6 +11,11 @@ import {
   type RealtimeSessionLike
 } from "../src/realtime/runner/types";
 import { createRealtimeTraceCollector } from "../src/realtime/runner/trace";
+import {
+  buildRealtimeToolContext,
+  createRealtimeSessionState,
+  createRealtimeToolContextBase
+} from "../src/realtime/server/sessionState";
 import { resetDb } from "../src/domain/db";
 import { createMealPlanToolRegistry } from "../src/tools";
 import type { ToolExecutionContext } from "../src/tools/context";
@@ -169,11 +174,48 @@ describe("Realtime runner", () => {
     ]);
   });
 
+  it("supports eval-only authenticated session state for tools", async () => {
+    const sessionState = createRealtimeSessionState({
+      identity_status: "confirmed",
+      resolved_customer_id: "cus_001"
+    });
+    const base = createRealtimeToolContextBase({
+      lastUserMessage: "Please read my current subscription.",
+      now: () => new Date("2026-05-11T10:00:00Z"),
+      runId: "run_seeded_identity",
+      sessionId: "realtime_eval_seeded_identity",
+      userTurnId: "turn_seeded_identity"
+    });
+    const sdkTools = createRealtimeAgentSdkTools({
+      registry: createMealPlanToolRegistry(),
+      sessionState,
+      getToolContext: () =>
+        buildRealtimeToolContext({ base, state: sessionState })
+    });
+    const getCustomerState = sdkTools.find(
+      (sdkTool) => sdkTool.name === "get_customer_state"
+    );
+
+    const result = await getCustomerState?.invoke(
+      {} as never,
+      JSON.stringify({ customer_id: "cus_001" })
+    );
+
+    expect(JSON.parse(String(result))).toMatchObject({
+      ok: true,
+      data: {
+        customer: {
+          customer_id: "cus_001"
+        }
+      }
+    });
+  });
+
   it("keeps the SDK session configured for server-side websocket runner use", async () => {
     const options = createRealtimeSessionFactoryOptions({
       model: "gpt-realtime-2",
       traceGroupId: "realtime_crawl_group",
-      traceMetadata: { case_id: "maya_smoke" },
+      traceMetadata: { case_id: "customer_identity_lookup" },
       workflowName: "MealPlan VoiceOps Realtime Crawl Eval"
     });
     const agent = createMealPlanRealtimeAgent({
@@ -184,7 +226,7 @@ describe("Realtime runner", () => {
     expect(options.tracingDisabled).toBe(false);
     expect(options.workflowName).toBe("MealPlan VoiceOps Realtime Crawl Eval");
     expect(options.groupId).toBe("realtime_crawl_group");
-    expect(options.traceMetadata).toMatchObject({ case_id: "maya_smoke" });
+    expect(options.traceMetadata).toMatchObject({ case_id: "customer_identity_lookup" });
     expect(options.config.outputModalities).toEqual(["text"]);
     expect(options.config.audio.input.turnDetection).toBeNull();
     expect(agent.tools?.map((sdkTool) => sdkTool.name)).toContain("lookup_customer");
@@ -220,7 +262,7 @@ describe("Realtime runner", () => {
       sessionFactory: () => fakeSession,
       traceMetadata: {
         attempt: 1,
-        case_id: "maya_smoke",
+        case_id: "customer_identity_lookup",
         oob_transcription: true
       }
     });
@@ -232,7 +274,7 @@ describe("Realtime runner", () => {
       group_id: "run_audio",
       metadata: {
         attempt: "1",
-        case_id: "maya_smoke",
+        case_id: "customer_identity_lookup",
         oob_transcription: "true"
       },
       workflow_name: "MealPlan VoiceOps Realtime Eval"

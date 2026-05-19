@@ -30,7 +30,7 @@ describe("realtime eval run artifacts", () => {
     rmSync(RUN_DIR, { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "skipped",
       preparedInput: {
         audio: new Uint8Array([0, 0, 1, 0]).buffer,
@@ -38,7 +38,7 @@ describe("realtime eval run artifacts", () => {
         input_mode: "audio",
         input_text: "Please look up Maya."
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }),
       result: createResult(),
       runArtifacts: {
         attemptId: "attempt_001",
@@ -74,7 +74,7 @@ describe("realtime eval run artifacts", () => {
     ) as { attempt_id: string; realtime_run_id: string; reward_basis: string[] };
 
     expect(paths.run_artifact_dir).toBe(
-      join(RUN_DIR, "artifacts", "maya_smoke", "attempt_001")
+      join(RUN_DIR, "artifacts", "customer_identity_lookup", "attempt_001")
     );
     expect(paths.json_path).toBe(join(paths.run_artifact_dir ?? "", "report.json"));
     expect(paths.markdown_path).toBe(join(paths.run_artifact_dir ?? "", "report.md"));
@@ -121,7 +121,7 @@ function caseSummary(
   paths: ReturnType<typeof writeRealtimeReports>
 ): RealtimeRunCaseArtifactSummary {
   return {
-    case_id: "maya_smoke",
+    case_id: "customer_identity_lookup",
     diagnostic_failures: 0,
     input_mode: "audio",
     json_path: paths.json_path,

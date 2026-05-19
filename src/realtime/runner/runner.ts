@@ -105,12 +105,13 @@ export function createRealtimeAgentSdkTools(options: {
 export function createMealPlanRealtimeAgent(options: {
   getToolContext: () => ToolExecutionContext;
   registry?: ToolRegistry;
+  serverContext?: string;
   sessionState?: RealtimeSessionState;
   traceCollector?: RealtimeTraceCollector;
 }): RealtimeAgent<RealtimeToolContext> {
   return new RealtimeAgent<RealtimeToolContext>({
     name: "MealPlan VoiceOps",
-    instructions: MEALPLAN_REALTIME_AGENT_INSTRUCTIONS,
+    instructions: [MEALPLAN_REALTIME_AGENT_INSTRUCTIONS, options.serverContext].filter(Boolean).join("\n\n"),
     tools: createRealtimeAgentSdkTools(options),
     voice: REALTIME_RUNTIME_CONFIG.shared.voice
   });
@@ -241,9 +242,8 @@ export async function runRealtimeAgentSmoke(
     });
   }
 
-  const lastUserMessage =
-    options.lastUserMessage ?? "Realtime smoke audio fixture.";
-  const sessionState = createRealtimeSessionState();
+  const lastUserMessage = options.lastUserMessage ?? "Realtime smoke audio fixture.";
+  const sessionState = createRealtimeSessionState(options.initialSessionState);
   const toolContextBase = createRealtimeToolContextBase({
     lastUserMessage,
     now,
@@ -253,6 +253,7 @@ export async function runRealtimeAgentSmoke(
   });
   const agent = createMealPlanRealtimeAgent({
     registry: options.registry,
+    serverContext: options.serverContext,
     sessionState,
     getToolContext: () =>
       buildRealtimeToolContext({ base: toolContextBase, state: sessionState }),

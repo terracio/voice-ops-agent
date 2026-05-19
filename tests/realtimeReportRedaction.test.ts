@@ -15,15 +15,15 @@ describe("realtime report redaction", () => {
       "reports",
       "realtime",
       "crawl",
-      "maya_smoke",
+      "customer_identity_lookup",
       "unit_redaction_report_trace"
     );
     rmSync(reportDir, { force: true, recursive: true });
 
     const sensitive = "SECRET_CUSTOMER_TOKEN_123";
-    const realtimeCase = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" });
+    const realtimeCase = loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" });
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "loaded",
       preparedInput: {
         input_mode: "text",

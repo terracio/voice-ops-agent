@@ -11,8 +11,8 @@ import {
 } from "../src/evals/shared/rewardBasis";
 
 describe("Realtime case loader", () => {
-  it("loads the maya smoke case as a clean-audio crawl fixture", () => {
-    expect(loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }))
+  it("loads the customer identity lookup case as a clean-audio crawl fixture", () => {
+    expect(loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }))
       .toMatchObject({
         audio: {
           chunk_duration_ms: 20,
@@ -20,7 +20,7 @@ describe("Realtime case loader", () => {
           sample_rate_hz: 24_000,
           source: "openai_tts"
         },
-        case_id: "maya_smoke",
+        case_id: "customer_identity_lookup",
         expected: {
           required_tools: ["lookup_customer"]
         },
@@ -32,7 +32,7 @@ describe("Realtime case loader", () => {
         stage: "crawl"
       });
     expect(
-      loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" })
+      loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" })
         .reward_basis
     ).not.toContain("ACTION");
   });
@@ -43,11 +43,11 @@ describe("Realtime case loader", () => {
     );
 
     expect(cases.map((realtimeCase) => realtimeCase.case_id)).toEqual([
-      "maya_smoke",
-      "missing_identity_asks_clarification",
-      "ambiguous_date_asks_clarification",
-      "allergy_change_escalates",
-      "payment_settlement_forbidden"
+      "customer_identity_lookup",
+      "missing_identity_clarification",
+      "authenticated_ambiguous_date_clarification",
+      "authenticated_allergy_change_escalation",
+      "authenticated_payment_settlement_refusal"
     ]);
     for (const realtimeCase of cases) {
       expect(realtimeCase.stage).toBe("crawl");
@@ -66,24 +66,73 @@ describe("Realtime case loader", () => {
       expect(realtimeCase.expected.forbidden_tools).toEqual(expect.any(Array));
     }
     expect(cases[2]?.expected.expected_policy_ids).toContain("P002_AMBIGUOUS_DATE");
+    expect(cases[2]?.setup?.initial_session_state).toMatchObject({
+      identity_status: "confirmed",
+      resolved_customer_id: "cus_001"
+    });
     expect(cases[3]?.expected.expected_policy_ids).toContain(
       "P008_MEDICAL_RISK_ESCALATION_REQUIRED"
     );
+    expect(cases[3]?.setup?.initial_session_state?.identity_status).toBe("confirmed");
     expect(cases[4]?.expected.required_tools).toEqual([]);
+    expect(cases[4]?.setup?.initial_session_state?.identity_status).toBe("confirmed");
     expect(cases[4]?.expected.response.should_request_confirmation).toBe(true);
     expect(cases[4]?.reward_basis).toEqual(
       REALTIME_CRAWL_WRITE_CAPABLE_DEFAULT_REWARD_BASIS
     );
   });
 
+  it("loads authenticated realtime setup for targeted Crawl cases", () => {
+    const realtimeCase = loadRealtimeEvalCase({
+      caseId: "authenticated_customer_state_read",
+      stage: "crawl"
+    });
+
+    expect(realtimeCase.setup).toMatchObject({
+      initial_session_state: {
+        identity_status: "confirmed",
+        resolved_customer_id: "cus_001"
+      },
+      server_context: expect.stringContaining("Server session context")
+    });
+    expect(realtimeCase.reward_basis).toContain("ACTION");
+    expect(realtimeCase.expected.required_tools).toEqual([
+      "get_customer_state"
+    ]);
+  });
+
+  it("loads trusted date-resolution setup for date-changing Crawl probes", () => {
+    const realtimeCase = loadRealtimeEvalCase({
+      caseId: "authenticated_pause_date_changeset_proposal",
+      stage: "crawl"
+    });
+    const setup = realtimeCase.setup?.initial_session_state;
+
+    expect(setup).toMatchObject({
+      identity_status: "confirmed",
+      resolved_customer_id: "cus_001"
+    });
+    expect(setup?.trusted_date_resolutions).toHaveLength(1);
+    expect(setup?.trusted_date_resolutions?.[0]).toMatchObject({
+      actionable_service_dates: ["2026-05-18"],
+      ambiguous: false,
+      customer_id: "cus_001"
+    });
+    expect(realtimeCase.reward_basis).toContain("ACTION");
+    expect(realtimeCase.expected.required_tools).toEqual([
+      "create_change_set",
+      "preview_change_set"
+    ]);
+  });
+
   it("derives Walk robustness cases from Crawl contracts", () => {
-    const walkCase = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "walk" });
+    const walkCase = loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "walk" });
     const ambiguousDateCase = loadRealtimeEvalCase({
-      caseId: "ambiguous_date_asks_clarification",
+      caseId: "authenticated_ambiguous_date_clarification",
       stage: "walk"
     });
     const allergyCase = loadRealtimeEvalCase({
-      caseId: "allergy_change_escalates",
+      caseId: "authenticated_allergy_change_escalation",
       stage: "walk"
     });
 
@@ -94,7 +143,7 @@ describe("Realtime case loader", () => {
           seed: 1701
         }
       },
-      case_id: "maya_smoke",
+      case_id: "customer_identity_lookup",
       expected: {
         allowed_failed_tools: ["lookup_customer"],
         expected_final_state: { changed: false, customer_ids: [] },
@@ -116,7 +165,7 @@ describe("Realtime case loader", () => {
       required_tools: []
     });
     expect(allergyCase.expected).toMatchObject({
-      allowed_failed_tools: ["lookup_customer"],
+      allowed_failed_tools: [],
       expected_final_state: { changed: false, customer_ids: [] },
       expected_policy_ids: [],
       required_tools: [],
@@ -130,7 +179,7 @@ describe("Realtime case loader", () => {
 
   it("derives Walk uncertainty contracts from profile overrides", () => {
     const realtimeCase = applyWalkProfileContract({
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "walk" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "walk" }),
       walkProfile: "walk_uncertain_noise_v1"
     });
 

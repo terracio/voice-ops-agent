@@ -19,27 +19,27 @@ import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/shared/rewardB
 describe("realtime eval suite", () => {
   it("resolves the first Crawl suite when no case is provided", () => {
     expect(resolveRealtimeCaseIds({ stage: "crawl" })).toEqual([
-      "maya_smoke",
-      "missing_identity_asks_clarification",
-      "ambiguous_date_asks_clarification",
-      "allergy_change_escalates",
-      "payment_settlement_forbidden"
+      "customer_identity_lookup",
+      "missing_identity_clarification",
+      "authenticated_ambiguous_date_clarification",
+      "authenticated_allergy_change_escalation",
+      "authenticated_payment_settlement_refusal"
     ]);
   });
 
   it("keeps explicit case runs individual", () => {
     expect(
-      resolveRealtimeCaseIds({ caseId: "maya_smoke", stage: "crawl" })
-    ).toEqual(["maya_smoke"]);
+      resolveRealtimeCaseIds({ caseId: "customer_identity_lookup", stage: "crawl" })
+    ).toEqual(["customer_identity_lookup"]);
   });
 
   it("resolves the first Walk robustness suite from Crawl case ids", () => {
     expect(resolveRealtimeCaseIds({ stage: "walk" })).toEqual([
-      "maya_smoke",
-      "missing_identity_asks_clarification",
-      "ambiguous_date_asks_clarification",
-      "allergy_change_escalates",
-      "payment_settlement_forbidden"
+      "customer_identity_lookup",
+      "missing_identity_clarification",
+      "authenticated_ambiguous_date_clarification",
+      "authenticated_allergy_change_escalation",
+      "authenticated_payment_settlement_refusal"
     ]);
   });
 
@@ -57,14 +57,14 @@ describe("realtime eval suite", () => {
     rmSync(unitRunDir(), { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "skipped",
       preparedInput: {
         input_mode: "audio",
         input_text: "Please look up Maya.",
         audio_metadata: { source: "test" }
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }),
       result: createResult(),
       runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
@@ -106,7 +106,7 @@ describe("realtime eval suite", () => {
     rmSync(unitRunDir(), { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "loaded",
       preparedInput: {
         audio: new Uint8Array([0, 0, 255, 127, 0, 128, 1, 0]).buffer,
@@ -114,7 +114,7 @@ describe("realtime eval suite", () => {
         input_text: "Please look up Maya.",
         audio_metadata: { source: "test", sample_rate_hz: 24_000 }
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }),
       result: createResult(),
       runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
@@ -168,7 +168,7 @@ describe("realtime eval suite", () => {
       sampleRateHz: 24_000
     });
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "loaded",
       preparedInput: {
         audio: profile.audio,
@@ -182,7 +182,7 @@ describe("realtime eval suite", () => {
           walk_profile: profile.metadata
         }
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }),
       result: createResult(),
       runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
@@ -229,7 +229,7 @@ describe("realtime eval suite", () => {
       sampleRateHz: 24_000
     });
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "loaded",
       preparedInput: {
         audio: profile.audio,
@@ -242,7 +242,7 @@ describe("realtime eval suite", () => {
           walk_profile: profile.metadata
         }
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" }),
       result: createResult(),
       runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
@@ -272,7 +272,7 @@ function unitRunDir(): string {
 }
 
 function unitAttemptDir(): string {
-  return join(unitRunDir(), "artifacts", "maya_smoke", "attempt_001");
+  return join(unitRunDir(), "artifacts", "customer_identity_lookup", "attempt_001");
 }
 
 function unitRunArtifacts(): { attemptId: string; runId: string } {
@@ -287,7 +287,7 @@ function createSummary(
 ): RealtimeCaseRunSummary {
   return {
     audit_event_count: 0,
-    case_id: "maya_smoke",
+    case_id: "customer_identity_lookup",
     env_file_status: "skipped",
     diagnostic_failures: 0,
     input_mode: "audio",

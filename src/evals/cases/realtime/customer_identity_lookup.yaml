@@ -1,4 +1,4 @@
-case_id: maya_smoke
+case_id: customer_identity_lookup
 stage: crawl
 seed_id: maya_default
 input:
@@ -8,7 +8,7 @@ audio:
   expected_duration_ms: 8000
   instructions: "Speak clearly at a normal contact-center pace. Read letters and digits distinctly."
 expected:
-  intent: identify_customer
+  intent: customer_identity_lookup
   transcript_hint: "I confirm customer ID C U S underscore zero zero one is correct. Please look up that customer ID now."
   required_tools:
     - lookup_customer
@@ -26,4 +26,4 @@ expected:
     should_escalate: false
     should_request_confirmation: false
     should_refuse_unsafe_action: false
-  notes: "Wave 5 smoke case: prove text-to-clean-audio, chunked streaming, commit, response, and trace output."
+  notes: "Clean-audio Crawl case: resolve a spoken customer ID to a lookup candidate while keeping private reads and writes blocked."

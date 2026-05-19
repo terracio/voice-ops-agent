@@ -8,6 +8,7 @@ import type {
 import type { ToolExecutionContext } from "../../tools/context";
 import type { ToolRegistry } from "../../tools/registry";
 import type { RealtimeModelEnv } from "../config/instructions";
+import type { RealtimeSessionStateSeed } from "../server/sessionState";
 
 export const REALTIME_RUNNER_TRANSPORT = "agents-sdk-websocket";
 
@@ -144,6 +145,7 @@ export type RunRealtimeAgentSmokeOptions = {
   audioChunkDurationMs?: number;
   apiKey?: string;
   env?: RealtimeRunnerEnv;
+  initialSessionState?: RealtimeSessionStateSeed;
   inputText?: string;
   lastUserMessage?: string;
   model?: string;
@@ -155,6 +157,7 @@ export type RunRealtimeAgentSmokeOptions = {
   runId?: string;
   sessionFactory?: RealtimeSessionFactory;
   sessionId?: string;
+  serverContext?: string;
   timeoutMs?: number;
   traceGroupId?: string;
   traceMetadata?: Record<string, unknown>;

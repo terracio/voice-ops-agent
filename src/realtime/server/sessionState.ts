@@ -24,6 +24,16 @@ export type RealtimeSessionState = {
   trusted_date_resolutions: ResolveServiceDatesOutput[];
 };
 
+export type RealtimeSessionStateSeed = Partial<
+  Pick<
+    RealtimeSessionState,
+    | "identity_status"
+    | "pending_identity_candidate"
+    | "resolved_customer_id"
+    | "trusted_date_resolutions"
+  >
+>;
+
 export type RealtimeIdentityStateUpdate = {
   identity_status: ToolIdentityStatus;
   pending_identity_candidate?: PendingIdentityCandidate;
@@ -35,8 +45,19 @@ export type RealtimeToolContextBase = Omit<
   "identity_status" | "resolved_customer_id"
 >;
 
-export function createRealtimeSessionState(): RealtimeSessionState {
-  return { identity_status: "unknown", trusted_date_resolutions: [] };
+export function createRealtimeSessionState(
+  seed: RealtimeSessionStateSeed = {}
+): RealtimeSessionState {
+  return {
+    identity_status: seed.identity_status ?? "unknown",
+    trusted_date_resolutions: seed.trusted_date_resolutions ?? [],
+    ...(seed.pending_identity_candidate
+      ? { pending_identity_candidate: seed.pending_identity_candidate }
+      : {}),
+    ...(seed.resolved_customer_id
+      ? { resolved_customer_id: seed.resolved_customer_id }
+      : {})
+  };
 }
 
 export function createRealtimeToolContextBase(options: {

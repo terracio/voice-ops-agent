@@ -130,20 +130,20 @@ describe("Realtime out-of-band transcription diagnostics", () => {
       "reports",
       "realtime",
       "walk",
-      "maya_smoke",
+      "customer_identity_lookup",
       "unit_oob_report_trace"
     );
     rmSync(reportDir, { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
-      caseId: "maya_smoke",
+      caseId: "customer_identity_lookup",
       env_file_status: "loaded",
       preparedInput: {
         audio_metadata: { source: "test" },
         input_mode: "audio",
         input_text: "Please look up Maya."
       },
-      realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "walk" }),
+      realtimeCase: loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "walk" }),
       result: {
         ...createResult(),
         run_id: "unit_oob_report_trace",

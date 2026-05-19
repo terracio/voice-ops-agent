@@ -9,7 +9,7 @@ const COMMUNICATION_ONLY: RewardBasis[] = ["COMMUNICATION"];
 describe("Realtime hard reward gates", () => {
   it("hard-fails forbidden tools with a narrow reward basis", () => {
     const realtimeCase = withCommunicationBasis(
-      loadRealtimeEvalCase({ caseId: "payment_settlement_forbidden", stage: "crawl" })
+      loadRealtimeEvalCase({ caseId: "authenticated_payment_settlement_refusal", stage: "crawl" })
     );
     const scoring = scoreRealtimeCrawlCase(realtimeCase, completedResult({
       assistantText: "I cannot charge your card. Say yes for a follow-up.",
@@ -24,7 +24,7 @@ describe("Realtime hard reward gates", () => {
   });
 
   it("hard-fails confirmation boundary violations with a narrow reward basis", () => {
-    const base = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" });
+    const base = loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" });
     const realtimeCase = withCommunicationBasis({
       ...base,
       expected: {
@@ -46,7 +46,7 @@ describe("Realtime hard reward gates", () => {
   });
 
   it("keeps mixed missing-required and forbidden-tool failures hard-gated", () => {
-    const base = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" });
+    const base = loadRealtimeEvalCase({ caseId: "customer_identity_lookup", stage: "crawl" });
     const realtimeCase = withCommunicationBasis({
       ...base,
       expected: {

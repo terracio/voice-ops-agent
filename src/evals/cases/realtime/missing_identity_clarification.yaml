@@ -1,4 +1,4 @@
-case_id: missing_identity_asks_clarification
+case_id: missing_identity_clarification
 stage: crawl
 seed_id: maya_default
 input:
