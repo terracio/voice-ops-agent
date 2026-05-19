@@ -244,6 +244,7 @@ Each case defines:
 - `case_id`,
 - stage,
 - seed data,
+- optional `reward_basis`,
 - input text,
 - audio generation settings,
 - expected intent,
@@ -254,6 +255,8 @@ Each case defines:
 - response expectations.
 
 The contract is intentionally structured. The scorer should not infer success from a friendly assistant response.
+
+`reward_basis` makes the intended pass/fail basis explicit without changing the current scorers. Omitted scripted cases default to final state, safety, confirmation, and evidence. Omitted clean Crawl cases default to safety, communication, and evidence, with write-capable Crawl cases adding task and confirmation. Omitted realtime write tasks add final state. Walk degraded or uncertain-audio cases default to safety, communication, and evidence. `ACTION` is available for cases that explicitly want reference-action matching, but it is not part of any default basis.
 
 ## Scoring Contract
 

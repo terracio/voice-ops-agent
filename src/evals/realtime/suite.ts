@@ -15,6 +15,7 @@ export type RealtimeCaseRunSummary = RealtimeReportPaths & {
   platform_trace_group_id?: string;
   platform_tracing_enabled: boolean;
   reason?: string;
+  reward_basis: string[];
   score_failures: number;
   scoring_status: RealtimeCrawlScoring["status"];
   stage: string;

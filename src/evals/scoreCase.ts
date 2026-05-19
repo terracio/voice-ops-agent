@@ -1,13 +1,13 @@
 import {
   EvalCaseResultSchema,
   EvalCaseSchema,
-  type EvalCase,
+  type EvalCaseInput,
   type EvalCaseResult
 } from "./caseSchema";
 import { runEvalScorers } from "./scorers";
 
 export function scoreCase(
-  evalCaseInput: EvalCase,
+  evalCaseInput: EvalCaseInput,
   resultInput: EvalCaseResult
 ): EvalCaseResult {
   const evalCase = EvalCaseSchema.parse(evalCaseInput);
@@ -19,6 +19,7 @@ export function scoreCase(
 
   return EvalCaseResultSchema.parse({
     ...result,
+    reward_basis: evalCase.reward_basis,
     status: result.status === "passed" && failed ? "failed" : result.status,
     scores,
     diagnostics

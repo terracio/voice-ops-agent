@@ -1,6 +1,6 @@
 import { PolicyId } from "../src/domain/schema";
 import type { EvalCase, EvalCaseResult } from "../src/evals/caseSchema";
-import { EvalCaseResultSchema } from "../src/evals/caseSchema";
+import { EvalCaseResultSchema, EvalCaseSchema } from "../src/evals/caseSchema";
 
 export const STARTED_AT = "2026-05-11T10:00:00.000Z";
 export const PREVIEWED_AT = "2026-05-11T10:01:00.000Z";
@@ -23,7 +23,7 @@ const transcript: EvalCase["transcript"] = [
 ];
 
 export function evalCaseFixture(overrides: Partial<EvalCase> = {}): EvalCase {
-  return {
+  return EvalCaseSchema.parse({
     case_id: "scorer_fixture",
     title: "Scorer fixture",
     mode: "scripted",
@@ -82,7 +82,7 @@ export function evalCaseFixture(overrides: Partial<EvalCase> = {}): EvalCase {
       }
     },
     ...overrides
-  };
+  });
 }
 
 export function passingResult(

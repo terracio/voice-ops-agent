@@ -46,6 +46,7 @@ export type RealtimeRunCaseArtifactSummary = {
   json_path: string;
   markdown_path: string;
   model: string;
+  reward_basis: string[];
   score_failures: number;
   scoring_status: string;
   stage: string;
@@ -117,6 +118,7 @@ export function writeRealtimeAttemptArtifacts(options: {
     case_id: options.caseId,
     stage: options.stage,
     seed_id: options.realtimeCase.seed_id,
+    reward_basis: options.realtimeCase.reward_basis,
     input_mode: options.preparedInput.input_mode,
     status: options.result.status,
     reason: options.result.reason,
@@ -230,13 +232,14 @@ function renderRealtimeRunMarkdown(options: {
     "",
     "## Case Attempts",
     "",
-    "| Case | Status | Scoring | Failed scores | Report | Artifact directory |",
-    "| --- | --- | --- | --- | --- | --- |"
+    "| Case | Reward basis | Status | Scoring | Failed scores | Report | Artifact directory |",
+    "| --- | --- | --- | --- | --- | --- | --- |"
   ].filter((line): line is string => line !== undefined);
 
   for (const result of options.results) {
     lines.push(
-      `| \`${result.case_id}\` | ${result.status} | ${result.scoring_status} | ` +
+      `| \`${result.case_id}\` | ${result.reward_basis.join(", ")} | ` +
+        `${result.status} | ${result.scoring_status} | ` +
         `${result.score_failures} | \`${result.json_path}\` | ` +
         `\`${result.run_artifact_dir ?? ""}\` |`
     );

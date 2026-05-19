@@ -12,6 +12,10 @@ import {
   ServiceDateSchema
 } from "../domain/schema";
 import { SEED_SCENARIO_IDS } from "../domain/seed";
+import {
+  defaultScriptedRewardBasis,
+  RewardBasisListSchema
+} from "./rewardBasis";
 
 export const EvalModeSchema = z.enum(["scripted", "model"]);
 
@@ -169,6 +173,7 @@ export const EvalCaseSchema = z.object({
   title: z.string().min(1),
   mode: EvalModeSchema,
   seed_id: EvalSeedIdSchema,
+  reward_basis: RewardBasisListSchema.default(defaultScriptedRewardBasis),
   transcript: z.array(TranscriptEntrySchema).default([]),
   script: z.array(EvalScriptStepSchema).default([]),
   tags: z.array(z.string().min(1)).default([]),
@@ -268,6 +273,7 @@ export const EvalCaseResultSchema = z.object({
   title: z.string().min(1),
   mode: EvalModeSchema,
   seed_id: EvalSeedIdSchema,
+  reward_basis: RewardBasisListSchema.default(defaultScriptedRewardBasis),
   evidence_kind: EvalEvidenceKindSchema,
   status: EvalCaseStatusSchema,
   transcript: z.array(TranscriptEntrySchema),
@@ -331,7 +337,8 @@ export const EvalRunReportSchema = z.object({
 });
 
 export type EvalMode = z.infer<typeof EvalModeSchema>;
-export type EvalCase = z.infer<typeof EvalCaseSchema>;
+export type EvalCaseInput = z.input<typeof EvalCaseSchema>;
+export type EvalCase = z.output<typeof EvalCaseSchema>;
 export type EvalScriptStep = z.infer<typeof EvalScriptStepSchema>;
 export type EvalScoringExpectations = z.infer<
   typeof EvalScoringExpectationsSchema

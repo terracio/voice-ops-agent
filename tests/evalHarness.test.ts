@@ -13,10 +13,12 @@ import {
 import type { EvalCase, EvalCaseResult } from "../src/evals/caseSchema";
 import {
   DEFAULT_EVAL_SCORING_EXPECTATIONS,
+  EvalCaseSchema,
   EvalCaseResultSchema
 } from "../src/evals/caseSchema";
 import { buildEvalReport, renderMarkdownReport } from "../src/evals/report";
 import { runEval } from "../src/evals/runEval";
+import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
 
 const tempDirs: string[] = [];
 
@@ -36,7 +38,7 @@ async function makeReportDir(): Promise<string> {
 }
 
 function fixtureCase(caseId: string, seedId: EvalCase["seed_id"]): EvalCase {
-  return {
+  return EvalCaseSchema.parse({
     case_id: caseId,
     title: `Fixture ${caseId}`,
     mode: "scripted",
@@ -51,7 +53,7 @@ function fixtureCase(caseId: string, seedId: EvalCase["seed_id"]): EvalCase {
     script: [],
     tags: ["fixture"],
     expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
-  };
+  });
 }
 
 function resultFor(evalCase: EvalCase): EvalCaseResult {
@@ -86,6 +88,23 @@ function resultFor(evalCase: EvalCase): EvalCaseResult {
 }
 
 describe("eval harness contracts", () => {
+  it("resolves the default scripted reward basis without ACTION", () => {
+    const evalCase = fixtureCase("reward_basis_fixture", "maya_default");
+    const report = buildEvalReport({
+      run_id: "eval_reward_basis",
+      mode: "scripted",
+      started_at: "2026-05-11T10:00:00.000Z",
+      finished_at: "2026-05-11T10:00:00.000Z",
+      results: [resultFor(evalCase)]
+    });
+
+    expect(evalCase.reward_basis).toEqual(SCRIPTED_DEFAULT_REWARD_BASIS);
+    expect(evalCase.reward_basis).not.toContain("ACTION");
+    expect(report.results[0]?.reward_basis).toEqual(
+      SCRIPTED_DEFAULT_REWARD_BASIS
+    );
+  });
+
   it("structures confirmation evidence as server-created records", () => {
     const parsed = EvalCaseResultSchema.parse({
       ...resultFor(fixtureCase("confirmation_fixture", "maya_default")),
@@ -151,11 +170,18 @@ describe("eval harness contracts", () => {
 
     const json = JSON.parse(
       await readFile(join(reportDir, "eval-report.json"), "utf8")
-    ) as { summary: { cases_total: number } };
+    ) as {
+      results: { reward_basis: string[] }[];
+      summary: { cases_total: number };
+    };
     const markdown = await readFile(join(reportDir, "eval-report.md"), "utf8");
 
     expect(json.summary.cases_total).toBe(2);
+    expect(json.results[0]?.reward_basis).toEqual(
+      SCRIPTED_DEFAULT_REWARD_BASIS
+    );
     expect(markdown).toContain("scripted operational-safety evidence");
+    expect(markdown).toContain("FINAL_STATE, SAFETY, CONFIRMATION, EVIDENCE");
   });
 
   it("renders failed case diagnostics in the markdown report", () => {

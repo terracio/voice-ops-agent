@@ -5,6 +5,7 @@ import {
   EvalCaseSchema,
   EvalModeSchema,
   type EvalCase,
+  type EvalCaseInput,
   type EvalCaseResult,
   type EvalMode,
   type EvalRunReport
@@ -33,7 +34,7 @@ export type EvalExecutor = (
 ) => EvalCaseResult | Promise<EvalCaseResult>;
 
 export type RunEvalOptions = {
-  cases?: EvalCase[];
+  cases?: EvalCaseInput[];
   mode?: EvalMode;
   reportDir?: string;
   now?: () => string;
@@ -49,7 +50,7 @@ export type RunEvalResult = {
   passKAggregate?: PassKAggregate;
 };
 
-const DEFAULT_EVAL_CASES: EvalCase[] = [
+const DEFAULT_EVAL_CASES: EvalCaseInput[] = [
   ...firstTenCases,
   ...remainingTenCases
 ];

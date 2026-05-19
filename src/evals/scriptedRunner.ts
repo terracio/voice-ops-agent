@@ -1,7 +1,7 @@
 import * as db from "../domain/db";
 import type { Confirmation, ToolResult } from "../domain/schema";
 import { createMealPlanToolRegistry, type ToolExecutionContext } from "../tools";
-import { EvalCaseResultSchema, EvalCaseSchema, type EvalCase, type EvalCaseResult, type EvalMode, type EvalScriptStep } from "./caseSchema";
+import { EvalCaseResultSchema, EvalCaseSchema, type EvalCase, type EvalCaseInput, type EvalCaseResult, type EvalMode, type EvalScriptStep } from "./caseSchema";
 import { applyTrustedDateResolutionFromToolResult } from "./scriptedDateResolution";
 export type ScriptedRunnerContext = { run_id: string; mode: EvalMode; run_started_at: string; now: () => string };
 
@@ -24,7 +24,7 @@ type StepInput = {
 };
 
 export async function runScriptedEvalCase(
-  rawCase: EvalCase,
+  rawCase: EvalCaseInput,
   context: ScriptedRunnerContext
 ): Promise<EvalCaseResult> {
   const evalCase = EvalCaseSchema.parse(rawCase);
@@ -66,6 +66,7 @@ export async function runScriptedEvalCase(
     title: evalCase.title,
     mode: evalCase.mode,
     seed_id: evalCase.seed_id,
+    reward_basis: evalCase.reward_basis,
     evidence_kind: "scripted_operational_safety",
     status: passed ? "passed" : "failed",
     transcript: state.transcript,
@@ -301,7 +302,6 @@ function applyContextPatch(context: ToolExecutionContext, patch?: ContextPatch):
   if (patch.reference_time) context.reference_time = patch.reference_time;
   if (patch.current_time) context.current_time = patch.current_time;
 }
-
 function resolveTokens(value: Record<string, unknown>, state: RunnerState): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, resolveValue(entry, state)]));
 }

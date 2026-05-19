@@ -159,6 +159,7 @@ async function runRealtimeEvalCase(options: {
     score_failures: scoring.score_failures,
     reason: result.reason,
     model: result.model,
+    reward_basis: realtimeCase.reward_basis,
     transport: result.transport,
     input_mode: preparedInput.input_mode,
     env_file_status: options.env_file_status,

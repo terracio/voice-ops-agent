@@ -47,6 +47,7 @@ export async function writeScriptedRunArtifacts(options: {
     await writeFile(casePath, `${JSON.stringify(result, null, 2)}\n`);
     caseSummaries.push({
       case_id: result.case_id,
+      reward_basis: result.reward_basis,
       status: result.status,
       score_failures: result.scores.filter((score) => !score.passed).length,
       case_path: casePath
@@ -92,6 +93,7 @@ function renderScriptedRunMarkdown(options: {
   caseSummaries: {
     case_id: string;
     case_path: string;
+    reward_basis: string[];
     score_failures: number;
     status: string;
   }[];
@@ -131,13 +133,14 @@ function renderScriptedRunMarkdown(options: {
     "",
     "## Cases",
     "",
-    "| Case | Status | Failed scores | Case artifact |",
-    "| --- | --- | --- | --- |"
+    "| Case | Reward basis | Status | Failed scores | Case artifact |",
+    "| --- | --- | --- | --- | --- |"
   ];
 
   for (const summary of options.caseSummaries) {
     lines.push(
-      `| \`${summary.case_id}\` | ${summary.status} | ` +
+      `| \`${summary.case_id}\` | ${summary.reward_basis.join(", ")} | ` +
+        `${summary.status} | ` +
         `${summary.score_failures} | \`${summary.case_path}\` |`
     );
   }

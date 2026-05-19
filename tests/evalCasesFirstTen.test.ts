@@ -189,7 +189,7 @@ function caseResult(report: EvalRunReport, caseId: string): EvalCaseResult {
 function evalCase(caseId: string) {
   const found = firstTenCases.find((candidate) => candidate.case_id === caseId);
   if (!found) throw new Error(`Missing eval case: ${caseId}`);
-  return found;
+  return EvalCaseSchema.parse(found);
 }
 
 function toolNames(result: EvalCaseResult): string[] {

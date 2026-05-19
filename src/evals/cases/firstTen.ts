@@ -1,5 +1,5 @@
 import { PolicyId, type PolicyIdValue } from "../../domain/schema";
-import type { EvalCase, EvalScriptStep } from "../caseSchema";
+import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../caseSchema";
 
 type FinalState = NonNullable<EvalCase["expected"]["expected_final_state"]>;
 type ExpectedCustomer = FinalState["customer"];
@@ -204,7 +204,7 @@ export const firstTenCases = [
     must_escalate: true,
     limitations: ["kitchen cutoff"]
   })
-] satisfies EvalCase[];
+] satisfies EvalCaseInput[];
 
 function scheduled(day: "Monday" | "Wednesday", date: string, status: "active" | "paused") {
   return { requested_label: day, calendar_date: date, service_date: date, day_of_week: day, is_scheduled_delivery_day: true, status, actionable: true };
@@ -274,7 +274,7 @@ function committedMealExpectation(input: {
 function paymentFollowupCase(input: {
   case_id: string; title: string; user_text: string; change_set_id: string;
   prefix: "c07" | "c08"; prelude?: EvalScriptStep[]; assistant_text: string; limitations: string[];
-}): EvalCase {
+}): EvalCaseInput {
   const { prefix, change_set_id } = input;
   return {
     case_id: input.case_id,
@@ -310,7 +310,7 @@ function noWriteCase(input: {
   required_tools: string[]; required_policy_ids?: PolicyIdValue[]; customer?: ExpectedCustomer;
   service_dates: ExpectedServiceDate[]; must_ask_clarification?: boolean;
   must_escalate?: boolean; limitations?: string[];
-}): EvalCase {
+}): EvalCaseInput {
   return {
     case_id: input.case_id,
     title: input.title,

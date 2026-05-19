@@ -4,6 +4,11 @@ import {
   loadRealtimeEvalCase,
   REALTIME_CRAWL_CONTRACT_CASE_IDS
 } from "../src/evals/realtime/caseLoader";
+import {
+  REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
+  REALTIME_CRAWL_WRITE_CAPABLE_DEFAULT_REWARD_BASIS,
+  REALTIME_WALK_DEGRADED_DEFAULT_REWARD_BASIS
+} from "../src/evals/rewardBasis";
 
 describe("Realtime case loader", () => {
   it("loads the maya smoke case as a clean-audio crawl fixture", () => {
@@ -23,8 +28,13 @@ describe("Realtime case loader", () => {
           mode: "audio"
         },
         seed_id: "maya_default",
+        reward_basis: REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
         stage: "crawl"
       });
+    expect(
+      loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" })
+        .reward_basis
+    ).not.toContain("ACTION");
   });
 
   it("loads the first realtime crawl contract cases", () => {
@@ -61,6 +71,9 @@ describe("Realtime case loader", () => {
     );
     expect(cases[4]?.expected.required_tools).toEqual([]);
     expect(cases[4]?.expected.response.should_request_confirmation).toBe(true);
+    expect(cases[4]?.reward_basis).toEqual(
+      REALTIME_CRAWL_WRITE_CAPABLE_DEFAULT_REWARD_BASIS
+    );
   });
 
   it("derives Walk robustness cases from Crawl contracts", () => {
@@ -94,6 +107,9 @@ describe("Realtime case loader", () => {
       stage: "walk"
     });
     expect(walkCase.expected.notes).toContain("Walk robustness case");
+    expect(walkCase.reward_basis).toEqual(
+      REALTIME_WALK_DEGRADED_DEFAULT_REWARD_BASIS
+    );
     expect(ambiguousDateCase.expected).toMatchObject({
       expected_final_state: { changed: false, customer_ids: [] },
       expected_policy_ids: [],
@@ -121,6 +137,10 @@ describe("Realtime case loader", () => {
     expect(realtimeCase.audio.walk_profile).toEqual({
       name: "walk_uncertain_noise_v1"
     });
+    expect(realtimeCase.reward_basis).toEqual(
+      REALTIME_WALK_DEGRADED_DEFAULT_REWARD_BASIS
+    );
+    expect(realtimeCase.reward_basis).not.toContain("ACTION");
     expect(realtimeCase.expected).toMatchObject({
       allowed_failed_tools: [],
       expected_final_state: { changed: false, customer_ids: [] },

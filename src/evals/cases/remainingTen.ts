@@ -1,5 +1,5 @@
 import { PolicyId, type PolicyIdValue } from "../../domain/schema";
-import type { EvalCase, EvalScriptStep } from "../caseSchema";
+import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../caseSchema";
 
 type FinalState = NonNullable<EvalCase["expected"]["expected_final_state"]>;
 type ExpectedCustomer = FinalState["customer"];
@@ -257,7 +257,7 @@ export const remainingTenCases = [
       limitations: ["cannot mark"]
     })
   }
-] satisfies EvalCase[];
+] satisfies EvalCaseInput[];
 
 function basicPauseScript(prefix: string, change_set_id: string): EvalScriptStep[] {
   return [

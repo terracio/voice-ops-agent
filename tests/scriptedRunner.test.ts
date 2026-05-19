@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as db from "../src/domain/db";
 import {
   DEFAULT_EVAL_SCORING_EXPECTATIONS,
+  EvalCaseSchema,
   type EvalCase
 } from "../src/evals/caseSchema";
 import { runEval } from "../src/evals/runEval";
@@ -9,7 +10,7 @@ import { runScriptedEvalCase } from "../src/evals/scriptedRunner";
 
 const START = "2026-05-11T10:00:00.000Z";
 
-const scriptedCase: EvalCase = {
+const scriptedCase: EvalCase = EvalCaseSchema.parse({
   case_id: "scripted_pause_confirmation",
   title: "Scripted runner uses real ChangeSet tools",
   mode: "scripted",
@@ -80,7 +81,7 @@ const scriptedCase: EvalCase = {
   ],
   tags: ["scripted"],
   expected: DEFAULT_EVAL_SCORING_EXPECTATIONS
-};
+});
 
 describe("scripted eval runner", () => {
   it("runs scripted mode without OpenAI credentials through real tools", async () => {

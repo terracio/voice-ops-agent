@@ -12,6 +12,7 @@ import {
   type RealtimeRunCaseArtifactSummary
 } from "../src/evals/realtime/runArtifacts";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
+import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
 
 const LEGACY_DIR = join(
   "reports",
@@ -72,6 +73,12 @@ describe("realtime eval run artifacts", () => {
       artifacts: Record<string, string>;
       results: RealtimeRunCaseArtifactSummary[];
     };
+    const reportJson = JSON.parse(readFileSync(paths.json_path, "utf8")) as {
+      reward_basis: string[];
+    };
+    const simStatusJson = JSON.parse(
+      readFileSync(paths.run_artifact_files?.sim_status_path ?? "", "utf8")
+    ) as { reward_basis: string[] };
 
     expect(existsSync(join(LEGACY_DIR, "report.json"))).toBe(true);
     expect(existsSync(join(LEGACY_DIR, "report.md"))).toBe(true);
@@ -93,6 +100,13 @@ describe("realtime eval run artifacts", () => {
       suite: "realtime"
     });
     expect(runJson.artifacts.artifacts_dir).toBe(join(RUN_DIR, "artifacts"));
+    expect(reportJson.reward_basis).toEqual(REALTIME_CRAWL_DEFAULT_REWARD_BASIS);
+    expect(simStatusJson.reward_basis).toEqual(
+      REALTIME_CRAWL_DEFAULT_REWARD_BASIS
+    );
+    expect(runJson.results[0]?.reward_basis).toEqual(
+      REALTIME_CRAWL_DEFAULT_REWARD_BASIS
+    );
     expect(runJson.results[0]?.run_artifact_dir).toBe(paths.run_artifact_dir);
     expect(readFileSync(runPaths.resultsMarkdownPath, "utf8")).toContain(
       "MealPlan VoiceOps Realtime Eval Run"
@@ -109,6 +123,7 @@ function caseSummary(
     json_path: paths.json_path,
     markdown_path: paths.markdown_path,
     model: "gpt-realtime-2",
+    reward_basis: REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
     score_failures: 0,
     scoring_status: "passed",
     stage: "crawl",

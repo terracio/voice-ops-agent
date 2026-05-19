@@ -12,6 +12,10 @@ import {
   WALK_AUDIO_PROFILE_NAMES,
   type WalkAudioProfileName
 } from "./walkAudioProfiles";
+import {
+  defaultRealtimeRewardBasis,
+  RewardBasisListSchema
+} from "../rewardBasis";
 
 const WalkAudioProfileSchema = z.object({
   name: z.enum(WALK_AUDIO_PROFILE_NAMES),
@@ -93,16 +97,26 @@ const RealtimeExpectedSchema = z.object({
   notes: z.string().min(1).optional()
 }).strict();
 
-export const RealtimeEvalCaseSchema = z.object({
+const RealtimeEvalCaseInputSchema = z.object({
   case_id: z.string().min(1),
   stage: z.enum(["crawl", "walk", "run"]),
   seed_id: z.string().min(1).default("maya_default"),
+  reward_basis: RewardBasisListSchema.optional(),
   input: RealtimeCaseInputSchema,
   audio: RealtimeAudioConfigSchema.default(DEFAULT_REALTIME_EVAL_AUDIO_CONFIG),
   expected: RealtimeExpectedSchema
 }).strict();
 
+export const RealtimeEvalCaseSchema = RealtimeEvalCaseInputSchema.transform(
+  (realtimeCase) => ({
+    ...realtimeCase,
+    reward_basis:
+      realtimeCase.reward_basis ?? defaultRealtimeRewardBasis(realtimeCase)
+  })
+);
+
 export type RealtimeEvalCase = z.infer<typeof RealtimeEvalCaseSchema>;
+type RealtimeEvalCaseInput = z.infer<typeof RealtimeEvalCaseInputSchema>;
 
 const casesDir = join(dirname(fileURLToPath(import.meta.url)), "cases");
 
@@ -157,12 +171,12 @@ export function loadRealtimeEvalCase(options: {
   stage: string;
 }): RealtimeEvalCase {
   const filePath = join(casesDir, `${options.caseId}.yaml`);
-  const parsed = RealtimeEvalCaseSchema.parse(
+  const parsed = RealtimeEvalCaseInputSchema.parse(
     parse(readFileSync(filePath, "utf8"))
   );
 
   if (parsed.stage === options.stage) {
-    return parsed;
+    return RealtimeEvalCaseSchema.parse(parsed);
   }
   if (
     options.stage === "walk" &&
@@ -185,7 +199,7 @@ export function loadRealtimeEvalCase(options: {
       `Realtime case ${parsed.case_id} is stage ${parsed.stage}, not ${options.stage}.`
     );
   }
-  return parsed;
+  return RealtimeEvalCaseSchema.parse(parsed);
 }
 
 export function applyWalkProfileContract(options: {
@@ -215,8 +229,8 @@ function isWalkRobustnessCaseId(caseId: string): boolean {
 }
 
 function deriveWalkRobustnessExpected(
-  realtimeCase: RealtimeEvalCase
-): RealtimeEvalCase["expected"] {
+  realtimeCase: RealtimeEvalCaseInput
+): RealtimeEvalCaseInput["expected"] {
   const expected = { ...realtimeCase.expected };
   if (realtimeCase.case_id === "maya_smoke") {
     expected.allowed_failed_tools = ["lookup_customer"];

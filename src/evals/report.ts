@@ -156,14 +156,15 @@ export function renderMarkdownReport(
     "",
     "## Cases",
     "",
-    "| Case | Mode | Seed | Evidence | Status | Failed scores |",
-    "| --- | --- | --- | --- | --- | --- |"
+    "| Case | Mode | Seed | Reward basis | Evidence | Status | Failed scores |",
+    "| --- | --- | --- | --- | --- | --- | --- |"
   ];
 
   for (const result of report.results) {
     lines.push(
       `| \`${result.case_id}\` | ${result.mode} | \`${result.seed_id}\` | ` +
-        `${result.evidence_kind} | ${result.status} | ${failedScoreCount(result)} |`
+        `${renderRewardBasis(result.reward_basis)} | ${result.evidence_kind} | ` +
+        `${result.status} | ${failedScoreCount(result)} |`
     );
   }
 
@@ -213,6 +214,10 @@ function countEvidence(
 
 function failedScoreCount(result: EvalCaseResult): number {
   return result.scores.filter((score) => !score.passed).length;
+}
+
+function renderRewardBasis(rewardBasis: EvalCaseResult["reward_basis"]): string {
+  return rewardBasis.join(", ");
 }
 
 function appendFailedDiagnostics(

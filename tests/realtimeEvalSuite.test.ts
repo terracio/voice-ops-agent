@@ -14,6 +14,7 @@ import {
   shouldFailRealtimeEval,
   type RealtimeCaseRunSummary
 } from "../src/evals/realtime/suite";
+import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
 
 describe("realtime eval suite", () => {
   it("resolves the first Crawl suite when no case is provided", () => {
@@ -291,6 +292,7 @@ function createSummary(
     markdown_path: "report.md",
     model: "gpt-realtime-2",
     platform_tracing_enabled: true,
+    reward_basis: REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
     score_failures: 0,
     scoring_status: "passed",
     stage: "crawl",
