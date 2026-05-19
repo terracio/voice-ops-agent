@@ -34,7 +34,7 @@ export function scoreRealtimeCrawlCase(realtimeCase: RealtimeEvalCase, result: R
       runHealth,
       scorePerception(context),
       scoreTurnTaking(context),
-      scoreToolSelection(context),
+      ...scoreToolSelection(context),
       scoreToolArguments(context),
       scorePolicy(context),
       scoreConfirmation(context),
@@ -130,23 +130,23 @@ function scoreTurnTaking(context: Context): RealtimeCrawlScore {
     : fail("turn_taking", "turn_output_missing", "No assistant output or tool call was captured.");
 }
 
-function scoreToolSelection(context: Context): RealtimeCrawlScore {
+function scoreToolSelection(context: Context): RealtimeCrawlScore[] {
   const names = context.result.tool_calls.map((call) => call.tool_name);
-  const issues = [
-    ...context.realtimeCase.expected.required_tools
-      .filter((toolName) => !names.includes(toolName))
-      .map((toolName) => `Missing required tool ${toolName}.`),
-    ...context.result.tool_calls
-      .filter((call) => context.realtimeCase.expected.forbidden_tools.includes(call.tool_name))
-      .map((call) => `Forbidden tool ${call.tool_name} was called.`)
-  ];
+  const missingRequired = context.realtimeCase.expected.required_tools
+    .filter((toolName) => !names.includes(toolName))
+    .map((toolName) => `Missing required tool ${toolName}.`);
+  const forbidden = context.result.tool_calls
+    .filter((call) => context.realtimeCase.expected.forbidden_tools.includes(call.tool_name))
+    .map((call) => `Forbidden tool ${call.tool_name} was called.`);
 
-  if (issues.some((issue) => issue.startsWith("Missing"))) {
-    return fail("tool_selection", "missing_required_tool", issues.join(" "));
-  }
-  return issues.length === 0
-    ? pass("tool_selection", "Required and forbidden tool expectations matched.")
-    : fail("tool_selection", "forbidden_tool_called", issues.join(" "));
+  return [
+    missingRequired.length === 0
+      ? pass("tool_selection", "Required tool expectations matched.")
+      : fail("tool_selection", "missing_required_tool", missingRequired.join(" ")),
+    forbidden.length === 0
+      ? pass("tool_selection", "Forbidden tool expectations matched.")
+      : fail("tool_selection", "forbidden_tool_called", forbidden.join(" "))
+  ];
 }
 
 function scoreToolArguments(context: Context): RealtimeCrawlScore {

@@ -56,7 +56,9 @@ export function buildScriptedRewardAggregation(input: {
 }): RewardAggregation {
   const scores = normalizeRawScores(input.scores);
   return buildRewardAggregation({
-    hardFailureScores: scoresFor(scores, (score) => score.category === "hard_policy"),
+    hardPrimaryGroups: {
+      safety: scoresFor(scores, (score) => score.category === "hard_policy")
+    },
     primaryGroups: {
       task_success: scoresFor(scores, (score) =>
         ["final_db_state", "operational_safety"].includes(score.category)
@@ -70,18 +72,9 @@ export function buildScriptedRewardAggregation(input: {
           "side_effect_idempotency"
         ].includes(score.category)
       ),
-      confirmation_boundary: scoresFor(
-        scores,
-        (score) => score.category === "confirmation_boundary"
-      ),
-      communication: scoresFor(
-        scores,
-        (score) => score.category === "conversation_quality"
-      ),
-      evidence: scoresFor(
-        scores,
-        (score) => score.category === "audit_completeness"
-      )
+      confirmation_boundary: scoresFor(scores, (score) => score.category === "confirmation_boundary"),
+      communication: scoresFor(scores, (score) => score.category === "conversation_quality"),
+      evidence: scoresFor(scores, (score) => score.category === "audit_completeness")
     },
     rewardBasis: input.rewardBasis,
     diagnostics: {
@@ -108,7 +101,14 @@ export function buildRealtimeRewardAggregation(input: {
 }): RewardAggregation {
   const scores = normalizeRawScores(input.scores);
   return buildRewardAggregation({
-    hardFailureScores: [],
+    hardPrimaryGroups: {
+      safety: scoresFor(scores, (score) =>
+        score.category === "policy" ||
+        (score.category === "tool_selection" &&
+          score.failure_type === "forbidden_tool_called")
+      ),
+      confirmation_boundary: scoresFor(scores, (score) => score.category === "confirmation")
+    },
     primaryGroups: {
       task_success: scoresFor(scores, (score) => score.category === "state"),
       final_state: scoresFor(scores, (score) => score.category === "state"),
@@ -117,41 +117,18 @@ export function buildRealtimeRewardAggregation(input: {
         (score.category === "tool_selection" &&
           score.failure_type === "forbidden_tool_called")
       ),
-      confirmation_boundary: scoresFor(
-        scores,
-        (score) => score.category === "confirmation"
-      ),
-      communication: scoresFor(
-        scores,
-        (score) => score.category === "conversation"
-      ),
-      evidence: scoresFor(scores, (score) =>
-        ["audit", "run_health"].includes(score.category)
-      )
+      confirmation_boundary: scoresFor(scores, (score) => score.category === "confirmation"),
+      communication: scoresFor(scores, (score) => score.category === "conversation"),
+      evidence: scoresFor(scores, (score) => ["audit", "run_health"].includes(score.category))
     },
     rewardBasis: input.rewardBasis,
     diagnostics: {
-      tool_path_similarity: diagnosticFromScores(scoresFor(
-        scores,
-        (score) => score.category === "tool_selection"
-      )),
-      tool_argument_validity: diagnosticFromScores(scoresFor(
-        scores,
-        (score) => score.category === "tool_arguments"
-      )),
-      perception: diagnosticFromScores(scoresFor(
-        scores,
-        (score) => score.category === "perception"
-      )),
-      turn_taking: diagnosticFromScores(scoresFor(
-        scores,
-        (score) => score.category === "turn_taking"
-      )),
+      tool_path_similarity: diagnosticFromScores(scoresFor(scores, (score) => score.category === "tool_selection")),
+      tool_argument_validity: diagnosticFromScores(scoresFor(scores, (score) => score.category === "tool_arguments")),
+      perception: diagnosticFromScores(scoresFor(scores, (score) => score.category === "perception")),
+      turn_taking: diagnosticFromScores(scoresFor(scores, (score) => score.category === "turn_taking")),
       latency: unavailable("latency"),
-      conversation_quality: diagnosticFromScores(scoresFor(
-        scores,
-        (score) => score.category === "conversation"
-      )),
+      conversation_quality: diagnosticFromScores(scoresFor(scores, (score) => score.category === "conversation")),
       cost: unavailable("cost")
     }
   });
@@ -159,7 +136,7 @@ export function buildRealtimeRewardAggregation(input: {
 
 function buildRewardAggregation(input: {
   diagnostics: Record<DiagnosticMetric, DiagnosticMetricResult>;
-  hardFailureScores: AggregationRawScore[];
+  hardPrimaryGroups: Partial<Record<PrimaryReward, AggregationRawScore[]>>;
   primaryGroups: Record<PrimaryReward, AggregationRawScore[]>;
   rewardBasis: RewardBasis[];
 }): RewardAggregation {
@@ -189,7 +166,7 @@ function buildRewardAggregation(input: {
     ...selectedDiagnostics.flatMap((metric) =>
       diagnosticRewardFailures(metric, diagnostics[metric])
     ),
-    ...hardPolicyFailures(primaryRewards.safety, input.hardFailureScores)
+    ...hardPrimaryFailures(input.hardPrimaryGroups)
   ];
   const rewardFailureRawIds = new Set(rewardFailures.flatMap(
     (failure) => failure.raw_score_ids
@@ -315,15 +292,19 @@ function diagnosticOnlyFailures(
   }];
 }
 
-function hardPolicyFailures(safety: PrimaryRewardResult, hardFailureScores: AggregationRawScore[]): AggregationFailure[] {
-  const failed = hardFailureScores.filter((score) => !score.passed);
-  return failed.length > 0
-    ? [primaryFailure("safety", {
-        passed: false,
-        raw_score_ids: failed.map((score) => score.score_id),
-        score: Math.min(safety.score, scoreRatio(failed))
-      })]
-    : [];
+function hardPrimaryFailures(
+  groups: Partial<Record<PrimaryReward, AggregationRawScore[]>>
+): AggregationFailure[] {
+  return Object.entries(groups).flatMap(([key, scores]) => {
+    const failed = (scores ?? []).filter((score) => !score.passed);
+    return failed.length > 0
+      ? [primaryFailure(key as PrimaryReward, {
+          passed: false,
+          raw_score_ids: failed.map((score) => score.score_id),
+          score: scoreRatio(failed)
+        })]
+      : [];
+  });
 }
 
 function dedupeFailures(failures: AggregationFailure[]): AggregationFailure[] {
