@@ -15,6 +15,9 @@ import {
   redactResultForReport,
   redactScoringForReport
 } from "./reportRedaction";
+import {
+  serializeRealtimeScoring
+} from "./reportGrouping";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
 export type RealtimeAttemptArtifactPaths = {
@@ -47,6 +50,8 @@ export type RealtimeRunCaseArtifactSummary = {
   markdown_path: string;
   model: string;
   reward_basis: string[];
+  diagnostic_failures: number;
+  reward_failures: number;
   score_failures: number;
   scoring_status: string;
   stage: string;
@@ -111,6 +116,10 @@ export function writeRealtimeAttemptArtifacts(options: {
   };
   const redactedResult = redactResultForReport(options.result);
   const redactedScoring = redactScoringForReport(options.scoring);
+  const serializedScoring = serializeRealtimeScoring({
+    realtimeCase: options.realtimeCase,
+    scoring: redactedScoring
+  });
   const status = {
     run_id: options.runId,
     attempt_id: attemptId,
@@ -124,6 +133,8 @@ export function writeRealtimeAttemptArtifacts(options: {
     reason: options.result.reason,
     scoring_status: options.scoring.status,
     score_failures: options.scoring.score_failures,
+    reward_failures: serializedScoring.reward_failures.length,
+    diagnostic_failures: serializedScoring.diagnostic_failures.length,
     model: options.result.model,
     transport: options.result.transport,
     env_file_status: options.env_file_status,
@@ -144,7 +155,7 @@ export function writeRealtimeAttemptArtifacts(options: {
     audit_events: redactedResult.audit_events
   });
   writeJson(files.final_state_path, redactedResult.final_state);
-  writeJson(files.scoring_path, redactedScoring);
+  writeJson(files.scoring_path, serializedScoring);
   writeJson(files.audio_manifest_path, {
     legacy_audio_artifacts: options.audioArtifacts,
     note: "Input audio files remain in the compatibility per-case report directory."
@@ -223,6 +234,7 @@ function renderRealtimeRunMarkdown(options: {
     `- Failed: ${options.summary.failed ?? 0}`,
     `- Timed out: ${options.summary.timed_out ?? 0}`,
     `- Score failures: ${options.summary.score_failures ?? 0}`,
+    `- Reward failures: ${options.summary.reward_failures ?? 0}`,
     "",
     "## Artifacts",
     "",
@@ -232,14 +244,15 @@ function renderRealtimeRunMarkdown(options: {
     "",
     "## Case Attempts",
     "",
-    "| Case | Reward basis | Status | Scoring | Failed scores | Report | Artifact directory |",
-    "| --- | --- | --- | --- | --- | --- | --- |"
+    "| Case | Reward basis | Status | Scoring | Reward failures | Diagnostic failures | Raw score failures | Report | Artifact directory |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
   ].filter((line): line is string => line !== undefined);
 
   for (const result of options.results) {
     lines.push(
       `| \`${result.case_id}\` | ${result.reward_basis.join(", ")} | ` +
         `${result.status} | ${result.scoring_status} | ` +
+        `${result.reward_failures} | ${result.diagnostic_failures} | ` +
         `${result.score_failures} | \`${result.json_path}\` | ` +
         `\`${result.run_artifact_dir ?? ""}\` |`
     );

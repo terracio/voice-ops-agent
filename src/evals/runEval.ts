@@ -211,8 +211,7 @@ async function main(): Promise<void> {
     if (
       report.summary.cases_failed > 0 ||
       report.summary.cases_blocked > 0 ||
-      report.summary.cases_errored > 0 ||
-      report.summary.score_failures > 0
+      report.summary.cases_errored > 0
     ) {
       process.exitCode = 1;
     }

@@ -17,6 +17,7 @@ import {
   safePathSegment,
   writeRealtimeReports
 } from "./realtime/reporting";
+import { buildRealtimeScoringAggregation } from "./realtime/reportGrouping";
 import { writeRealtimeRunResults } from "./realtime/runArtifacts";
 import { scoreRealtimeCrawlCase } from "./realtime/scorer";
 import {
@@ -138,6 +139,10 @@ async function runRealtimeEvalCase(options: {
     workflowName: `MealPlan VoiceOps Realtime ${options.stage} Eval`
   });
   const scoring = scoreRealtimeCrawlCase(realtimeCase, result);
+  const rewardEvaluation = buildRealtimeScoringAggregation({
+    realtimeCase,
+    scoring
+  });
   const reportPaths = writeRealtimeReports({
     caseId: options.caseId,
     env_file_status: options.env_file_status,
@@ -157,6 +162,8 @@ async function runRealtimeEvalCase(options: {
     status: result.status,
     scoring_status: scoring.status,
     score_failures: scoring.score_failures,
+    reward_failures: rewardEvaluation.reward_failures.length,
+    diagnostic_failures: rewardEvaluation.diagnostic_failures.length,
     reason: result.reason,
     model: result.model,
     reward_basis: realtimeCase.reward_basis,

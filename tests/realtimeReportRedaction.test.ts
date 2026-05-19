@@ -16,7 +16,7 @@ describe("realtime report redaction", () => {
       "realtime",
       "crawl",
       "maya_smoke",
-      "unit_report_trace"
+      "unit_redaction_report_trace"
     );
     rmSync(reportDir, { force: true, recursive: true });
 
@@ -46,7 +46,7 @@ describe("realtime report redaction", () => {
         audit_events: [{
           event_id: "aud_1",
           timestamp: "2026-05-12T10:00:00.000Z",
-          run_id: "unit_report_trace",
+          run_id: "unit_redaction_report_trace",
           actor: "agent",
           event_type: "read",
           customer_id: "cus_001",
@@ -163,8 +163,8 @@ function createResult(): RealtimeRunnerResult {
       group_id: "unit_group",
       workflow_name: "Unit Realtime Eval"
     },
-    run_id: "unit_report_trace",
-    session_id: "unit_report_trace_session",
+    run_id: "unit_redaction_report_trace",
+    session_id: "unit_redaction_report_trace_session",
     status: "completed",
     tool_calls: [],
     trace: [{

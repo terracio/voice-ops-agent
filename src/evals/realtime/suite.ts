@@ -16,6 +16,8 @@ export type RealtimeCaseRunSummary = RealtimeReportPaths & {
   platform_tracing_enabled: boolean;
   reason?: string;
   reward_basis: string[];
+  diagnostic_failures: number;
+  reward_failures: number;
   score_failures: number;
   scoring_status: RealtimeCrawlScoring["status"];
   stage: string;
@@ -71,6 +73,14 @@ export function summarizeRealtimeSuite(options: {
     scoring_skipped: countByScoringStatus(options.results, "skipped"),
     score_failures: options.results.reduce(
       (total, result) => total + result.score_failures,
+      0
+    ),
+    reward_failures: options.results.reduce(
+      (total, result) => total + result.reward_failures,
+      0
+    ),
+    diagnostic_failures: options.results.reduce(
+      (total, result) => total + result.diagnostic_failures,
       0
     ),
     results: options.results

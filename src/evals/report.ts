@@ -11,6 +11,13 @@ import {
   writeScriptedRunArtifacts,
   type ScriptedRunArtifactPaths
 } from "./scriptedRunArtifacts";
+import {
+  appendGroupedFailureSections,
+  countRewardFailures,
+  diagnosticFailureCount,
+  rewardFailureCount,
+  serializeEvalRunReport
+} from "./reportGrouping";
 
 export type BuildEvalReportInput = {
   run_id: string;
@@ -33,6 +40,7 @@ export type PassKAggregate = {
   runs_failed: number;
   case_executions: number;
   score_failures: number;
+  reward_failures: number;
   hard_policy_violations: number;
 };
 
@@ -85,19 +93,18 @@ export function buildPassKAggregate(
   reports: EvalRunReport[],
   passK: number
 ): PassKAggregate {
+  const failedReports = reports.filter(reportHasRewardFailures);
   return {
     pass_k: passK,
     runs_total: reports.length,
-    runs_passed: reports.filter((report) => report.summary.cases_failed === 0 &&
-      report.summary.cases_blocked === 0 &&
-      report.summary.cases_errored === 0 &&
-      report.summary.score_failures === 0).length,
-    runs_failed: reports.filter((report) => report.summary.cases_failed > 0 ||
-      report.summary.cases_blocked > 0 ||
-      report.summary.cases_errored > 0 ||
-      report.summary.score_failures > 0).length,
+    runs_passed: reports.length - failedReports.length,
+    runs_failed: failedReports.length,
     case_executions: reports.reduce((total, report) => total + report.summary.cases_total, 0),
     score_failures: reports.reduce((total, report) => total + report.summary.score_failures, 0),
+    reward_failures: reports.reduce(
+      (total, report) => total + countRewardFailures(report.results),
+      0
+    ),
     hard_policy_violations: reports.reduce((total, report) => total + report.summary.hard_policy_violations, 0)
   };
 }
@@ -112,9 +119,11 @@ export function renderTerminalSummary(
         `Pass-k: ${aggregate.runs_passed}/${aggregate.runs_total} runs passed (k=${aggregate.pass_k})`,
         `Case executions: ${aggregate.case_executions}`,
         `Aggregate score failures: ${aggregate.score_failures}`,
+        `Aggregate reward failures: ${aggregate.reward_failures}`,
         `Aggregate hard policy violations: ${aggregate.hard_policy_violations}`
       ]
     : [];
+  const rewardFailures = countRewardFailures(report.results);
 
   return [
     "MealPlan VoiceOps Eval Report",
@@ -124,6 +133,7 @@ export function renderTerminalSummary(
     `Cases: ${summary.cases_passed} passed, ${summary.cases_failed} failed, ` +
       `${summary.cases_blocked} blocked, ${summary.cases_errored} errored, ` +
       `${summary.cases_skipped} skipped`,
+    `Reward failures: ${rewardFailures}`,
     `Score failures: ${summary.score_failures}`,
     `Hard policy violations: ${summary.hard_policy_violations}`,
     `Evidence: ${summary.evidence.scripted_operational_safety} scripted operational-safety, ` +
@@ -143,6 +153,7 @@ export function renderMarkdownReport(
     `- Cases: ${report.summary.cases_passed} passed, ` +
       `${report.summary.cases_failed} failed, ${report.summary.cases_blocked} blocked, ` +
       `${report.summary.cases_errored} errored, ${report.summary.cases_skipped} skipped`,
+    `- Reward failures: ${countRewardFailures(report.results)}`,
     `- Score failures: ${report.summary.score_failures}`,
     `- Hard policy violations: ${report.summary.hard_policy_violations}`,
     ...(aggregate ? [
@@ -156,19 +167,20 @@ export function renderMarkdownReport(
     "",
     "## Cases",
     "",
-    "| Case | Mode | Seed | Reward basis | Evidence | Status | Failed scores |",
-    "| --- | --- | --- | --- | --- | --- | --- |"
+    "| Case | Mode | Seed | Reward basis | Evidence | Status | Reward failures | Diagnostic failures | Raw score failures |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
   ];
 
   for (const result of report.results) {
     lines.push(
       `| \`${result.case_id}\` | ${result.mode} | \`${result.seed_id}\` | ` +
         `${renderRewardBasis(result.reward_basis)} | ${result.evidence_kind} | ` +
-        `${result.status} | ${failedScoreCount(result)} |`
+        `${result.status} | ${rewardFailureCount(result)} | ` +
+        `${diagnosticFailureCount(result)} | ${failedScoreCount(result)} |`
     );
   }
 
-  appendFailedDiagnostics(lines, report.results);
+  appendGroupedFailureSections(lines, report.results);
 
   return `${lines.join("\n")}\n`;
 }
@@ -183,7 +195,10 @@ export async function writeEvalReports(
   const markdown = renderMarkdownReport(report, aggregate);
 
   await mkdir(reportDir, { recursive: true });
-  await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+  await writeFile(
+    jsonPath,
+    `${JSON.stringify(serializeEvalRunReport(report), null, 2)}\n`
+  );
   await writeFile(markdownPath, markdown);
 
   const runArtifacts = await writeScriptedRunArtifacts({
@@ -220,38 +235,9 @@ function renderRewardBasis(rewardBasis: EvalCaseResult["reward_basis"]): string 
   return rewardBasis.join(", ");
 }
 
-function appendFailedDiagnostics(
-  lines: string[],
-  results: EvalCaseResult[]
-): void {
-  const failedResults = results.filter(
-    (result) => result.status !== "passed" || failedScoreCount(result) > 0
-  );
-
-  if (failedResults.length === 0) {
-    return;
-  }
-
-  lines.push("", "## Failed Case Diagnostics", "");
-
-  for (const result of failedResults) {
-    lines.push(`### ${result.case_id}`, "");
-
-    for (const score of result.scores.filter((score) => !score.passed)) {
-      lines.push(`- Score \`${score.score_id}\`: ${score.message}`);
-    }
-
-    for (const diagnostic of result.diagnostics) {
-      const evidence = diagnostic.evidence
-        ? ` Evidence: \`${JSON.stringify(diagnostic.evidence)}\`.`
-        : "";
-
-      lines.push(
-        `- ${diagnostic.severity.toUpperCase()} \`${diagnostic.code}\`: ` +
-          `${diagnostic.message}.${evidence}`
-      );
-    }
-
-    lines.push("");
-  }
+function reportHasRewardFailures(report: EvalRunReport): boolean {
+  return report.summary.cases_failed > 0 ||
+    report.summary.cases_blocked > 0 ||
+    report.summary.cases_errored > 0 ||
+    countRewardFailures(report.results) > 0;
 }

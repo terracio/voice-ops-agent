@@ -19,6 +19,7 @@ import {
 import { buildEvalReport, renderMarkdownReport } from "../src/evals/report";
 import { runEval } from "../src/evals/runEval";
 import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
+import { scoreCase } from "../src/evals/scoreCase";
 
 const tempDirs: string[] = [];
 
@@ -105,6 +106,47 @@ describe("eval harness contracts", () => {
     );
   });
 
+  it("keeps tool path failures diagnostic unless ACTION is selected", () => {
+    const evalCase = fixtureCase("tool_path_default", "maya_default");
+    const actionCase = EvalCaseSchema.parse({
+      ...fixtureCase("tool_path_action", "maya_default"),
+      reward_basis: ["ACTION"]
+    });
+    const failedToolPathScore = {
+      category: "required_tool_usage" as const,
+      message: "Required tool lookup_customer was not called.",
+      passed: false,
+      score_id: "tool_path:required_tool_usage"
+    };
+
+    expect(scoreCase(evalCase, {
+      ...resultFor(evalCase),
+      scores: [failedToolPathScore]
+    }).status).toBe("passed");
+    expect(scoreCase(actionCase, {
+      ...resultFor(actionCase),
+      scores: [failedToolPathScore]
+    }).status).toBe("failed");
+  });
+
+  it("keeps hard policy failures as reward failures regardless of basis", () => {
+    const evalCase = EvalCaseSchema.parse({
+      ...fixtureCase("hard_policy_basis", "maya_default"),
+      reward_basis: ["COMMUNICATION"]
+    });
+    const scored = scoreCase(evalCase, {
+      ...resultFor(evalCase),
+      scores: [{
+        category: "hard_policy",
+        message: "P009_PAYMENT_SETTLEMENT_FORBIDDEN was violated.",
+        passed: false,
+        score_id: "hard_policy_basis:hard_policy"
+      }]
+    });
+
+    expect(scored.status).toBe("failed");
+  });
+
   it("structures confirmation evidence as server-created records", () => {
     const parsed = EvalCaseResultSchema.parse({
       ...resultFor(fixtureCase("confirmation_fixture", "maya_default")),
@@ -171,7 +213,13 @@ describe("eval harness contracts", () => {
     const json = JSON.parse(
       await readFile(join(reportDir, "eval-report.json"), "utf8")
     ) as {
-      results: { reward_basis: string[] }[];
+      results: {
+        diagnostics: { cost: { available: boolean; reason?: string } };
+        primary_rewards: Record<string, { passed: boolean; score: number }>;
+        raw_scores: unknown[];
+        reward_basis: string[];
+        reward_passed: boolean;
+      }[];
       summary: { cases_total: number };
     };
     const markdown = await readFile(join(reportDir, "eval-report.md"), "utf8");
@@ -180,8 +228,21 @@ describe("eval harness contracts", () => {
     expect(json.results[0]?.reward_basis).toEqual(
       SCRIPTED_DEFAULT_REWARD_BASIS
     );
+    expect(json.results[0]?.primary_rewards.safety).toMatchObject({
+      passed: true,
+      score: 1
+    });
+    expect(json.results[0]?.diagnostics.cost).toMatchObject({
+      available: false,
+      reason: "usage/cost metadata not captured yet"
+    });
+    expect(json.results[0]?.raw_scores.length).toBeGreaterThan(0);
+    expect(json.results[0]?.reward_passed).toBe(true);
     expect(markdown).toContain("scripted operational-safety evidence");
     expect(markdown).toContain("FINAL_STATE, SAFETY, CONFIRMATION, EVIDENCE");
+    expect(markdown).toContain("## Primary Reward Failures");
+    expect(markdown).toContain("## Diagnostics");
+    expect(markdown).toContain("## Raw Score Failures");
   });
 
   it("renders failed case diagnostics in the markdown report", () => {

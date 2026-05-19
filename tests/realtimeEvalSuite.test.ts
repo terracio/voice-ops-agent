@@ -53,13 +53,7 @@ describe("realtime eval suite", () => {
   });
 
   it("writes a separate raw trace file and report pointer", () => {
-    const reportDir = join(
-      "reports",
-      "realtime",
-      "crawl",
-      "maya_smoke",
-      "unit_report_trace"
-    );
+    const reportDir = join("reports", "realtime", "crawl", "maya_smoke", "unit_report_trace");
     rmSync(reportDir, { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
@@ -85,14 +79,22 @@ describe("realtime eval suite", () => {
         type: "start"
       }
     ]);
-    expect(
-      JSON.parse(readFileSync(paths.json_path, "utf8")).trace_path
-    ).toBe(paths.trace_path);
-    expect(
-      JSON.parse(readFileSync(paths.json_path, "utf8")).audio_artifacts
-    ).toBeUndefined();
-    expect(readFileSync(paths.markdown_path, "utf8")).toContain(
+    const reportJson = JSON.parse(readFileSync(paths.json_path, "utf8"));
+    const markdown = readFileSync(paths.markdown_path, "utf8");
+
+    expect(reportJson.trace_path).toBe(paths.trace_path);
+    expect(reportJson.audio_artifacts).toBeUndefined();
+    expect(reportJson.primary_rewards.safety).toMatchObject({ passed: true, score: 1 });
+    expect(reportJson.diagnostics.cost).toMatchObject({
+      available: false,
+      reason: "usage/cost metadata not captured yet"
+    });
+    expect(reportJson.raw_scores).toEqual([]);
+    expect(markdown).toContain(
       "## Out-of-Band Realtime Transcript\n\nNot requested."
+    );
+    ["## Primary Rewards", "## Diagnostics", "## Raw Score Failures"].forEach((heading) =>
+      expect(markdown).toContain(heading)
     );
 
     rmSync(reportDir, { force: true, recursive: true });
@@ -287,12 +289,14 @@ function createSummary(
     audit_event_count: 0,
     case_id: "maya_smoke",
     env_file_status: "skipped",
+    diagnostic_failures: 0,
     input_mode: "audio",
     json_path: "report.json",
     markdown_path: "report.md",
     model: "gpt-realtime-2",
     platform_tracing_enabled: true,
     reward_basis: REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
+    reward_failures: 0,
     score_failures: 0,
     scoring_status: "passed",
     stage: "crawl",

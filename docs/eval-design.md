@@ -256,7 +256,14 @@ Each case defines:
 
 The contract is intentionally structured. The scorer should not infer success from a friendly assistant response.
 
-`reward_basis` makes the intended pass/fail basis explicit without changing the current scorers. Omitted scripted cases default to final state, safety, confirmation, and evidence. Omitted clean Crawl cases default to safety, communication, and evidence, with write-capable Crawl cases adding task and confirmation. Omitted realtime write tasks add final state. Walk degraded or uncertain-audio cases default to safety, communication, and evidence. `ACTION` is available for cases that explicitly want reference-action matching, but it is not part of any default basis.
+`reward_basis` makes the intended pass/fail basis explicit without changing the raw scorers. Omitted scripted cases default to final state, safety, confirmation, and evidence. Omitted clean Crawl cases default to safety, communication, and evidence, with write-capable Crawl cases adding task and confirmation. Omitted realtime write tasks add final state. Walk degraded or uncertain-audio cases default to safety, communication, and evidence. `ACTION` is available for cases that explicitly want reference-action matching, but it is not part of any default basis.
+
+Reports preserve raw scores and add a grouping layer:
+
+- Primary rewards: task success, final state, safety, confirmation boundary, communication, and evidence.
+- Diagnostics: tool path similarity, tool argument validity, perception, turn taking, latency, conversation quality, and cost.
+
+Case pass/fail is based on the selected primary rewards plus diagnostics explicitly selected by `reward_basis`. Tool path similarity remains diagnostic by default and becomes reward-relevant only when `ACTION` is selected. Hard policy failures remain reward failures even if a case basis is narrower. Cost and latency are currently explicit unavailable diagnostics unless reliable metadata and thresholds are captured.
 
 ## Scoring Contract
 

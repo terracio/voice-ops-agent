@@ -1,3 +1,5 @@
+import type { RewardAggregation } from "../rewardAggregationTypes";
+
 export type RealtimeCrawlScoreCategory =
   | "audit"
   | "confirmation"
@@ -41,6 +43,7 @@ export type RealtimeCrawlDiagnostic = {
 
 export type RealtimeCrawlScoring = {
   diagnostics: RealtimeCrawlDiagnostic[];
+  reward_evaluation?: RewardAggregation;
   score_failures: number;
   scores: RealtimeCrawlScore[];
   status: "failed" | "passed" | "skipped";

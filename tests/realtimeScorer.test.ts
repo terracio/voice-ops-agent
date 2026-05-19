@@ -26,6 +26,28 @@ describe("Realtime Crawl scorer", () => {
     expect(scoring.score_failures).toBe(0);
   });
 
+  it("keeps exact tool path diagnostic unless ACTION is selected", () => {
+    const realtimeCase = loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" });
+    const diagnosticOnly = scoreRealtimeCrawlCase(realtimeCase, completedResult({
+      assistantText: "I found Maya's account."
+    }));
+    const actionCase = {
+      ...realtimeCase,
+      reward_basis: ["ACTION" as const]
+    };
+    const actionScoring = scoreRealtimeCrawlCase(actionCase, completedResult({
+      assistantText: "I found Maya's account."
+    }));
+
+    expect(diagnosticOnly.score_failures).toBe(1);
+    expect(diagnosticOnly.status).toBe("passed");
+    expect(diagnosticOnly.reward_evaluation?.diagnostic_failures)
+      .toMatchObject([{ key: "tool_path_similarity" }]);
+    expect(actionScoring.status).toBe("failed");
+    expect(actionScoring.reward_evaluation?.reward_failures)
+      .toMatchObject([{ key: "tool_path_similarity" }]);
+  });
+
   it("explains missing tools, forbidden tools, policies, and unsafe claims", () => {
     const realtimeCase = loadRealtimeEvalCase({
       caseId: "allergy_change_escalates",

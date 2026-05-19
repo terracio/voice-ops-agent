@@ -1,5 +1,6 @@
 import { getSeedScenario } from "../../domain/seed";
 import type { RealtimeRunnerResult } from "../../realtime/runner/types";
+import { buildRealtimeRewardAggregation } from "../rewardAggregation";
 import type { RealtimeEvalCase } from "./caseLoader";
 import {
   CLARIFICATION_RE,
@@ -52,14 +53,19 @@ export function scoreRealtimeCrawlCase(realtimeCase: RealtimeEvalCase, result: R
       }]
   );
   const scoreFailures = scores.filter((score) => !score.passed).length;
+  const rewardEvaluation = buildRealtimeRewardAggregation({
+    rewardBasis: realtimeCase.reward_basis,
+    scores
+  });
 
   return {
     diagnostics,
+    reward_evaluation: rewardEvaluation,
     score_failures: scoreFailures,
     scores,
     status: result.status === "skipped"
       ? "skipped"
-      : scoreFailures > 0 ? "failed" : "passed"
+      : rewardEvaluation.reward_passed ? "passed" : "failed"
   };
 }
 

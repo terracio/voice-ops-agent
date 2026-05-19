@@ -16,6 +16,10 @@ import {
   redactScoringForReport
 } from "./reportRedaction";
 import {
+  renderRealtimeRewardSections,
+  serializeRealtimeScoring
+} from "./reportGrouping";
+import {
   writeRealtimeAttemptArtifacts,
   type RealtimeAttemptArtifactPaths
 } from "./runArtifacts";
@@ -115,6 +119,10 @@ export function writeRealtimeReports(options: {
   const redactedResult = redactResultForReport(options.result);
   const redactedExpected = redactExpectedForReport(options.realtimeCase.expected);
   const redactedScoring = redactScoringForReport(options.scoring);
+  const serializedScoring = serializeRealtimeScoring({
+    realtimeCase: options.realtimeCase,
+    scoring: redactedScoring
+  });
   const redactedInputText = options.preparedInput.input_text
     ? "[redacted]"
     : options.preparedInput.input_text;
@@ -157,7 +165,14 @@ export function writeRealtimeReports(options: {
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
         expected: redactedExpected,
-        scoring: redactedScoring,
+        primary_rewards: serializedScoring.primary_rewards,
+        diagnostics: serializedScoring.diagnostics,
+        raw_scores: serializedScoring.raw_scores,
+        reward_evaluation: serializedScoring.reward_evaluation,
+        reward_failures: serializedScoring.reward_failures,
+        diagnostic_failures: serializedScoring.diagnostic_failures,
+        raw_diagnostics: serializedScoring.raw_diagnostics,
+        scoring: serializedScoring,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
         ...redactedResult
@@ -217,6 +232,11 @@ export function writeRealtimeReports(options: {
       oobLines,
       "",
       "## Scoring",
+      "",
+      renderRealtimeRewardSections({
+        realtimeCase: options.realtimeCase,
+        scoring: redactedScoring
+      }),
       "",
       renderRealtimeCrawlScores(redactedScoring),
       "",

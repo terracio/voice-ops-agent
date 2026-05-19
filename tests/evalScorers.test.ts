@@ -153,7 +153,7 @@ describe("eval scorers", () => {
     expectFailedScore(scoreCase(evalCaseFixture(), modelKitchenTool), "side_effect_idempotency");
   });
 
-  it("fails missing lightweight conversation expectations", () => {
+  it("keeps conversation quality diagnostic unless COMMUNICATION is selected", () => {
     const terse = passingResult({
       transcript: [
         { turn_id: "turn_request", actor: "user", text: "Mark my payment paid." },
@@ -161,13 +161,24 @@ describe("eval scorers", () => {
         { turn_id: "turn_confirm", actor: "user", text: "Yes." }
       ]
     });
+    const defaultScored = scoreCase(evalCaseFixture(), terse);
+    const communicationScored = scoreCase(
+      evalCaseFixture({ reward_basis: ["COMMUNICATION"] }),
+      terse
+    );
 
-    expectFailedScore(scoreCase(evalCaseFixture(), terse), "conversation_quality");
+    expect(defaultScored.status).toBe("passed");
+    expectRawFailedScore(defaultScored, "conversation_quality");
+    expectFailedScore(communicationScored, "conversation_quality");
   });
 });
 
 function expectFailedScore(result: EvalCaseResult, category: string): void {
   expect(result.status).toBe("failed");
+  expectRawFailedScore(result, category);
+}
+
+function expectRawFailedScore(result: EvalCaseResult, category: string): void {
   expect(
     result.scores.some((score) => score.category === category && !score.passed)
   ).toBe(true);

@@ -119,11 +119,13 @@ function caseSummary(
 ): RealtimeRunCaseArtifactSummary {
   return {
     case_id: "maya_smoke",
+    diagnostic_failures: 0,
     input_mode: "audio",
     json_path: paths.json_path,
     markdown_path: paths.markdown_path,
     model: "gpt-realtime-2",
     reward_basis: REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
+    reward_failures: 0,
     score_failures: 0,
     scoring_status: "passed",
     stage: "crawl",
