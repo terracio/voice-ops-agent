@@ -127,7 +127,7 @@ The runner:
 9. scores observable behavior,
 10. writes reports, traces, and audio artifacts.
 
-Crawl and Walk are reviewer evidence for:
+Crawl and Walk provide evidence for:
 
 - audio input generation and replay,
 - realtime model behavior,
@@ -174,14 +174,14 @@ artifacts/<case_id>/<attempt_id>/
 `<attempt_id>` is a short run-local artifact label such as `attempt_001`.
 The full realtime runner ID remains in each attempt's `sim_status.json` as `realtime_run_id`.
 
-Checked-in sample artifacts are available for reviewers who cannot run realtime evals locally:
+Checked-in sample artifacts are available when realtime evals are not run locally:
 
 ```text
 docs/examples/realtime-crawl-sample-report.md
 docs/examples/realtime-crawl-results.json
 ```
 
-These samples are source artifacts that mirror generated `reports/evals/realtime/<run_id>/` output without requiring reviewers to spend realtime API credits.
+These samples are source artifacts that mirror generated `reports/evals/realtime/<run_id>/` output without requiring a local realtime run.
 
 ## Realtime Audio Replay Configuration
 
@@ -357,7 +357,7 @@ Most cases score the operational outcome:
 - communication,
 - evidence.
 
-Tool path similarity is still recorded because it helps reviewers understand whether the model took the expected route. By default, though, it is diagnostic evidence rather than the main reward.
+Tool path similarity is still recorded because it helps explain whether the model took the expected route. By default, though, it is diagnostic evidence rather than the main reward.
 
 Some ordering is hard-gated because it is a safety invariant, not because it is a preferred reference path:
 
@@ -440,18 +440,24 @@ fixture_mode: generated_on_demand
 stable_for_gating: false
 ```
 
-This is intentional for the current stage. These runs are useful for development and review, but they are not yet stable CI-gating artifacts.
+This is intentional for the current stage. These runs are useful for development and inspection, but they are not yet stable CI-gating artifacts.
 
 Future hardening should add cached PCM fixtures with checksums before realtime evals become a strict gate.
+
+Production evals should keep semantic behavior gates separate from acoustic
+quality gates. Tool choice, policy enforcement, confirmation boundaries, and
+final state should remain stable semantic checks; assistant voice quality,
+barge-in, interruption, overlap, and audio naturalness need separate acoustic
+metrics so speech-to-speech variance does not make the safety suite flaky.
 
 ## Gating Policy
 
 Current gating expectations:
 
 - `pnpm test` and `pnpm eval` should be stable local gates.
-- `pnpm eval:realtime` requires OpenAI API credits and should be treated as a credential-gated evidence run.
+- `pnpm eval:realtime` should be treated as a credential-gated live evidence run.
 - Crawl and Walk reports should be inspected when behavior changes.
-- Checked-in sample Crawl artifacts under `docs/examples/` are reviewer aids and are not CI gates.
+- Checked-in sample Crawl artifacts under `docs/examples/` are documentation aids and are not CI gates.
 - Run evals are planned and should become the main multi-turn behavior proof once implemented.
 
 ## Known Limits
@@ -459,6 +465,7 @@ Current gating expectations:
 - Realtime cases currently emphasize Crawl/Walk routing and policy behavior.
 - Confirmed write completion in realtime multi-turn scenarios is planned for Run.
 - Audio fixtures are generated/transformed locally and are not yet stable checked-in gates.
+- Semantic behavior scoring is not yet separated from a full acoustic-quality scoring suite.
 - Out-of-band transcription is a debugging aid, not an authority layer.
 - Conversation-quality scoring is intentionally lightweight compared with tool, policy, audit, and state scoring.
 - Assistant audio quality, stereo conversation output, interruption metrics, barge-in timing, and full multi-turn Run simulations are not yet fully scored.

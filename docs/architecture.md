@@ -105,6 +105,46 @@ sequenceDiagram
 
 The browser never receives `OPENAI_API_KEY`, domain write tools, direct DB access, or policy logic.
 
+## Deployment Boundary
+
+MealPlan VoiceOps is a local, production-shaped demo harness. It is not a
+production deployment.
+
+Do not expose `POST /api/realtime/call` to the public internet without
+authentication, rate limiting, abuse controls, and budget controls. The route
+creates OpenAI Realtime calls with the server API key, starts server-side
+sideband control, and needs production abuse controls before public exposure.
+
+In this local demo, the Next.js route brokers the browser call and starts
+sideband control in the same application process. That is not the intended
+production scaling shape for persistent realtime control. A production version
+should split the web route from the long-lived sideband worker or service so
+WebSocket lifetime, backpressure, retries, and call ownership are handled by a
+stateful runtime rather than a serverless request lifecycle.
+
+The current DB, active session state, and realtime evidence store are
+process-local and resettable. The demo is intended for one local operator/session
+at a time. Production would require persistent per-session state, transactional
+writes, durable audit and evidence storage, and explicit session ownership that
+works across multiple application instances.
+
+Real customer systems add slower and less reliable dependencies. CRM, billing,
+kitchen, and handoff integrations would need distributed locking, idempotency
+keys, retry/outbox semantics, and user-visible timeout behavior so tool retries,
+reconnects, hangups, and overlapping background jobs cannot double-commit or
+silently lose work.
+
+The browser evidence route is protected by an HTTP-only,
+`SameSite=Strict`, `Secure` `realtime_evidence_session` cookie scoped to
+`/api/realtime/evidence`. Keep HTTPS for any public or tunneled deployment. If a
+local browser drops `Secure` cookies over plain HTTP during development, prefer
+an HTTPS local dev URL or tunnel over weakening the production cookie flags.
+
+Production deployment would also need OIDC/OAuth2 or equivalent authentication
+for operators and callers, tenant-aware authorization, and a durable human
+handoff queue. The current escalation tool records mock handoff intent; it does
+not route work to a real queue.
+
 ## Live Audio Configuration
 
 The browser demo uses the browser as the audio surface and the Realtime API as the live turn-taking layer.
@@ -158,6 +198,11 @@ Responsibilities:
 The sideband controller must not contain domain rules. It should be orchestration glue around the shared registry and domain layer.
 
 The browser-created call path starts sideband control automatically. The manual `/api/realtime/control` attach route is a server/debug surface and must require `Authorization: Bearer $MEALPLAN_REALTIME_CONTROL_TOKEN` before parsing request bodies or opening sockets.
+
+The sideband event adapter intentionally accepts a narrow subset of Realtime
+transport events: final transcript events, completed response items, function
+calls, tool results, errors, and response completion. Revalidate those parser
+assumptions whenever upgrading the Realtime API, SDK, model, or event format.
 
 ## Tool and State Flow
 
@@ -231,7 +276,7 @@ Realtime transcripts are diagnostic evidence. They are not operational write aut
 │   └── evals/               Scripted/realtime cases, scorers, reports, audio.
 ├── docs/                    Architecture, guardrails, eval design, demo script.
 ├── tests/                   Unit, integration, UI, realtime, and eval tests.
-├── README.md                Reviewer-facing overview and run commands.
+├── README.md                Project overview and run commands.
 ├── SPEC.md                  Product and system requirements.
 └── AGENTS.md                Coding-agent onboarding and working rules.
 ```

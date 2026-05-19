@@ -61,7 +61,7 @@ Do not bypass this flow to make a demo or eval pass.
 │   └── evals/               Scripted/realtime cases, scorers, reports, audio.
 ├── docs/                    Architecture, guardrails, eval design, demo script.
 ├── tests/                   Unit, integration, UI, realtime, and eval tests.
-├── README.md                Reviewer-facing overview and run commands.
+├── README.md                Project overview and run commands.
 ├── SPEC.md                  Product and system requirements.
 └── AGENTS.md                Coding-agent onboarding and working rules.
 ```
@@ -181,7 +181,7 @@ pnpm vitest run tests/voiceConsole.test.ts tests/voiceConsoleTranscript.test.ts
 pnpm vitest run tests/realtimeServerControl.test.ts tests/realtimeBrowserSession.test.ts
 ```
 
-Realtime evals require OpenAI API credits:
+Realtime evals are credential-gated live runs:
 
 ```bash
 pnpm eval:realtime -- --stage crawl

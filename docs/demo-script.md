@@ -1,6 +1,6 @@
 # Demo Script
 
-This document is a reviewer-friendly walkthrough for the browser demo.
+This document is a practical walkthrough for the browser demo.
 
 The goal is not to show a perfect production agent. The goal is to show the production-shaped boundary around a realtime voice agent: browser voice, server-side tools, deterministic policies, ChangeSets, confirmations, audit, and evidence.
 
@@ -33,7 +33,7 @@ Use Chrome or another browser with microphone permission support. Use headphones
 
 ## What To Show First
 
-Before placing a call, orient the reviewer:
+Before placing a call, orient the operator:
 
 - The **Live Call** tab is the default voice cockpit.
 - **Transcript**, **Evidence**, and **Trace** hold full-history diagnostic detail.
@@ -59,11 +59,11 @@ application with a single Realtime `response.create` event after the data channe
 opens; the app does not create a synthetic caller message.
 
 Press **Hang up** to end browser audio and the Realtime connection. The call id,
-transcript, tool timeline, evidence, and cost telemetry remain visible for review
+transcript, tool timeline, evidence, and cost telemetry remain visible for inspection
 until **Reset** clears the console history.
 
 The browser demo starts from the `browser_demo` seed. That seed includes all
-demo customer archetypes so reviewers can try different account paths in the
+demo customer archetypes so different account paths can be exercised in the
 same live UI:
 
 | Customer ID | Scenario |
@@ -228,7 +228,7 @@ The browser demo should make these boundaries visible:
 - Confirmation is server-created, not model-created.
 - Commits happen after preview and confirmation.
 - Side effects happen after commit.
-- Audit and eval evidence make behavior reviewable.
+- Audit and eval evidence make behavior inspectable.
 
 ## What This Demo Does Not Prove
 

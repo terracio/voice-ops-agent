@@ -44,7 +44,7 @@ pnpm eval
 pnpm build
 ```
 
-`pnpm eval` runs the deterministic scripted safety suite without OpenAI credentials. Realtime audio evals use `pnpm eval:realtime` and are manual because they require OpenAI credentials, API credits, and live model behavior.
+`pnpm eval` runs the deterministic scripted safety suite without OpenAI credentials. Realtime audio evals use `pnpm eval:realtime` and stay manual because they require server-side OpenAI credentials and live model behavior.
 
 ---
 
@@ -204,7 +204,7 @@ pnpm eval -- --pass-k 3
 
 No OpenAI credentials required.
 
-GitHub Actions runs `pnpm lint`, `pnpm test`, `pnpm eval`, and `pnpm build` on pushes and pull requests to `main`. Realtime evals are intentionally manual because they require OpenAI credentials, API credits, and live audio/model behavior.
+GitHub Actions runs `pnpm lint`, `pnpm test`, `pnpm eval`, and `pnpm build` on pushes and pull requests to `main`. Realtime evals are intentionally manual because they require server-side OpenAI credentials and live audio/model behavior.
 
 Run realtime audio evals:
 
@@ -215,15 +215,31 @@ pnpm eval:realtime -- --stage walk --walk-profile walk_uncertain_noise_v1
 pnpm eval:realtime -- --stage crawl --case customer_identity_lookup --redacted
 ```
 
-Realtime evals require server-side OpenAI credentials. Generated reports are raw by default for debugging; add `--redacted` when producing shareable artifacts from real audio or customer-like data.
+Generated reports are raw by default for debugging; add `--redacted` when producing shareable artifacts from real audio or customer-like data.
 
 Runtime defaults live in [`src/realtime/config/runtimeConfig.ts`](src/realtime/config/runtimeConfig.ts). Live browser audio settings are documented in [`docs/architecture.md`](docs/architecture.md). Realtime eval chunking, replay, and Walk noise profiles are documented in [`docs/eval-design.md`](docs/eval-design.md).
 
-For reviewers without realtime API credits, a checked-in Crawl sample is available as [`docs/examples/realtime-crawl-sample-report.md`](docs/examples/realtime-crawl-sample-report.md) with matching JSON at [`docs/examples/realtime-crawl-results.json`](docs/examples/realtime-crawl-results.json). It mirrors the canonical `reports/evals/realtime/<run_id>/` output shape, but is committed as source documentation rather than generated per run.
+For readers who do not run credentialed realtime evals locally, a checked-in Crawl sample is available as [`docs/examples/realtime-crawl-sample-report.md`](docs/examples/realtime-crawl-sample-report.md) with matching JSON at [`docs/examples/realtime-crawl-results.json`](docs/examples/realtime-crawl-results.json). It mirrors the canonical `reports/evals/realtime/<run_id>/` output shape, but is committed as source documentation rather than generated per run.
 
 ---
 
 ## Status
+
+### Deployment Boundary
+
+This repository is designed for local demo/testing and one local operator/session at a time. Do not publicly expose `/api/realtime/call` without production authentication, rate limiting, abuse controls, and budget controls. That route creates Realtime calls with the server API key.
+
+The Next.js API route is a local session broker, not a scalable realtime control plane. Production should move long-lived sideband sockets and call state into a dedicated stateful service or worker process, leaving the web app to authenticate users and broker session creation.
+
+The mock DB and realtime evidence store are in-memory process state. Production use would need persistent per-session state, transactional writes, durable audit/evidence storage, and explicit session ownership across multiple instances.
+
+Production integrations with CRM, billing, kitchen, or support queues would also need distributed locking, idempotency keys, retry/outbox handling, and clear timeout behavior for slow legacy systems. Tool retries and user reconnects must be safe when a caller hangs up, reconnects, or overlaps with background jobs.
+
+The evidence polling route uses an HTTP-only, `SameSite=Strict`, `Secure` browser-session cookie scoped to `/api/realtime/evidence`. The local demo has been exercised on localhost; public or tunneled deployments should use HTTPS rather than weakening the cookie flags.
+
+Enterprise deployment would need real operator/customer authentication such as OIDC/OAuth2, tenant/session authorization, and a durable human-handoff queue.
+
+The Realtime sideband event adapter is intentionally narrow. Revalidate transcript, tool-call, and response-completion parsing whenever upgrading the Realtime API, SDK, or model event format.
 
 ### Implemented
 
@@ -243,15 +259,15 @@ For reviewers without realtime API credits, a checked-in Crawl sample is availab
 - multi-turn Run evals,
 - richer interruption and overlap scoring,
 - cached stable audio fixtures for gating,
+- separate semantic eval gates from acoustic/audio-quality gates,
 - improved confirmation and preview UX,
 - production persistence, auth, and human-handoff hardening.
 
 ### Limitations
 
 - This is a production-shaped demo, not a production deployment.
-- The DB and evidence store are local/in-memory.
-- There are no real payments, CRM, SMS, kitchen PDFs, auth, or human handoff queue.
-- Realtime evals require API credits.
+- The DB and evidence store are local/in-memory and not multi-instance durable.
+- There are no real payments, CRM, SMS, kitchen PDFs, production auth, rate limits, or human handoff queue.
 - Audio fixtures are not yet stable CI gating assets.
 - Out-of-band transcription is diagnostic only, not an operational source of truth.
 

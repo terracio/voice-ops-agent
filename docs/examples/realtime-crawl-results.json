@@ -3,7 +3,7 @@
   "sample": {
     "checked_in": true,
     "generated": false,
-    "note": "Reviewer sample only. This file illustrates realtime Crawl artifact shape without requiring OpenAI API credits."
+    "note": "Checked-in sample only. This file illustrates realtime Crawl artifact shape without requiring a local realtime run."
   },
   "run_id": "realtime_crawl_20260518T164211Z_sample",
   "suite": "realtime",
