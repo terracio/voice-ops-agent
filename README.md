@@ -1,6 +1,7 @@
 # MealPlan VoiceOps
 
 [![CI](https://github.com/terracio/voice-ops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/terracio/voice-ops-agent/actions/workflows/ci.yml)
+![Demo](https://img.shields.io/badge/Demo-v0.1.0-4cb782)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![OpenAI Realtime](https://img.shields.io/badge/OpenAI-Realtime-10a37f)
