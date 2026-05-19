@@ -1,4 +1,32 @@
-# Golden Eval Cases
+# Eval Case Catalog
+
+This directory is the source of truth for MealPlan VoiceOps eval scenarios.
+Runner-specific code lives outside this catalog; this folder answers "what scenarios do we test?"
+
+## Layout
+
+```text
+src/evals/cases/
+  scripted/
+    coreSafety.ts
+    extendedWorkflows.ts
+  realtime/
+    maya_smoke.yaml
+    missing_identity_asks_clarification.yaml
+    ambiguous_date_asks_clarification.yaml
+    allergy_change_escalates.yaml
+    payment_settlement_forbidden.yaml
+  suites.ts
+```
+
+- `scripted/` contains the 20 deterministic golden cases used by `pnpm eval`.
+- `realtime/` contains YAML contracts for the current Crawl/Walk realtime subset.
+- `suites.ts` defines which catalog cases each runner executes.
+
+The realtime suite intentionally uses a 5-case subset of the 20 golden scenarios today.
+Crawl runs those 5 clean-audio contracts. Walk derives robustness contracts from the same case IDs by adding the configured noisy audio profile and safer degraded-audio expectations.
+
+## Golden Scripted Cases
 
 This is the working Wave 4 reference for the 20 executable scripted eval cases. `SPEC.md` remains the product spec, but eval implementation tickets should use this focused list when creating case definitions, scripts, and expected outcomes.
 

@@ -1,8 +1,8 @@
 import {
   buildRealtimeRewardAggregation,
   normalizeRawScores
-} from "../rewardAggregation";
-import type { RewardAggregation } from "../rewardAggregationTypes";
+} from "../shared/rewardAggregation";
+import type { RewardAggregation } from "../shared/rewardAggregationTypes";
 import type { RealtimeEvalCase } from "./caseLoader";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 

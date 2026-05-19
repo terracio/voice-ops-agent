@@ -8,7 +8,7 @@ import {
   REALTIME_CRAWL_DEFAULT_REWARD_BASIS,
   REALTIME_CRAWL_WRITE_CAPABLE_DEFAULT_REWARD_BASIS,
   REALTIME_WALK_DEGRADED_DEFAULT_REWARD_BASIS
-} from "../src/evals/rewardBasis";
+} from "../src/evals/shared/rewardBasis";
 
 describe("Realtime case loader", () => {
   it("loads the maya smoke case as a clean-audio crawl fixture", () => {

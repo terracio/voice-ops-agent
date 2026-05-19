@@ -1,4 +1,4 @@
-import type { RewardAggregation } from "../rewardAggregationTypes";
+import type { RewardAggregation } from "../shared/rewardAggregationTypes";
 
 export type RealtimeCrawlScoreCategory =
   | "audit"

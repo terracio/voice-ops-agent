@@ -3,9 +3,9 @@ import {
   EvalCaseSchema,
   type EvalCaseInput,
   type EvalCaseResult
-} from "./caseSchema";
-import { buildScriptedRewardAggregation } from "./rewardAggregation";
-import { runEvalScorers } from "./scorers";
+} from "../caseSchema";
+import { buildScriptedRewardAggregation } from "../shared/rewardAggregation";
+import { runScriptedEvalScorers } from "./scorers";
 
 export function scoreCase(
   evalCaseInput: EvalCaseInput,
@@ -13,7 +13,7 @@ export function scoreCase(
 ): EvalCaseResult {
   const evalCase = EvalCaseSchema.parse(evalCaseInput);
   const result = EvalCaseResultSchema.parse(resultInput);
-  const scorerOutput = runEvalScorers(evalCase, result);
+  const scorerOutput = runScriptedEvalScorers(evalCase, result);
   const scores = [...result.scores, ...scorerOutput.scores];
   const diagnostics = [...result.diagnostics, ...scorerOutput.diagnostics];
   const aggregation = buildScriptedRewardAggregation({

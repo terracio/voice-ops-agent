@@ -16,10 +16,10 @@ import {
   renderTerminalSummary,
   writeEvalReports,
   type PassKAggregate
-} from "./report";
-import { scoreCase } from "./scoreCase";
-import { runScriptedEvalCase } from "./scriptedRunner";
-import { firstTenCases, remainingTenCases } from "./cases";
+} from "./scripted/report";
+import { scoreCase } from "./scripted/scoreCase";
+import { runScriptedEvalCase } from "./scripted/runner";
+import { SCRIPTED_GOLDEN_CASES } from "./cases";
 
 export type EvalExecutorContext = {
   run_id: string;
@@ -33,7 +33,7 @@ export type EvalExecutor = (
   context: EvalExecutorContext
 ) => EvalCaseResult | Promise<EvalCaseResult>;
 
-export type RunEvalOptions = {
+export type RunScriptedEvalOptions = {
   cases?: EvalCaseInput[];
   mode?: EvalMode;
   reportDir?: string;
@@ -43,21 +43,18 @@ export type RunEvalOptions = {
   passK?: number;
 };
 
-export type RunEvalResult = {
+export type RunScriptedEvalResult = {
   report: EvalRunReport;
   terminalSummary: string;
   reportFiles: Awaited<ReturnType<typeof writeEvalReports>>;
   passKAggregate?: PassKAggregate;
 };
 
-const DEFAULT_EVAL_CASES: EvalCaseInput[] = [
-  ...firstTenCases,
-  ...remainingTenCases
-];
+const DEFAULT_EVAL_CASES: EvalCaseInput[] = SCRIPTED_GOLDEN_CASES;
 
-export async function runEval(
-  options: RunEvalOptions = {}
-): Promise<RunEvalResult> {
+export async function runScriptedEval(
+  options: RunScriptedEvalOptions = {}
+): Promise<RunScriptedEvalResult> {
   const mode = options.mode ?? "scripted";
   const now = options.now ?? (() => new Date().toISOString());
   const env = options.env ?? process.env;
@@ -200,7 +197,7 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   try {
-    const { report, terminalSummary } = await runEval({
+    const { report, terminalSummary } = await runScriptedEval({
       mode: parseMode(args),
       passK: parsePassK(args),
       env: process.env

@@ -15,7 +15,8 @@ import {
 import {
   defaultRealtimeRewardBasis,
   RewardBasisListSchema
-} from "../rewardBasis";
+} from "../shared/rewardBasis";
+import { REALTIME_WALK_ROBUSTNESS_CASE_IDS } from "../cases/suites";
 
 const WalkAudioProfileSchema = z.object({
   name: z.enum(WALK_AUDIO_PROFILE_NAMES),
@@ -118,19 +119,12 @@ export const RealtimeEvalCaseSchema = RealtimeEvalCaseInputSchema.transform(
 export type RealtimeEvalCase = z.infer<typeof RealtimeEvalCaseSchema>;
 type RealtimeEvalCaseInput = z.infer<typeof RealtimeEvalCaseInputSchema>;
 
-const casesDir = join(dirname(fileURLToPath(import.meta.url)), "cases");
+const casesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "cases", "realtime");
 
-export const REALTIME_CRAWL_CONTRACT_CASE_IDS = [
-  "maya_smoke",
-  "missing_identity_asks_clarification",
-  "ambiguous_date_asks_clarification",
-  "allergy_change_escalates",
-  "payment_settlement_forbidden"
-] as const;
-
-export const REALTIME_WALK_ROBUSTNESS_CASE_IDS = [
-  ...REALTIME_CRAWL_CONTRACT_CASE_IDS
-] as const;
+export {
+  REALTIME_CRAWL_CONTRACT_CASE_IDS,
+  REALTIME_WALK_ROBUSTNESS_CASE_IDS
+} from "../cases/suites";
 
 const UNCERTAIN_AUDIO_FORBIDDEN_TOOLS = [
   "lookup_customer",

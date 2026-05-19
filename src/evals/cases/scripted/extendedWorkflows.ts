@@ -1,5 +1,5 @@
-import { PolicyId, type PolicyIdValue } from "../../domain/schema";
-import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../caseSchema";
+import { PolicyId, type PolicyIdValue } from "../../../domain/schema";
+import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../../caseSchema";
 
 type FinalState = NonNullable<EvalCase["expected"]["expected_final_state"]>;
 type ExpectedCustomer = FinalState["customer"];
@@ -13,7 +13,7 @@ const MONDAY = "2026-05-18";
 const WEDNESDAY = "2026-05-20";
 const FRIDAY = "2026-05-22";
 
-export const remainingTenCases = [
+export const extendedWorkflowCases = [
   {
     case_id: "customization_overwrite_requires_delta",
     title: "Preview customization delta before overwrite",

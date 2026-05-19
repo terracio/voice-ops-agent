@@ -1,6 +1,6 @@
-import { ResolveServiceDatesOutputSchema } from "../domain/dateResolver";
-import type { ToolResult } from "../domain/schema";
-import type { ToolExecutionContext } from "../tools";
+import { ResolveServiceDatesOutputSchema } from "../../domain/dateResolver";
+import type { ToolResult } from "../../domain/schema";
+import type { ToolExecutionContext } from "../../tools";
 
 export function applyTrustedDateResolutionFromToolResult(options: {
   context: ToolExecutionContext;

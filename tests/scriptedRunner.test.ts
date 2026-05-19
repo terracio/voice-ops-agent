@@ -5,8 +5,8 @@ import {
   EvalCaseSchema,
   type EvalCase
 } from "../src/evals/caseSchema";
-import { runEval } from "../src/evals/runEval";
-import { runScriptedEvalCase } from "../src/evals/scriptedRunner";
+import { runScriptedEval } from "../src/evals/runScriptedEval";
+import { runScriptedEvalCase } from "../src/evals/scripted/runner";
 
 const START = "2026-05-11T10:00:00.000Z";
 
@@ -85,7 +85,7 @@ const scriptedCase: EvalCase = EvalCaseSchema.parse({
 
 describe("scripted eval runner", () => {
   it("runs scripted mode without OpenAI credentials through real tools", async () => {
-    const { report } = await runEval({
+    const { report } = await runScriptedEval({
       cases: [scriptedCase],
       mode: "scripted",
       env: {},

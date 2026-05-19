@@ -1,6 +1,6 @@
 import { getSeedScenario } from "../../domain/seed";
 import type { RealtimeRunnerResult } from "../../realtime/runner/types";
-import { buildRealtimeRewardAggregation } from "../rewardAggregation";
+import { buildRealtimeRewardAggregation } from "../shared/rewardAggregation";
 import type { RealtimeEvalCase } from "./caseLoader";
 import {
   CLARIFICATION_RE,

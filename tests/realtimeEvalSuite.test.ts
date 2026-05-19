@@ -14,7 +14,7 @@ import {
   shouldFailRealtimeEval,
   type RealtimeCaseRunSummary
 } from "../src/evals/realtime/suite";
-import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
+import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/shared/rewardBasis";
 
 describe("realtime eval suite", () => {
   it("resolves the first Crawl suite when no case is provided", () => {

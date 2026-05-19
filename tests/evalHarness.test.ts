@@ -16,10 +16,10 @@ import {
   EvalCaseSchema,
   EvalCaseResultSchema
 } from "../src/evals/caseSchema";
-import { buildEvalReport, writeEvalReports } from "../src/evals/report";
-import { runEval } from "../src/evals/runEval";
-import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
-import { scoreCase } from "../src/evals/scoreCase";
+import { buildEvalReport, writeEvalReports } from "../src/evals/scripted/report";
+import { runScriptedEval } from "../src/evals/runScriptedEval";
+import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/shared/rewardBasis";
+import { scoreCase } from "../src/evals/scripted/scoreCase";
 
 const tempDirs: string[] = [];
 
@@ -175,7 +175,7 @@ describe("eval harness contracts", () => {
       fixtureCase("maya_seed", "maya_default")
     ];
 
-    const { report, reportFiles, terminalSummary } = await runEval({
+    const { report, reportFiles, terminalSummary } = await runScriptedEval({
       cases,
       mode: "scripted",
       reportDir,
@@ -287,7 +287,7 @@ describe("eval harness contracts", () => {
 
   it("requires a server-side OpenAI key for model mode", async () => {
     await expect(
-      runEval({
+      runScriptedEval({
         cases: [],
         mode: "model",
         reportDir: await makeReportDir(),

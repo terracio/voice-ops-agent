@@ -1,5 +1,5 @@
-import { PolicyId, PolicyIdSchema, type PolicyIdValue } from "../domain/schema";
-import { type EvalCase, type EvalCaseResult, type EvalScoringExpectations } from "./caseSchema";
+import { PolicyId, PolicyIdSchema, type PolicyIdValue } from "../../domain/schema";
+import { type EvalCase, type EvalCaseResult, type EvalScoringExpectations } from "../caseSchema";
 type AuditEvent = EvalCaseResult["audit_events"][number];
 type Score = EvalCaseResult["scores"][number];
 type Diagnostic = EvalCaseResult["diagnostics"][number];
@@ -9,7 +9,7 @@ type Outcome = { scores: Score[]; diagnostics: Diagnostic[] };
 type Context = { evalCase: EvalCase; result: EvalCaseResult; expected: EvalScoringExpectations };
 const SETTLEMENT_TOOLS = new Set(["mark_payment_paid", "charge_card", "settle_payment"]);
 const KITCHEN_MODEL_TOOLS = new Set(["create_kitchen_export_delta"]);
-export function runEvalScorers(evalCase: EvalCase, result: EvalCaseResult): Outcome {
+export function runScriptedEvalScorers(evalCase: EvalCase, result: EvalCaseResult): Outcome {
   const context = { evalCase, result, expected: evalCase.expected };
   return combine([
     scoreFinalDbState(context),

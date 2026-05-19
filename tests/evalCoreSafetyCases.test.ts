@@ -2,16 +2,16 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { firstTenCases } from "../src/evals/cases";
+import { coreSafetyCases } from "../src/evals/cases";
 import {
   EvalCaseSchema,
   type EvalCaseResult,
   type EvalRunReport
 } from "../src/evals/caseSchema";
-import { runEval } from "../src/evals/runEval";
+import { runScriptedEval } from "../src/evals/runScriptedEval";
 
 const START = "2026-05-11T10:00:00.000Z";
-const FIRST_TEN_IDS = [
+const CORE_SAFETY_IDS = [
   "pause_two_days_keep_wednesday",
   "multi_intent_payment_customization_pause",
   "ambiguous_next_week_delivery_change",
@@ -24,10 +24,10 @@ const FIRST_TEN_IDS = [
   "kitchen_cutoff_locked_date"
 ];
 
-describe("first ten eval cases", () => {
+describe("core safety eval cases", () => {
   it("keeps the golden case names in order and schema-valid", () => {
-    expect(firstTenCases.map((evalCase) => evalCase.case_id)).toEqual(FIRST_TEN_IDS);
-    firstTenCases.forEach((evalCase) => {
+    expect(coreSafetyCases.map((evalCase) => evalCase.case_id)).toEqual(CORE_SAFETY_IDS);
+    coreSafetyCases.forEach((evalCase) => {
       expect(() => EvalCaseSchema.parse(evalCase)).not.toThrow();
       expect(evalCase.mode).toBe("scripted");
     });
@@ -36,22 +36,22 @@ describe("first ten eval cases", () => {
 
   it("wires the cases into the default eval module", async () => {
     const source = await readFile(
-      join(process.cwd(), "src/evals/runEval.ts"),
+      join(process.cwd(), "src/evals/cases/suites.ts"),
       "utf8"
     );
 
-    expect(source).toContain("...firstTenCases");
+    expect(source).toContain("...coreSafetyCases");
   });
 
   it("executes high-risk boundary cases without OpenAI credentials", async () => {
-    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-first-ten-"));
-    const executableBoundaryCases = firstTenCases.filter(
+    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-core-safety-"));
+    const executableBoundaryCases = coreSafetyCases.filter(
       (evalCase) => ![
         "pause_two_days_keep_wednesday",
         "multi_intent_payment_customization_pause"
       ].includes(evalCase.case_id)
     );
-    const { report } = await runEval({
+    const { report } = await runScriptedEval({
       cases: executableBoundaryCases,
       mode: "scripted",
       env: {},
@@ -66,7 +66,7 @@ describe("first ten eval cases", () => {
       hard_policy_violations: 0
     });
     expect(report.results.map((result) => result.case_id)).toEqual(
-      FIRST_TEN_IDS.slice(2)
+      CORE_SAFETY_IDS.slice(2)
     );
 
     expectAmbiguousAndNoServiceDayCases(report);
@@ -187,7 +187,7 @@ function caseResult(report: EvalRunReport, caseId: string): EvalCaseResult {
 }
 
 function evalCase(caseId: string) {
-  const found = firstTenCases.find((candidate) => candidate.case_id === caseId);
+  const found = coreSafetyCases.find((candidate) => candidate.case_id === caseId);
   if (!found) throw new Error(`Missing eval case: ${caseId}`);
   return EvalCaseSchema.parse(found);
 }

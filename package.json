@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "eval": "tsx src/evals/runEval.ts",
+    "eval": "tsx src/evals/runScriptedEval.ts",
     "eval:realtime": "tsx src/evals/runRealtimeEval.ts",
     "debug:sideband": "tsx src/dev/debugRealtimeSideband.ts",
     "lint": "eslint . --max-warnings=0"

@@ -1,5 +1,5 @@
-import { PolicyId, type PolicyIdValue } from "../../domain/schema";
-import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../caseSchema";
+import { PolicyId, type PolicyIdValue } from "../../../domain/schema";
+import type { EvalCase, EvalCaseInput, EvalScriptStep } from "../../caseSchema";
 
 type FinalState = NonNullable<EvalCase["expected"]["expected_final_state"]>;
 type ExpectedCustomer = FinalState["customer"];
@@ -24,7 +24,7 @@ const mayaNextWeek = {
   ambiguous: false
 };
 
-export const firstTenCases = [
+export const coreSafetyCases = [
   {
     case_id: "pause_two_days_keep_wednesday",
     title: "Pause Monday, skip unscheduled Tuesday, keep Wednesday",

@@ -7,7 +7,7 @@ import {
   resolveInvokedCommand,
   safeArtifactSegment,
   type EvalRunGitMetadata
-} from "../runArtifactMetadata";
+} from "../shared/runArtifactMetadata";
 import type { RealtimeAudioArtifacts } from "./audioArtifacts";
 import type { RealtimeEvalCase } from "./caseLoader";
 import type { PreparedRealtimeInput } from "./input";

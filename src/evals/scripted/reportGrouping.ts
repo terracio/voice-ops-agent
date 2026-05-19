@@ -1,9 +1,9 @@
-import type { EvalCaseResult } from "./caseSchema";
+import type { EvalCaseResult } from "../caseSchema";
 import {
   buildScriptedRewardAggregation,
   normalizeRawScores
-} from "./rewardAggregation";
-import type { RewardAggregation } from "./rewardAggregationTypes";
+} from "../shared/rewardAggregation";
+import type { RewardAggregation } from "../shared/rewardAggregationTypes";
 
 export type SerializedEvalCaseResult =
   Omit<EvalCaseResult, "diagnostics"> & {

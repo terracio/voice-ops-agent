@@ -15,7 +15,7 @@ import { SEED_SCENARIO_IDS } from "../domain/seed";
 import {
   defaultScriptedRewardBasis,
   RewardBasisListSchema
-} from "./rewardBasis";
+} from "./shared/rewardBasis";
 
 export const EvalModeSchema = z.enum(["scripted", "model"]);
 

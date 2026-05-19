@@ -12,7 +12,7 @@ import {
   type RealtimeRunCaseArtifactSummary
 } from "../src/evals/realtime/runArtifacts";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
-import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
+import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/shared/rewardBasis";
 
 const RUN_DIR = join(
   "reports",

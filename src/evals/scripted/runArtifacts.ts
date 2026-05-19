@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { EvalRunReport } from "./caseSchema";
+import type { EvalRunReport } from "../caseSchema";
 import type { PassKAggregate } from "./report";
 import {
   appendGroupedFailureSections,
@@ -13,7 +13,7 @@ import {
   resolveInvokedCommand,
   safeArtifactSegment,
   type EvalRunGitMetadata
-} from "./runArtifactMetadata";
+} from "../shared/runArtifactMetadata";
 
 export type ScriptedRunArtifactPaths = {
   runDir: string;

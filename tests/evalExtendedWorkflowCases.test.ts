@@ -2,16 +2,16 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { remainingTenCases } from "../src/evals/cases";
+import { extendedWorkflowCases } from "../src/evals/cases";
 import {
   EvalCaseSchema,
   type EvalCaseResult,
   type EvalRunReport
 } from "../src/evals/caseSchema";
-import { runEval } from "../src/evals/runEval";
+import { runScriptedEval } from "../src/evals/runScriptedEval";
 
 const START = "2026-05-11T10:00:00.000Z";
-const REMAINING_IDS = [
+const EXTENDED_WORKFLOW_IDS = [
   "customization_overwrite_requires_delta",
   "conflicting_request_pause_all_keep_friday",
   "no_confirmation_no_commit",
@@ -24,21 +24,24 @@ const REMAINING_IDS = [
   "payment_plus_pause_multi_intent"
 ];
 
-describe("remaining ten eval cases", () => {
+describe("extended workflow eval cases", () => {
   it("keeps the golden case names in order and schema-valid", () => {
-    expect(remainingTenCases.map((evalCase) => evalCase.case_id)).toEqual(REMAINING_IDS);
-    remainingTenCases.forEach((evalCase) => {
+    expect(extendedWorkflowCases.map((evalCase) => evalCase.case_id)).toEqual(EXTENDED_WORKFLOW_IDS);
+    extendedWorkflowCases.forEach((evalCase) => {
       expect(() => EvalCaseSchema.parse(evalCase)).not.toThrow();
       expect(evalCase.mode).toBe("scripted");
     });
   });
 
-  it("wires remaining cases into the default scripted eval suite", async () => {
-    const source = await readFile(join(process.cwd(), "src/evals/runEval.ts"), "utf8");
-    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-all-twenty-"));
-    const { report } = await runEval({ mode: "scripted", env: {}, now: () => START, reportDir });
+  it("wires extended workflow cases into the default scripted eval suite", async () => {
+    const source = await readFile(
+      join(process.cwd(), "src/evals/cases/suites.ts"),
+      "utf8"
+    );
+    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-scripted-suite-"));
+    const { report } = await runScriptedEval({ mode: "scripted", env: {}, now: () => START, reportDir });
 
-    expect(source).toContain("...remainingTenCases");
+    expect(source).toContain("...extendedWorkflowCases");
     expect(report.summary).toMatchObject({
       cases_total: 20,
       cases_failed: 0,
@@ -58,14 +61,14 @@ describe("remaining ten eval cases", () => {
         "identity_uncertain_escalate_or_clarify",
         "kitchen_cutoff_locked_date"
       ],
-      ...REMAINING_IDS
+      ...EXTENDED_WORKFLOW_IDS
     ]);
   });
 
-  it("executes cases 11-20 with policy, audit, and side-effect evidence", async () => {
-    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-remaining-ten-"));
-    const { report } = await runEval({
-      cases: remainingTenCases,
+  it("executes extended workflows with policy, audit, and side-effect evidence", async () => {
+    const reportDir = await mkdtemp(join(tmpdir(), "mealplan-extended-workflows-"));
+    const { report } = await runScriptedEval({
+      cases: extendedWorkflowCases,
       mode: "scripted",
       env: {},
       now: () => START,
@@ -78,7 +81,7 @@ describe("remaining ten eval cases", () => {
       score_failures: 0,
       hard_policy_violations: 0
     });
-    expect(report.results.map((result) => result.case_id)).toEqual(REMAINING_IDS);
+    expect(report.results.map((result) => result.case_id)).toEqual(EXTENDED_WORKFLOW_IDS);
 
     expectCustomizationDelta(report);
     expectNoConfirmationBoundary(report);
@@ -90,8 +93,8 @@ describe("remaining ten eval cases", () => {
 
   it("aggregates deterministic repeated runs for pass-k reporting", async () => {
     const reportDir = await mkdtemp(join(tmpdir(), "mealplan-pass-k-"));
-    const { report, passKAggregate, terminalSummary } = await runEval({
-      cases: [remainingTenCases[6]],
+    const { report, passKAggregate, terminalSummary } = await runScriptedEval({
+      cases: [extendedWorkflowCases[6]],
       mode: "scripted",
       env: {},
       now: () => START,

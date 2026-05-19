@@ -30,6 +30,19 @@ MealPlan VoiceOps has two active eval layers.
 
 The two layers are complementary. Scripted evals prove the application boundary without model variability. Realtime evals test whether the voice model behaves well inside that boundary when the input is audio and the model has to choose text responses and tool calls.
 
+## Source Layout
+
+Eval source is split by responsibility:
+
+```text
+src/evals/cases/      Scenario catalog and suite manifests.
+src/evals/scripted/   Deterministic scripted runner, scorer, and reports.
+src/evals/realtime/   Realtime audio loader, scorer, runner reports, and artifacts.
+src/evals/shared/     Reward vocabulary and run-artifact metadata shared by both.
+```
+
+`src/evals/runScriptedEval.ts` and `src/evals/runRealtimeEval.ts` remain the CLI entrypoints used by package scripts.
+
 ## Scripted Safety Baseline
 
 Commands:
@@ -70,8 +83,9 @@ reports/evals/scripted/<run_id>/
 Golden cases:
 
 ```text
-src/evals/GOLDEN_CASES.md
-src/evals/cases/
+src/evals/cases/README.md
+src/evals/cases/scripted/
+src/evals/cases/suites.ts
 ```
 
 Scripted scoring covers:
@@ -285,7 +299,7 @@ Those are planned Run-era eval dimensions. Today, realtime Crawl and Walk report
 Realtime cases are YAML contracts in:
 
 ```text
-src/evals/realtime/cases/
+src/evals/cases/realtime/
 ```
 
 Each case defines:

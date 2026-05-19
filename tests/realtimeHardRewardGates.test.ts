@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadRealtimeEvalCase, type RealtimeEvalCase } from "../src/evals/realtime/caseLoader";
 import { scoreRealtimeCrawlCase } from "../src/evals/realtime/scorer";
-import type { RewardBasis } from "../src/evals/rewardBasis";
+import type { RewardBasis } from "../src/evals/shared/rewardBasis";
 import { auditEvent, completedResult, toolCall } from "./realtimeScorerFixtures";
 
 const COMMUNICATION_ONLY: RewardBasis[] = ["COMMUNICATION"];

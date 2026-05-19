@@ -7,7 +7,7 @@ import {
   EvalCaseResultSchema,
   type EvalCaseResult
 } from "../src/evals/caseSchema";
-import { buildEvalReport, writeEvalReports } from "../src/evals/report";
+import { buildEvalReport, writeEvalReports } from "../src/evals/scripted/report";
 
 const tempDirs: string[] = [];
 

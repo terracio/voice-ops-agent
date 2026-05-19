@@ -2,7 +2,7 @@ import type { RealtimeRunnerStatus } from "../../realtime/runner/types";
 import {
   REALTIME_CRAWL_CONTRACT_CASE_IDS,
   REALTIME_WALK_ROBUSTNESS_CASE_IDS
-} from "./caseLoader";
+} from "../cases/suites";
 import type { RealtimeReportPaths } from "./reporting";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
