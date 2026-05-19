@@ -8,7 +8,7 @@
 
 > **The model can propose. The application decides.**
 
-MealPlan VoiceOps is a realtime voice operations agent for a fictional meal-plan company.
+MealPlan VoiceOps is a realtime voice operations Agent for a fictional meal-plan company.
 
 It tests whether `gpt-realtime-2`, when placed inside a production-style operations harness, can safely handle contact-center work where mistakes affect deliveries, payments, and dietary safety.
 
