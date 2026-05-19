@@ -36,6 +36,7 @@ type RealtimeEvalArgs = {
   inputText?: string;
   noEnv: boolean;
   oobTranscription: boolean;
+  redacted: boolean;
   stage: string;
   walkProfile?: WalkAudioProfileName;
 };
@@ -53,6 +54,7 @@ function parseArgs(args: string[]): RealtimeEvalArgs {
     inputText: readArgValue(args, "--input-text"),
     noEnv: args.includes("--no-env"),
     oobTranscription: args.includes("--oob-transcription"),
+    redacted: args.includes("--redacted"),
     stage: readArgValue(args, "--stage") ?? "crawl",
     walkProfile
   };
@@ -100,6 +102,7 @@ async function runRealtimeEvalCase(options: {
   env_file_status: string;
   inputText?: string;
   oobTranscription?: boolean;
+  redacted?: boolean;
   runLevelRunId: string;
   runStamp: string;
   stage: string;
@@ -135,6 +138,7 @@ async function runRealtimeEvalCase(options: {
       case_id: options.caseId,
       input_mode: preparedInput.input_mode,
       oob_transcription: options.oobTranscription,
+      report_redacted: options.redacted ?? false,
       seed_id: realtimeCase.seed_id,
       stage: options.stage,
       walk_profile: options.walkProfile
@@ -156,6 +160,7 @@ async function runRealtimeEvalCase(options: {
       attemptId: options.attemptArtifactId,
       runId: options.runLevelRunId
     },
+    redacted: options.redacted,
     scoring,
     stage: options.stage
   });
@@ -212,6 +217,7 @@ async function main(): Promise<void> {
         env_file_status,
         inputText: args.inputText,
         oobTranscription: args.oobTranscription,
+        redacted: args.redacted,
         runLevelRunId,
         runStamp,
         stage: args.stage,

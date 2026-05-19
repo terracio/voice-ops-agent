@@ -95,6 +95,7 @@ export function writeRealtimeAttemptArtifacts(options: {
   env_file_status: string;
   preparedInput: PreparedRealtimeInput;
   realtimeCase: RealtimeEvalCase;
+  redacted?: boolean;
   reportRoot?: string;
   result: RealtimeRunnerResult;
   runId: string;
@@ -132,11 +133,16 @@ export function writeRealtimeAttemptArtifacts(options: {
     trace_path: join(attemptDir, "trace.json"),
     transcript_path: join(attemptDir, "transcript.json")
   };
-  const redactedResult = redactResultForReport(options.result);
-  const redactedScoring = redactScoringForReport(options.scoring);
+  const shouldRedact = options.redacted ?? false;
+  const artifactResult = shouldRedact
+    ? redactResultForReport(options.result)
+    : options.result;
+  const artifactScoring = shouldRedact
+    ? redactScoringForReport(options.scoring)
+    : options.scoring;
   const serializedScoring = serializeRealtimeScoring({
     realtimeCase: options.realtimeCase,
-    scoring: redactedScoring
+    scoring: artifactScoring
   });
   const status = {
     run_id: options.runId,
@@ -147,6 +153,7 @@ export function writeRealtimeAttemptArtifacts(options: {
     seed_id: options.realtimeCase.seed_id,
     reward_basis: options.realtimeCase.reward_basis,
     input_mode: options.preparedInput.input_mode,
+    report_redacted: shouldRedact,
     status: options.result.status,
     reason: options.result.reason,
     scoring_status: options.scoring.status,
@@ -160,18 +167,20 @@ export function writeRealtimeAttemptArtifacts(options: {
   };
 
   writeJson(files.sim_status_path, status);
-  writeJson(files.trace_path, options.result.trace);
-  writeJson(files.transcript_path, redactedResult.transcript_fragments);
-  writeJson(files.tool_calls_path, redactedResult.tool_calls);
+  writeJson(files.trace_path, artifactResult.trace);
+  writeJson(files.transcript_path, artifactResult.transcript_fragments);
+  writeJson(files.tool_calls_path, artifactResult.tool_calls);
   writeJson(files.audit_path, {
-    audit_ids: redactedResult.audit_ids,
-    audit_events: redactedResult.audit_events
+    audit_ids: artifactResult.audit_ids,
+    audit_events: artifactResult.audit_events
   });
-  writeJson(files.final_state_path, redactedResult.final_state);
+  writeJson(files.final_state_path, artifactResult.final_state);
   writeJson(files.scoring_path, serializedScoring);
   writeJson(files.audio_manifest_path, {
     audio_artifacts: options.audioArtifacts,
-    note: "Input audio files are stored in this attempt artifact directory."
+    note: shouldRedact
+      ? "Input audio files were omitted because this report is redacted."
+      : "Input audio files are stored in this attempt artifact directory."
   });
   writeJson(files.simulation_path, {
     ...status,

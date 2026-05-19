@@ -109,6 +109,7 @@ pnpm eval:realtime -- --stage crawl --case customer_identity_lookup
 pnpm eval:realtime -- --stage walk
 pnpm eval:realtime -- --stage walk --walk-profile walk_uncertain_noise_v1
 pnpm eval:realtime -- --stage crawl --case customer_identity_lookup --oob-transcription
+pnpm eval:realtime -- --stage crawl --case customer_identity_lookup --redacted
 ```
 
 This mode requires server-side OpenAI credentials.
@@ -140,6 +141,12 @@ Realtime reports are written under a canonical run-level directory:
 ```text
 reports/evals/realtime/<run_id>/
 ```
+
+Generated realtime reports are raw by default. That is intentional for local
+debugging: transcripts, tool inputs and outputs, audit details, final state, and
+trace events need to be inspectable when a model run fails. Use `--redacted`
+when creating a shareable report from real audio or customer-like data. Hard
+secret handling for command metadata remains sanitized separately.
 
 Typical artifacts:
 

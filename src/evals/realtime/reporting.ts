@@ -92,6 +92,7 @@ export function writeRealtimeReports(options: {
     reportRoot?: string;
     runId: string;
   };
+  redacted?: boolean;
   scoring: RealtimeCrawlScoring;
   stage: string;
 }): RealtimeReportPaths {
@@ -106,55 +107,64 @@ export function writeRealtimeReports(options: {
   });
   mkdirSync(reportDir, { recursive: true });
 
+  const shouldRedact = options.redacted ?? false;
   const jsonPath = join(reportDir, "report.json");
   const markdownPath = join(reportDir, "report.md");
   const tracePath = join(reportDir, "trace.json");
   const cleanAudio = options.preparedInput.walk_profile
     ? options.preparedInput.clean_audio
     : options.preparedInput.clean_audio ?? options.preparedInput.audio;
-  const audioArtifacts = writeRealtimeAudioArtifacts({
-    cleanAudio,
-    profileAudio: options.preparedInput.walk_profile
-      ? options.preparedInput.audio
-      : undefined,
-    reportDir,
-    sampleRateHz: options.realtimeCase.audio.sample_rate_hz
-  });
-  const redactedResult = redactResultForReport(options.result);
-  const redactedExpected = redactExpectedForReport(options.realtimeCase.expected);
-  const redactedScoring = redactScoringForReport(options.scoring);
+  const audioArtifacts = shouldRedact
+    ? undefined
+    : writeRealtimeAudioArtifacts({
+      cleanAudio,
+      profileAudio: options.preparedInput.walk_profile
+        ? options.preparedInput.audio
+        : undefined,
+      reportDir,
+      sampleRateHz: options.realtimeCase.audio.sample_rate_hz
+    });
+  const reportResult = shouldRedact
+    ? redactResultForReport(options.result)
+    : options.result;
+  const reportExpected = shouldRedact
+    ? redactExpectedForReport(options.realtimeCase.expected)
+    : options.realtimeCase.expected;
+  const reportScoring = shouldRedact
+    ? redactScoringForReport(options.scoring)
+    : options.scoring;
   const serializedScoring = serializeRealtimeScoring({
     realtimeCase: options.realtimeCase,
-    scoring: redactedScoring
+    scoring: reportScoring
   });
-  const redactedInputText = options.preparedInput.input_text
+  const reportInputText = shouldRedact && options.preparedInput.input_text
     ? "[redacted]"
     : options.preparedInput.input_text;
 
-  const eventLines = redactedResult.trace
+  const eventLines = reportResult.trace
     .map((event, index) =>
       `${index + 1}. ${event.at} ${event.source}:${event.type}`
     )
     .join("\n");
-  const toolLines = options.result.tool_calls
+  const toolLines = reportResult.tool_calls
     .map((toolCall, index) => {
       const policy = toolCall.policy_id ? ` policy=${toolCall.policy_id}` : "";
       return `${index + 1}. ${toolCall.tool_name} ${toolCall.status}${policy}`;
     })
     .join("\n");
   const transcriptLines = readableTranscriptFragments(
-    options.result.transcript_fragments
+    reportResult.transcript_fragments
   )
-    .map((fragment, index) => `${index + 1}. ${fragment.role}: [redacted]`)
+    .map((fragment, index) => `${index + 1}. ${fragment.role}: ${fragment.text}`)
     .join("\n");
   const audioArtifactLines = audioArtifacts
     ? renderAudioArtifactLines(audioArtifacts)
     : "Audio artifacts: not written";
   const oobLines = renderOutOfBandTranscription(
-    redactedResult.out_of_band_transcription
+    reportResult.out_of_band_transcription
   );
 
-  writeFileSync(tracePath, `${JSON.stringify(options.result.trace, null, 2)}\n`);
+  writeFileSync(tracePath, `${JSON.stringify(reportResult.trace, null, 2)}\n`);
   writeFileSync(
     jsonPath,
     `${JSON.stringify(
@@ -164,11 +174,11 @@ export function writeRealtimeReports(options: {
         seed_id: options.realtimeCase.seed_id,
         reward_basis: options.realtimeCase.reward_basis,
         input_mode: options.preparedInput.input_mode,
-        input_text: redactedInputText,
+        input_text: reportInputText,
         audio_metadata: options.preparedInput.audio_metadata,
         audio_artifacts: audioArtifacts,
         audio_profile: options.preparedInput.walk_profile,
-        expected: redactedExpected,
+        expected: reportExpected,
         primary_rewards: serializedScoring.primary_rewards,
         diagnostics: serializedScoring.diagnostics,
         raw_scores: serializedScoring.raw_scores,
@@ -177,9 +187,10 @@ export function writeRealtimeReports(options: {
         diagnostic_failures: serializedScoring.diagnostic_failures,
         raw_diagnostics: serializedScoring.raw_diagnostics,
         scoring: serializedScoring,
+        report_redacted: shouldRedact,
         env_file_status: options.env_file_status,
         trace_path: tracePath,
-        ...redactedResult
+        ...reportResult
       },
       null,
       2
@@ -208,12 +219,13 @@ export function writeRealtimeReports(options: {
       `Tool calls: ${options.result.tool_calls.length}`,
       `Audit events: ${options.result.audit_events.length}`,
       `Transcript fragments: ${options.result.transcript_fragments.length}`,
-      `Scoring status: ${redactedScoring.status}`,
-      `Score failures: ${redactedScoring.score_failures}`,
+      `Report redacted: ${shouldRedact ? "yes" : "no"}`,
+      `Scoring status: ${reportScoring.status}`,
+      `Score failures: ${reportScoring.score_failures}`,
       "",
       "## Fixture",
       "",
-      `Input text: ${redactedInputText ?? ""}`,
+      `Input text: ${reportInputText ?? ""}`,
       options.preparedInput.audio_metadata
         ? `Audio: ${JSON.stringify(options.preparedInput.audio_metadata)}`
         : "Audio: not used",
@@ -239,10 +251,10 @@ export function writeRealtimeReports(options: {
       "",
       renderRealtimeRewardSections({
         realtimeCase: options.realtimeCase,
-        scoring: redactedScoring
+        scoring: reportScoring
       }),
       "",
-      renderRealtimeCrawlScores(redactedScoring),
+      renderRealtimeCrawlScores(reportScoring),
       "",
       "## Tool Calls",
       "",
@@ -264,6 +276,7 @@ export function writeRealtimeReports(options: {
         reportRoot: options.runArtifacts.reportRoot,
         result: options.result,
         attemptId: options.runArtifacts.attemptId,
+        redacted: shouldRedact,
         runId: options.runArtifacts.runId,
         scoring: options.scoring,
         stage: options.stage
