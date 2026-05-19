@@ -7,6 +7,10 @@ import {
   type EvalMode,
   type EvalRunReport
 } from "./caseSchema";
+import {
+  writeScriptedRunArtifacts,
+  type ScriptedRunArtifactPaths
+} from "./scriptedRunArtifacts";
 
 export type BuildEvalReportInput = {
   run_id: string;
@@ -19,6 +23,7 @@ export type BuildEvalReportInput = {
 export type WrittenEvalReport = {
   jsonPath: string;
   markdownPath: string;
+  runArtifacts: ScriptedRunArtifactPaths;
 };
 
 export type PassKAggregate = {
@@ -174,12 +179,21 @@ export async function writeEvalReports(
 ): Promise<WrittenEvalReport> {
   const jsonPath = join(reportDir, "eval-report.json");
   const markdownPath = join(reportDir, "eval-report.md");
+  const markdown = renderMarkdownReport(report, aggregate);
 
   await mkdir(reportDir, { recursive: true });
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-  await writeFile(markdownPath, renderMarkdownReport(report, aggregate));
+  await writeFile(markdownPath, markdown);
 
-  return { jsonPath, markdownPath };
+  const runArtifacts = await writeScriptedRunArtifacts({
+    aggregate,
+    legacyJsonPath: jsonPath,
+    legacyMarkdownPath: markdownPath,
+    report,
+    reportDir
+  });
+
+  return { jsonPath, markdownPath, runArtifacts };
 }
 
 function countStatus(

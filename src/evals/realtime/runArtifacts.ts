@@ -1,0 +1,250 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { RealtimeRunnerResult } from "../../realtime/runner/types";
+import {
+  buildRunArtifactManifest,
+  collectGitMetadata,
+  resolveInvokedCommand,
+  safeArtifactSegment,
+  type EvalRunGitMetadata
+} from "../runArtifactMetadata";
+import type { RealtimeAudioArtifacts } from "./audioArtifacts";
+import type { RealtimeEvalCase } from "./caseLoader";
+import type { PreparedRealtimeInput } from "./input";
+import {
+  redactResultForReport,
+  redactScoringForReport
+} from "./reportRedaction";
+import type { RealtimeCrawlScoring } from "./scorerTypes";
+
+export type RealtimeAttemptArtifactPaths = {
+  run_artifact_dir: string;
+  run_artifact_files: {
+    audio_manifest_path: string;
+    audit_path: string;
+    final_state_path: string;
+    scoring_path: string;
+    sim_status_path: string;
+    simulation_path: string;
+    tool_calls_path: string;
+    trace_path: string;
+    transcript_path: string;
+  };
+};
+
+export type RealtimeRunResultsPaths = {
+  artifactsDir: string;
+  resultsJsonPath: string;
+  resultsMarkdownPath: string;
+  runDir: string;
+  simulationsDir: string;
+};
+
+export type RealtimeRunCaseArtifactSummary = {
+  case_id: string;
+  input_mode: string;
+  json_path: string;
+  markdown_path: string;
+  model: string;
+  score_failures: number;
+  scoring_status: string;
+  stage: string;
+  status: string;
+  trace_path: string;
+  run_artifact_dir?: string;
+  [key: string]: unknown;
+};
+
+export function realtimeRunDir(reportRoot: string, runId: string): string {
+  return join(
+    reportRoot,
+    "evals",
+    "realtime",
+    safeArtifactSegment(runId)
+  );
+}
+
+export function writeRealtimeAttemptArtifacts(options: {
+  audioArtifacts?: RealtimeAudioArtifacts;
+  caseId: string;
+  env_file_status: string;
+  legacyJsonPath: string;
+  legacyMarkdownPath: string;
+  legacyTracePath: string;
+  preparedInput: PreparedRealtimeInput;
+  realtimeCase: RealtimeEvalCase;
+  reportRoot?: string;
+  result: RealtimeRunnerResult;
+  runId: string;
+  scoring: RealtimeCrawlScoring;
+  stage: string;
+}): RealtimeAttemptArtifactPaths {
+  const reportRoot = options.reportRoot ?? "reports";
+  const runDir = realtimeRunDir(reportRoot, options.runId);
+  const simulationsDir = join(runDir, "simulations");
+  const artifactsDir = join(runDir, "artifacts");
+  const attemptId = options.result.run_id;
+  const attemptDir = join(
+    artifactsDir,
+    safeArtifactSegment(options.caseId),
+    safeArtifactSegment(attemptId)
+  );
+  const audioDir = join(attemptDir, "audio");
+
+  mkdirSync(simulationsDir, { recursive: true });
+  mkdirSync(audioDir, { recursive: true });
+
+  const files = {
+    audio_manifest_path: join(audioDir, "manifest.json"),
+    audit_path: join(attemptDir, "audit.json"),
+    final_state_path: join(attemptDir, "final_state.json"),
+    scoring_path: join(attemptDir, "scoring.json"),
+    sim_status_path: join(attemptDir, "sim_status.json"),
+    simulation_path: join(
+      simulationsDir,
+      `${safeArtifactSegment(options.caseId)}_${safeArtifactSegment(attemptId)}.json`
+    ),
+    tool_calls_path: join(attemptDir, "tool_calls.json"),
+    trace_path: join(attemptDir, "trace.json"),
+    transcript_path: join(attemptDir, "transcript.json")
+  };
+  const redactedResult = redactResultForReport(options.result);
+  const redactedScoring = redactScoringForReport(options.scoring);
+  const status = {
+    run_id: options.runId,
+    attempt_id: attemptId,
+    realtime_run_id: options.result.run_id,
+    case_id: options.caseId,
+    stage: options.stage,
+    seed_id: options.realtimeCase.seed_id,
+    input_mode: options.preparedInput.input_mode,
+    status: options.result.status,
+    reason: options.result.reason,
+    scoring_status: options.scoring.status,
+    score_failures: options.scoring.score_failures,
+    model: options.result.model,
+    transport: options.result.transport,
+    env_file_status: options.env_file_status,
+    legacy_paths: {
+      report_json: options.legacyJsonPath,
+      report_markdown: options.legacyMarkdownPath,
+      trace: options.legacyTracePath
+    },
+    artifact_paths: files
+  };
+
+  writeJson(files.sim_status_path, status);
+  writeJson(files.trace_path, options.result.trace);
+  writeJson(files.transcript_path, redactedResult.transcript_fragments);
+  writeJson(files.tool_calls_path, redactedResult.tool_calls);
+  writeJson(files.audit_path, {
+    audit_ids: redactedResult.audit_ids,
+    audit_events: redactedResult.audit_events
+  });
+  writeJson(files.final_state_path, redactedResult.final_state);
+  writeJson(files.scoring_path, redactedScoring);
+  writeJson(files.audio_manifest_path, {
+    legacy_audio_artifacts: options.audioArtifacts,
+    note: "Input audio files remain in the compatibility per-case report directory."
+  });
+  writeJson(files.simulation_path, {
+    ...status,
+    artifact_dir: attemptDir
+  });
+
+  return { run_artifact_dir: attemptDir, run_artifact_files: files };
+}
+
+export function writeRealtimeRunResults(options: {
+  git?: EvalRunGitMetadata;
+  invokedCommand?: string;
+  model?: string;
+  reportRoot?: string;
+  results: RealtimeRunCaseArtifactSummary[];
+  runId: string;
+  stage: string;
+  summary: Record<string, unknown>;
+}): RealtimeRunResultsPaths {
+  const reportRoot = options.reportRoot ?? "reports";
+  const runDir = realtimeRunDir(reportRoot, options.runId);
+  const simulationsDir = join(runDir, "simulations");
+  const artifactsDir = join(runDir, "artifacts");
+  const resultsJsonPath = join(runDir, "results.json");
+  const resultsMarkdownPath = join(runDir, "results.md");
+
+  mkdirSync(simulationsDir, { recursive: true });
+  mkdirSync(artifactsDir, { recursive: true });
+
+  const manifest = buildRunArtifactManifest({
+    artifacts: {
+      run_dir: runDir,
+      simulations_dir: simulationsDir,
+      artifacts_dir: artifactsDir
+    },
+    git: options.git ?? collectGitMetadata(),
+    invokedCommand: options.invokedCommand ?? resolveInvokedCommand(),
+    model: options.model ?? options.results[0]?.model,
+    runId: options.runId,
+    stage: options.stage,
+    suite: "realtime"
+  });
+  const results = {
+    ...manifest,
+    summary: options.summary,
+    results: options.results
+  };
+
+  writeJson(resultsJsonPath, results);
+  writeFileSync(resultsMarkdownPath, renderRealtimeRunMarkdown({
+    manifest,
+    results: options.results,
+    summary: options.summary
+  }));
+
+  return { runDir, resultsJsonPath, resultsMarkdownPath, simulationsDir, artifactsDir };
+}
+
+function renderRealtimeRunMarkdown(options: {
+  manifest: ReturnType<typeof buildRunArtifactManifest>;
+  results: RealtimeRunCaseArtifactSummary[];
+  summary: Record<string, unknown>;
+}): string {
+  const lines = [
+    "# MealPlan VoiceOps Realtime Eval Run",
+    "",
+    `- Run: \`${options.manifest.run_id}\``,
+    `- Suite: \`${options.manifest.suite}\``,
+    `- Stage: \`${options.manifest.stage ?? ""}\``,
+    options.manifest.model ? `- Model: \`${options.manifest.model}\`` : undefined,
+    `- Cases: ${options.summary.case_count ?? options.results.length}`,
+    `- Completed: ${options.summary.completed ?? 0}`,
+    `- Failed: ${options.summary.failed ?? 0}`,
+    `- Timed out: ${options.summary.timed_out ?? 0}`,
+    `- Score failures: ${options.summary.score_failures ?? 0}`,
+    "",
+    "## Artifacts",
+    "",
+    `- Run directory: \`${options.manifest.artifacts.run_dir}\``,
+    `- Simulations directory: \`${options.manifest.artifacts.simulations_dir}\``,
+    `- Artifacts directory: \`${options.manifest.artifacts.artifacts_dir}\``,
+    "",
+    "## Case Attempts",
+    "",
+    "| Case | Status | Scoring | Failed scores | Report | Artifact directory |",
+    "| --- | --- | --- | --- | --- | --- |"
+  ].filter((line): line is string => line !== undefined);
+
+  for (const result of options.results) {
+    lines.push(
+      `| \`${result.case_id}\` | ${result.status} | ${result.scoring_status} | ` +
+        `${result.score_failures} | \`${result.json_path}\` | ` +
+        `\`${result.run_artifact_dir ?? ""}\` |`
+    );
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function writeJson(path: string, value: unknown): void {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}

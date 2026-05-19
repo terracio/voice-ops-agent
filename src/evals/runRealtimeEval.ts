@@ -17,6 +17,7 @@ import {
   safePathSegment,
   writeRealtimeReports
 } from "./realtime/reporting";
+import { writeRealtimeRunResults } from "./realtime/runArtifacts";
 import { scoreRealtimeCrawlCase } from "./realtime/scorer";
 import {
   resolveRealtimeCaseIds,
@@ -97,6 +98,7 @@ async function runRealtimeEvalCase(options: {
   env_file_status: string;
   inputText?: string;
   oobTranscription?: boolean;
+  runLevelRunId: string;
   runStamp: string;
   stage: string;
   walkProfile?: WalkAudioProfileName;
@@ -142,6 +144,9 @@ async function runRealtimeEvalCase(options: {
     preparedInput,
     realtimeCase,
     result,
+    runArtifacts: {
+      runId: options.runLevelRunId
+    },
     scoring,
     stage: options.stage
   });
@@ -178,6 +183,7 @@ async function main(): Promise<void> {
     }
   });
   const runStamp = createRunStamp();
+  const runLevelRunId = createRealtimeRunLevelId(args.stage, runStamp);
   const results: RealtimeCaseRunSummary[] = [];
 
   for (const caseId of caseIds) {
@@ -188,6 +194,7 @@ async function main(): Promise<void> {
         env_file_status,
         inputText: args.inputText,
         oobTranscription: args.oobTranscription,
+        runLevelRunId,
         runStamp,
         stage: args.stage,
         walkProfile: args.walkProfile
@@ -201,6 +208,12 @@ async function main(): Promise<void> {
     results,
     stage: args.stage
   });
+  writeRealtimeRunResults({
+    results,
+    runId: runLevelRunId,
+    stage: args.stage,
+    summary: summaryWithoutCaseResults(summary)
+  });
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
   if (shouldFailRealtimeEval(results)) {
@@ -209,3 +222,14 @@ async function main(): Promise<void> {
 }
 
 void main();
+
+function createRealtimeRunLevelId(stage: string, runStamp: string): string {
+  return `realtime_${safePathSegment(stage)}_${runStamp}`;
+}
+
+function summaryWithoutCaseResults(
+  summary: Record<string, unknown>
+): Record<string, unknown> {
+  const { results: _results, ...rest } = summary;
+  return rest;
+}

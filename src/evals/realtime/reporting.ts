@@ -15,10 +15,14 @@ import {
   redactResultForReport,
   redactScoringForReport
 } from "./reportRedaction";
+import {
+  writeRealtimeAttemptArtifacts,
+  type RealtimeAttemptArtifactPaths
+} from "./runArtifacts";
 import { renderRealtimeCrawlScores } from "./scorer";
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
-export type RealtimeReportPaths = {
+export type RealtimeReportPaths = Partial<RealtimeAttemptArtifactPaths> & {
   audio_artifacts?: RealtimeAudioArtifacts;
   json_path: string;
   markdown_path: string;
@@ -78,6 +82,10 @@ export function writeRealtimeReports(options: {
   preparedInput: PreparedRealtimeInput;
   realtimeCase: RealtimeEvalCase;
   result: RealtimeRunnerResult;
+  runArtifacts?: {
+    reportRoot?: string;
+    runId: string;
+  };
   scoring: RealtimeCrawlScoring;
   stage: string;
 }): RealtimeReportPaths {
@@ -220,11 +228,30 @@ export function writeRealtimeReports(options: {
     ].join("\n")
   );
 
+  const runArtifactPaths = options.runArtifacts
+    ? writeRealtimeAttemptArtifacts({
+        audioArtifacts,
+        caseId: options.caseId,
+        env_file_status: options.env_file_status,
+        legacyJsonPath: jsonPath,
+        legacyMarkdownPath: markdownPath,
+        legacyTracePath: tracePath,
+        preparedInput: options.preparedInput,
+        realtimeCase: options.realtimeCase,
+        reportRoot: options.runArtifacts.reportRoot,
+        result: options.result,
+        runId: options.runArtifacts.runId,
+        scoring: options.scoring,
+        stage: options.stage
+      })
+    : undefined;
+
   return {
     audio_artifacts: audioArtifacts,
     json_path: jsonPath,
     markdown_path: markdownPath,
-    trace_path: tracePath
+    trace_path: tracePath,
+    ...runArtifactPaths
   };
 }
 
