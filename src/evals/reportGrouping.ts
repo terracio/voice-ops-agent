@@ -1,4 +1,4 @@
-import type { EvalCaseResult, EvalRunReport } from "./caseSchema";
+import type { EvalCaseResult } from "./caseSchema";
 import {
   buildScriptedRewardAggregation,
   normalizeRawScores
@@ -17,14 +17,6 @@ export type SerializedEvalCaseResult =
     reward_passed: boolean;
     reward_score: number;
   };
-
-export type SerializedEvalRunReport = Omit<EvalRunReport, "results"> & {
-  results: SerializedEvalCaseResult[];
-  summary: EvalRunReport["summary"] & {
-    diagnostic_failures: number;
-    reward_failures: number;
-  };
-};
 
 export function buildCaseRewardAggregation(
   result: EvalCaseResult
@@ -50,27 +42,6 @@ export function serializeEvalCaseResult(
     reward_failures: aggregation.reward_failures,
     reward_passed: aggregation.reward_passed,
     reward_score: aggregation.reward_score
-  };
-}
-
-export function serializeEvalRunReport(
-  report: EvalRunReport
-): SerializedEvalRunReport {
-  const results = report.results.map(serializeEvalCaseResult);
-  return {
-    ...report,
-    summary: {
-      ...report.summary,
-      diagnostic_failures: results.reduce(
-        (total, result) => total + result.diagnostic_failures.length,
-        0
-      ),
-      reward_failures: results.reduce(
-        (total, result) => total + result.reward_failures.length,
-        0
-      )
-    },
-    results
   };
 }
 

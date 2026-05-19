@@ -53,8 +53,8 @@ describe("realtime eval suite", () => {
   });
 
   it("writes a separate raw trace file and report pointer", () => {
-    const reportDir = join("reports", "realtime", "crawl", "maya_smoke", "unit_report_trace");
-    rmSync(reportDir, { force: true, recursive: true });
+    const reportDir = unitAttemptDir();
+    rmSync(unitRunDir(), { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
       caseId: "maya_smoke",
@@ -66,6 +66,7 @@ describe("realtime eval suite", () => {
       },
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
       result: createResult(),
+      runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
       stage: "crawl"
     });
@@ -97,18 +98,12 @@ describe("realtime eval suite", () => {
       expect(markdown).toContain(heading)
     );
 
-    rmSync(reportDir, { force: true, recursive: true });
+    rmSync(unitRunDir(), { force: true, recursive: true });
   });
 
   it("writes clean input PCM and playable WAV audio artifacts", () => {
-    const reportDir = join(
-      "reports",
-      "realtime",
-      "crawl",
-      "maya_smoke",
-      "unit_report_trace"
-    );
-    rmSync(reportDir, { force: true, recursive: true });
+    const reportDir = unitAttemptDir();
+    rmSync(unitRunDir(), { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
       caseId: "maya_smoke",
@@ -121,6 +116,7 @@ describe("realtime eval suite", () => {
       },
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
       result: createResult(),
+      runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
       stage: "crawl"
     });
@@ -156,18 +152,12 @@ describe("realtime eval suite", () => {
     expect(markdown).toContain(`Clean WAV: ${cleanInput.wav_path}`);
     expect(markdown).toContain(`Clean checksum: ${cleanInput.checksum_sha256}`);
 
-    rmSync(reportDir, { force: true, recursive: true });
+    rmSync(unitRunDir(), { force: true, recursive: true });
   });
 
   it("writes transformed Walk profile audio artifacts without replacing clean input", () => {
-    const reportDir = join(
-      "reports",
-      "realtime",
-      "walk",
-      "maya_smoke",
-      "unit_report_trace"
-    );
-    rmSync(reportDir, { force: true, recursive: true });
+    const reportDir = unitAttemptDir();
+    rmSync(unitRunDir(), { force: true, recursive: true });
 
     const cleanAudio = new Uint8Array([
       0, 0, 255, 31, 1, 224, 0, 0, 255, 63, 1, 192
@@ -194,6 +184,7 @@ describe("realtime eval suite", () => {
       },
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
       result: createResult(),
+      runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
       stage: "walk"
     });
@@ -223,18 +214,11 @@ describe("realtime eval suite", () => {
     expect(markdown).toContain(`Profile WAV: ${report.audio_artifacts.profile_input.wav_path}`);
     expect(markdown).toContain("Profile metadata:");
 
-    rmSync(reportDir, { force: true, recursive: true });
+    rmSync(unitRunDir(), { force: true, recursive: true });
   });
 
   it("does not label profiled audio as clean evidence when source audio is missing", () => {
-    const reportDir = join(
-      "reports",
-      "realtime",
-      "walk",
-      "maya_smoke",
-      "unit_report_trace"
-    );
-    rmSync(reportDir, { force: true, recursive: true });
+    rmSync(unitRunDir(), { force: true, recursive: true });
 
     const cleanAudio = new Uint8Array([
       0, 0, 255, 31, 1, 224, 0, 0, 255, 63, 1, 192
@@ -260,6 +244,7 @@ describe("realtime eval suite", () => {
       },
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
       result: createResult(),
+      runArtifacts: unitRunArtifacts(),
       scoring: createScoring(),
       stage: "walk"
     });
@@ -276,11 +261,26 @@ describe("realtime eval suite", () => {
       `Profile WAV: ${report.audio_artifacts.profile_input.wav_path}`
     );
 
-    rmSync(reportDir, { force: true, recursive: true });
+    rmSync(unitRunDir(), { force: true, recursive: true });
   });
 
 
 });
+
+function unitRunDir(): string {
+  return join("reports", "evals", "realtime", "unit_report_trace");
+}
+
+function unitAttemptDir(): string {
+  return join(unitRunDir(), "artifacts", "maya_smoke", "attempt_001");
+}
+
+function unitRunArtifacts(): { attemptId: string; runId: string } {
+  return {
+    attemptId: "attempt_001",
+    runId: "unit_report_trace"
+  };
+}
 
 function createSummary(
   overrides: Partial<RealtimeCaseRunSummary> = {}

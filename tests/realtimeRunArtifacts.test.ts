@@ -14,13 +14,6 @@ import {
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
 import { REALTIME_CRAWL_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
 
-const LEGACY_DIR = join(
-  "reports",
-  "realtime",
-  "crawl",
-  "maya_smoke",
-  "unit_run_artifacts_attempt"
-);
 const RUN_DIR = join(
   "reports",
   "evals",
@@ -29,19 +22,18 @@ const RUN_DIR = join(
 );
 
 afterEach(() => {
-  rmSync(LEGACY_DIR, { force: true, recursive: true });
   rmSync(RUN_DIR, { force: true, recursive: true });
 });
 
 describe("realtime eval run artifacts", () => {
-  it("keeps per-case reports and writes run-level attempt artifacts", () => {
-    rmSync(LEGACY_DIR, { force: true, recursive: true });
+  it("writes self-contained run-level attempt artifacts", () => {
     rmSync(RUN_DIR, { force: true, recursive: true });
 
     const paths = writeRealtimeReports({
       caseId: "maya_smoke",
       env_file_status: "skipped",
       preparedInput: {
+        audio: new Uint8Array([0, 0, 1, 0]).buffer,
         audio_metadata: { source: "test" },
         input_mode: "audio",
         input_text: "Please look up Maya."
@@ -49,6 +41,7 @@ describe("realtime eval run artifacts", () => {
       realtimeCase: loadRealtimeEvalCase({ caseId: "maya_smoke", stage: "crawl" }),
       result: createResult(),
       runArtifacts: {
+        attemptId: "attempt_001",
         runId: "unit_realtime_run_artifacts"
       },
       scoring: createScoring(),
@@ -78,14 +71,19 @@ describe("realtime eval run artifacts", () => {
     };
     const simStatusJson = JSON.parse(
       readFileSync(paths.run_artifact_files?.sim_status_path ?? "", "utf8")
-    ) as { reward_basis: string[] };
+    ) as { attempt_id: string; realtime_run_id: string; reward_basis: string[] };
 
-    expect(existsSync(join(LEGACY_DIR, "report.json"))).toBe(true);
-    expect(existsSync(join(LEGACY_DIR, "report.md"))).toBe(true);
-    expect(existsSync(join(LEGACY_DIR, "trace.json"))).toBe(true);
     expect(paths.run_artifact_dir).toBe(
-      join(RUN_DIR, "artifacts", "maya_smoke", "unit_run_artifacts_attempt")
+      join(RUN_DIR, "artifacts", "maya_smoke", "attempt_001")
     );
+    expect(paths.json_path).toBe(join(paths.run_artifact_dir ?? "", "report.json"));
+    expect(paths.markdown_path).toBe(join(paths.run_artifact_dir ?? "", "report.md"));
+    expect(paths.trace_path).toBe(paths.run_artifact_files?.trace_path);
+    expect(paths.audio_artifacts?.clean_input?.wav_path).toBe(
+      join(paths.run_artifact_dir ?? "", "audio", "clean_input.wav")
+    );
+    expect(existsSync(paths.run_artifact_files?.report_json_path ?? "")).toBe(true);
+    expect(existsSync(paths.run_artifact_files?.report_markdown_path ?? "")).toBe(true);
     expect(existsSync(paths.run_artifact_files?.sim_status_path ?? "")).toBe(true);
     expect(existsSync(paths.run_artifact_files?.trace_path ?? "")).toBe(true);
     expect(existsSync(paths.run_artifact_files?.transcript_path ?? "")).toBe(true);
@@ -104,10 +102,15 @@ describe("realtime eval run artifacts", () => {
     expect(simStatusJson.reward_basis).toEqual(
       REALTIME_CRAWL_DEFAULT_REWARD_BASIS
     );
+    expect(simStatusJson.attempt_id).toBe("attempt_001");
+    expect(simStatusJson.realtime_run_id).toBe("unit_run_artifacts_attempt");
     expect(runJson.results[0]?.reward_basis).toEqual(
       REALTIME_CRAWL_DEFAULT_REWARD_BASIS
     );
+    expect(runJson.results[0]?.attempt_id).toBe("attempt_001");
+    expect(runJson.results[0]?.realtime_run_id).toBe("unit_run_artifacts_attempt");
     expect(runJson.results[0]?.run_artifact_dir).toBe(paths.run_artifact_dir);
+    expect(runJson.results[0]?.json_path).toBe(paths.json_path);
     expect(readFileSync(runPaths.resultsMarkdownPath, "utf8")).toContain(
       "MealPlan VoiceOps Realtime Eval Run"
     );
@@ -131,7 +134,9 @@ function caseSummary(
     stage: "crawl",
     status: "completed",
     trace_path: paths.trace_path,
+    attempt_id: paths.attempt_id,
     audio_artifacts: paths.audio_artifacts,
+    realtime_run_id: paths.realtime_run_id,
     run_artifact_dir: paths.run_artifact_dir,
     run_artifact_files: paths.run_artifact_files
   };

@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 describe("scripted eval run artifacts", () => {
-  it("keeps legacy reports and writes run-level results with case artifacts", async () => {
+  it("writes canonical run-level results with case artifacts", async () => {
     const reportDir = await makeReportDir();
     const report = buildEvalReport({
       run_id: "eval_unit_artifacts",
@@ -45,12 +45,14 @@ describe("scripted eval run artifacts", () => {
 
     expect(existsSync(paths.jsonPath)).toBe(true);
     expect(existsSync(paths.markdownPath)).toBe(true);
+    expect(paths.jsonPath).toBe(paths.runArtifacts.resultsJsonPath);
+    expect(paths.markdownPath).toBe(paths.runArtifacts.resultsMarkdownPath);
     expect(runJson).toMatchObject({
       schema_version: "eval_run_artifacts.v1",
       run_id: "eval_unit_artifacts",
       suite: "scripted"
     });
-    expect(runJson.artifacts.legacy_report_json).toBe(paths.jsonPath);
+    expect(runJson.artifacts.run_dir).toBe(paths.runArtifacts.runDir);
     expect(runJson.cases[0]?.case_id).toBe("artifact_case");
     expect(existsSync(runJson.cases[0]?.case_path ?? "")).toBe(true);
     expect(existsSync(paths.runArtifacts.artifactsDir)).toBe(true);

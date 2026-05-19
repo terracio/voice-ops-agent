@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { EvalRunReport } from "./caseSchema";
 import type { PassKAggregate } from "./report";
 import {
+  appendGroupedFailureSections,
   rewardFailureCount,
   serializeEvalCaseResult
 } from "./reportGrouping";
@@ -26,8 +27,6 @@ export async function writeScriptedRunArtifacts(options: {
   aggregate?: PassKAggregate;
   git?: EvalRunGitMetadata;
   invokedCommand?: string;
-  legacyJsonPath: string;
-  legacyMarkdownPath: string;
   report: EvalRunReport;
   reportDir: string;
 }): Promise<ScriptedRunArtifactPaths> {
@@ -65,9 +64,7 @@ export async function writeScriptedRunArtifacts(options: {
     artifacts: {
       run_dir: runDir,
       cases_dir: casesDir,
-      artifacts_dir: artifactsDir,
-      legacy_report_json: options.legacyJsonPath,
-      legacy_report_markdown: options.legacyMarkdownPath
+      artifacts_dir: artifactsDir
     },
     git: options.git ?? collectGitMetadata(),
     invokedCommand: options.invokedCommand ?? resolveInvokedCommand(),
@@ -146,13 +143,14 @@ function renderScriptedRunMarkdown(options: {
     `- Hard policy violations: ${options.report.summary.hard_policy_violations}`,
     ...aggregateLines,
     "",
+    "This run contains scripted operational-safety evidence. Scripted mode validates " +
+      "the backend safety boundary without model variability.",
+    "",
     "## Artifacts",
     "",
     `- Run directory: \`${options.manifest.artifacts.run_dir}\``,
     `- Cases directory: \`${options.manifest.artifacts.cases_dir}\``,
     `- Artifacts directory: \`${options.manifest.artifacts.artifacts_dir}\``,
-    `- Legacy JSON: \`${options.manifest.artifacts.legacy_report_json}\``,
-    `- Legacy Markdown: \`${options.manifest.artifacts.legacy_report_markdown}\``,
     "",
     "## Cases",
     "",
@@ -168,6 +166,8 @@ function renderScriptedRunMarkdown(options: {
         `${summary.score_failures} | \`${summary.case_path}\` |`
     );
   }
+
+  appendGroupedFailureSections(lines, options.report.results);
 
   return `${lines.join("\n")}\n`;
 }

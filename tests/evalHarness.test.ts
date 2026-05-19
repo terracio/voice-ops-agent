@@ -16,7 +16,7 @@ import {
   EvalCaseSchema,
   EvalCaseResultSchema
 } from "../src/evals/caseSchema";
-import { buildEvalReport, renderMarkdownReport } from "../src/evals/report";
+import { buildEvalReport, writeEvalReports } from "../src/evals/report";
 import { runEval } from "../src/evals/runEval";
 import { SCRIPTED_DEFAULT_REWARD_BASIS } from "../src/evals/rewardBasis";
 import { scoreCase } from "../src/evals/scoreCase";
@@ -175,7 +175,7 @@ describe("eval harness contracts", () => {
       fixtureCase("maya_seed", "maya_default")
     ];
 
-    const { report, terminalSummary } = await runEval({
+    const { report, reportFiles, terminalSummary } = await runEval({
       cases,
       mode: "scripted",
       reportDir,
@@ -211,7 +211,7 @@ describe("eval harness contracts", () => {
     expect(terminalSummary).toContain("Cases: 2 passed, 0 failed");
 
     const json = JSON.parse(
-      await readFile(join(reportDir, "eval-report.json"), "utf8")
+      await readFile(reportFiles.jsonPath, "utf8")
     ) as {
       results: {
         diagnostics: { cost: { available: boolean; reason?: string } };
@@ -222,8 +222,9 @@ describe("eval harness contracts", () => {
       }[];
       summary: { cases_total: number };
     };
-    const markdown = await readFile(join(reportDir, "eval-report.md"), "utf8");
+    const markdown = await readFile(reportFiles.markdownPath, "utf8");
 
+    expect(reportFiles.jsonPath).toBe(reportFiles.runArtifacts.resultsJsonPath);
     expect(json.summary.cases_total).toBe(2);
     expect(json.results[0]?.reward_basis).toEqual(
       SCRIPTED_DEFAULT_REWARD_BASIS
@@ -245,7 +246,7 @@ describe("eval harness contracts", () => {
     expect(markdown).toContain("## Raw Score Failures");
   });
 
-  it("renders failed case diagnostics in the markdown report", () => {
+  it("renders failed case diagnostics in the markdown report", async () => {
     const failed = EvalCaseResultSchema.parse({
       ...resultFor(fixtureCase("failed_fixture", "maya_default")),
       status: "failed",
@@ -275,11 +276,11 @@ describe("eval harness contracts", () => {
       finished_at: "2026-05-11T10:00:00.000Z",
       results: [failed]
     });
+    const paths = await writeEvalReports(report, await makeReportDir());
+    const markdown = await readFile(paths.markdownPath, "utf8");
 
-    expect(renderMarkdownReport(report)).toContain(
-      "CONFIRMATION_BOUNDARY_MISSING"
-    );
-    expect(renderMarkdownReport(report)).toContain(
+    expect(markdown).toContain("CONFIRMATION_BOUNDARY_MISSING");
+    expect(markdown).toContain(
       "Commit was observed without a server confirmation record."
     );
   });

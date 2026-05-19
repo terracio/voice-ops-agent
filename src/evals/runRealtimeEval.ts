@@ -95,6 +95,7 @@ function loadCase(options: {
 
 async function runRealtimeEvalCase(options: {
   apiKey?: string;
+  attemptArtifactId: string;
   caseId: string;
   env_file_status: string;
   inputText?: string;
@@ -150,6 +151,7 @@ async function runRealtimeEvalCase(options: {
     realtimeCase,
     result,
     runArtifacts: {
+      attemptId: options.attemptArtifactId,
       runId: options.runLevelRunId
     },
     scoring,
@@ -192,12 +194,18 @@ async function main(): Promise<void> {
   });
   const runStamp = createRunStamp();
   const runLevelRunId = createRealtimeRunLevelId(args.stage, runStamp);
+  const attemptCounts = new Map<string, number>();
   const results: RealtimeCaseRunSummary[] = [];
 
   for (const caseId of caseIds) {
+    const attemptArtifactId = nextAttemptArtifactId({
+      attemptCounts,
+      caseId
+    });
     results.push(
       await runRealtimeEvalCase({
         apiKey: credentials.ok ? credentials.apiKey : undefined,
+        attemptArtifactId,
         caseId,
         env_file_status,
         inputText: args.inputText,
@@ -233,6 +241,15 @@ void main();
 
 function createRealtimeRunLevelId(stage: string, runStamp: string): string {
   return `realtime_${safePathSegment(stage)}_${runStamp}`;
+}
+
+function nextAttemptArtifactId(options: {
+  attemptCounts: Map<string, number>;
+  caseId: string;
+}): string {
+  const nextCount = (options.attemptCounts.get(options.caseId) ?? 0) + 1;
+  options.attemptCounts.set(options.caseId, nextCount);
+  return `attempt_${nextCount.toString().padStart(3, "0")}`;
 }
 
 function summaryWithoutCaseResults(

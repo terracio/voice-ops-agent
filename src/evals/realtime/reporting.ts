@@ -20,6 +20,7 @@ import {
   serializeRealtimeScoring
 } from "./reportGrouping";
 import {
+  realtimeAttemptDir,
   writeRealtimeAttemptArtifacts,
   type RealtimeAttemptArtifactPaths
 } from "./runArtifacts";
@@ -87,19 +88,22 @@ export function writeRealtimeReports(options: {
   realtimeCase: RealtimeEvalCase;
   result: RealtimeRunnerResult;
   runArtifacts?: {
+    attemptId?: string;
     reportRoot?: string;
     runId: string;
   };
   scoring: RealtimeCrawlScoring;
   stage: string;
 }): RealtimeReportPaths {
-  const reportDir = join(
-    "reports",
-    "realtime",
-    safePathSegment(options.stage),
-    safePathSegment(options.caseId),
-    safePathSegment(options.result.run_id)
-  );
+  const reportRoot = options.runArtifacts?.reportRoot ?? "reports";
+  const runId = options.runArtifacts?.runId ?? options.result.run_id;
+  const attemptId = options.runArtifacts?.attemptId ?? options.result.run_id;
+  const reportDir = realtimeAttemptDir({
+    attemptId,
+    caseId: options.caseId,
+    reportRoot,
+    runId
+  });
   mkdirSync(reportDir, { recursive: true });
 
   const jsonPath = join(reportDir, "report.json");
@@ -255,13 +259,11 @@ export function writeRealtimeReports(options: {
         audioArtifacts,
         caseId: options.caseId,
         env_file_status: options.env_file_status,
-        legacyJsonPath: jsonPath,
-        legacyMarkdownPath: markdownPath,
-        legacyTracePath: tracePath,
         preparedInput: options.preparedInput,
         realtimeCase: options.realtimeCase,
         reportRoot: options.runArtifacts.reportRoot,
         result: options.result,
+        attemptId: options.runArtifacts.attemptId,
         runId: options.runArtifacts.runId,
         scoring: options.scoring,
         stage: options.stage

@@ -60,8 +60,11 @@ It does not prove that the model chooses the right tools. It proves that if tool
 Reports:
 
 ```text
-reports/eval-report.json
-reports/eval-report.md
+reports/evals/scripted/<run_id>/
+  results.json
+  results.md
+  cases/<case_id>.json
+  artifacts/
 ```
 
 Golden cases:
@@ -118,23 +121,37 @@ Crawl and Walk are reviewer evidence for:
 - transcript and tool evidence capture,
 - assistant text output and tool output.
 
-Realtime reports are written under:
+Realtime reports are written under a canonical run-level directory:
 
 ```text
-reports/realtime/<stage>/<case>/<run>/
+reports/evals/realtime/<run_id>/
 ```
 
 Typical artifacts:
 
 ```text
-report.json
-report.md
-trace.json
-audio/clean_input.wav
-audio/clean_input.pcm
-audio/profile_input.wav
-audio/profile_input.pcm
+results.json
+results.md
+simulations/<case_id>_<attempt_id>.json
+artifacts/<case_id>/<attempt_id>/
+  report.json
+  report.md
+  sim_status.json
+  scoring.json
+  trace.json
+  transcript.json
+  tool_calls.json
+  audit.json
+  final_state.json
+  audio/manifest.json
+  audio/clean_input.wav
+  audio/clean_input.pcm
+  audio/profile_input.wav
+  audio/profile_input.pcm
 ```
+
+`<attempt_id>` is a short run-local artifact label such as `attempt_001`.
+The full realtime runner ID remains in each attempt's `sim_status.json` as `realtime_run_id`.
 
 Checked-in sample artifacts are available for reviewers who cannot run realtime evals locally:
 
@@ -143,7 +160,7 @@ docs/examples/realtime-crawl-sample-report.md
 docs/examples/realtime-crawl-results.json
 ```
 
-These samples are illustrative source artifacts, not generated `reports/` output.
+These samples are source artifacts that mirror generated `reports/evals/realtime/<run_id>/` output without requiring reviewers to spend realtime API credits.
 
 ## Realtime Audio Replay Configuration
 

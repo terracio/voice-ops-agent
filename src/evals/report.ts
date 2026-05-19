@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import {
   EvalCaseResultSchema,
   EvalRunReportSchema,
@@ -12,11 +10,7 @@ import {
   type ScriptedRunArtifactPaths
 } from "./scriptedRunArtifacts";
 import {
-  appendGroupedFailureSections,
-  countRewardFailures,
-  diagnosticFailureCount,
-  rewardFailureCount,
-  serializeEvalRunReport
+  countRewardFailures
 } from "./reportGrouping";
 
 export type BuildEvalReportInput = {
@@ -141,75 +135,22 @@ export function renderTerminalSummary(
   ].join("\n");
 }
 
-export function renderMarkdownReport(
-  report: EvalRunReport,
-  aggregate?: PassKAggregate
-): string {
-  const lines = [
-    "# MealPlan VoiceOps Eval Report",
-    "",
-    `- Run: \`${report.metadata.run_id}\``,
-    `- Mode: \`${report.metadata.mode}\``,
-    `- Cases: ${report.summary.cases_passed} passed, ` +
-      `${report.summary.cases_failed} failed, ${report.summary.cases_blocked} blocked, ` +
-      `${report.summary.cases_errored} errored, ${report.summary.cases_skipped} skipped`,
-    `- Reward failures: ${countRewardFailures(report.results)}`,
-    `- Score failures: ${report.summary.score_failures}`,
-    `- Hard policy violations: ${report.summary.hard_policy_violations}`,
-    ...(aggregate ? [
-      `- Pass-k: ${aggregate.runs_passed}/${aggregate.runs_total} runs passed (k=${aggregate.pass_k})`,
-      `- Case executions: ${aggregate.case_executions}`
-    ] : []),
-    "",
-    "This report distinguishes scripted operational-safety evidence from future " +
-      "model-behavior evidence. Scripted mode validates the operational safety " +
-      "boundary; model mode will validate agent behavior when a model executor is added.",
-    "",
-    "## Cases",
-    "",
-    "| Case | Mode | Seed | Reward basis | Evidence | Status | Reward failures | Diagnostic failures | Raw score failures |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
-  ];
-
-  for (const result of report.results) {
-    lines.push(
-      `| \`${result.case_id}\` | ${result.mode} | \`${result.seed_id}\` | ` +
-        `${renderRewardBasis(result.reward_basis)} | ${result.evidence_kind} | ` +
-        `${result.status} | ${rewardFailureCount(result)} | ` +
-        `${diagnosticFailureCount(result)} | ${failedScoreCount(result)} |`
-    );
-  }
-
-  appendGroupedFailureSections(lines, report.results);
-
-  return `${lines.join("\n")}\n`;
-}
-
 export async function writeEvalReports(
   report: EvalRunReport,
   reportDir = "reports",
   aggregate?: PassKAggregate
 ): Promise<WrittenEvalReport> {
-  const jsonPath = join(reportDir, "eval-report.json");
-  const markdownPath = join(reportDir, "eval-report.md");
-  const markdown = renderMarkdownReport(report, aggregate);
-
-  await mkdir(reportDir, { recursive: true });
-  await writeFile(
-    jsonPath,
-    `${JSON.stringify(serializeEvalRunReport(report), null, 2)}\n`
-  );
-  await writeFile(markdownPath, markdown);
-
   const runArtifacts = await writeScriptedRunArtifacts({
     aggregate,
-    legacyJsonPath: jsonPath,
-    legacyMarkdownPath: markdownPath,
     report,
     reportDir
   });
 
-  return { jsonPath, markdownPath, runArtifacts };
+  return {
+    jsonPath: runArtifacts.resultsJsonPath,
+    markdownPath: runArtifacts.resultsMarkdownPath,
+    runArtifacts
+  };
 }
 
 function countStatus(
@@ -225,14 +166,6 @@ function countEvidence(
 ): number {
   return results.filter((result) => result.evidence_kind === evidenceKind)
     .length;
-}
-
-function failedScoreCount(result: EvalCaseResult): number {
-  return result.scores.filter((score) => !score.passed).length;
-}
-
-function renderRewardBasis(rewardBasis: EvalCaseResult["reward_basis"]): string {
-  return rewardBasis.join(", ");
 }
 
 function reportHasRewardFailures(report: EvalRunReport): boolean {

@@ -21,11 +21,15 @@ import {
 import type { RealtimeCrawlScoring } from "./scorerTypes";
 
 export type RealtimeAttemptArtifactPaths = {
+  attempt_id: string;
+  realtime_run_id: string;
   run_artifact_dir: string;
   run_artifact_files: {
     audio_manifest_path: string;
     audit_path: string;
     final_state_path: string;
+    report_json_path: string;
+    report_markdown_path: string;
     scoring_path: string;
     sim_status_path: string;
     simulation_path: string;
@@ -70,13 +74,25 @@ export function realtimeRunDir(reportRoot: string, runId: string): string {
   );
 }
 
+export function realtimeAttemptDir(options: {
+  attemptId: string;
+  caseId: string;
+  reportRoot?: string;
+  runId: string;
+}): string {
+  return join(
+    realtimeRunDir(options.reportRoot ?? "reports", options.runId),
+    "artifacts",
+    safeArtifactSegment(options.caseId),
+    safeArtifactSegment(options.attemptId)
+  );
+}
+
 export function writeRealtimeAttemptArtifacts(options: {
   audioArtifacts?: RealtimeAudioArtifacts;
+  attemptId?: string;
   caseId: string;
   env_file_status: string;
-  legacyJsonPath: string;
-  legacyMarkdownPath: string;
-  legacyTracePath: string;
   preparedInput: PreparedRealtimeInput;
   realtimeCase: RealtimeEvalCase;
   reportRoot?: string;
@@ -88,13 +104,13 @@ export function writeRealtimeAttemptArtifacts(options: {
   const reportRoot = options.reportRoot ?? "reports";
   const runDir = realtimeRunDir(reportRoot, options.runId);
   const simulationsDir = join(runDir, "simulations");
-  const artifactsDir = join(runDir, "artifacts");
-  const attemptId = options.result.run_id;
-  const attemptDir = join(
-    artifactsDir,
-    safeArtifactSegment(options.caseId),
-    safeArtifactSegment(attemptId)
-  );
+  const attemptId = options.attemptId ?? options.result.run_id;
+  const attemptDir = realtimeAttemptDir({
+    attemptId,
+    caseId: options.caseId,
+    reportRoot,
+    runId: options.runId
+  });
   const audioDir = join(attemptDir, "audio");
 
   mkdirSync(simulationsDir, { recursive: true });
@@ -104,6 +120,8 @@ export function writeRealtimeAttemptArtifacts(options: {
     audio_manifest_path: join(audioDir, "manifest.json"),
     audit_path: join(attemptDir, "audit.json"),
     final_state_path: join(attemptDir, "final_state.json"),
+    report_json_path: join(attemptDir, "report.json"),
+    report_markdown_path: join(attemptDir, "report.md"),
     scoring_path: join(attemptDir, "scoring.json"),
     sim_status_path: join(attemptDir, "sim_status.json"),
     simulation_path: join(
@@ -138,11 +156,6 @@ export function writeRealtimeAttemptArtifacts(options: {
     model: options.result.model,
     transport: options.result.transport,
     env_file_status: options.env_file_status,
-    legacy_paths: {
-      report_json: options.legacyJsonPath,
-      report_markdown: options.legacyMarkdownPath,
-      trace: options.legacyTracePath
-    },
     artifact_paths: files
   };
 
@@ -157,15 +170,20 @@ export function writeRealtimeAttemptArtifacts(options: {
   writeJson(files.final_state_path, redactedResult.final_state);
   writeJson(files.scoring_path, serializedScoring);
   writeJson(files.audio_manifest_path, {
-    legacy_audio_artifacts: options.audioArtifacts,
-    note: "Input audio files remain in the compatibility per-case report directory."
+    audio_artifacts: options.audioArtifacts,
+    note: "Input audio files are stored in this attempt artifact directory."
   });
   writeJson(files.simulation_path, {
     ...status,
     artifact_dir: attemptDir
   });
 
-  return { run_artifact_dir: attemptDir, run_artifact_files: files };
+  return {
+    attempt_id: attemptId,
+    realtime_run_id: options.result.run_id,
+    run_artifact_dir: attemptDir,
+    run_artifact_files: files
+  };
 }
 
 export function writeRealtimeRunResults(options: {
@@ -253,7 +271,7 @@ function renderRealtimeRunMarkdown(options: {
       `| \`${result.case_id}\` | ${result.reward_basis.join(", ")} | ` +
         `${result.status} | ${result.scoring_status} | ` +
         `${result.reward_failures} | ${result.diagnostic_failures} | ` +
-        `${result.score_failures} | \`${result.json_path}\` | ` +
+        `${result.score_failures} | \`${result.markdown_path}\` | ` +
         `\`${result.run_artifact_dir ?? ""}\` |`
     );
   }
