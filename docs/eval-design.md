@@ -28,7 +28,7 @@ MealPlan VoiceOps has two active eval layers.
 | Scripted safety baseline | Deterministically test tools, policy, ChangeSets, confirmations, side effects, and audit. | No | Backend safety boundary is enforceable. |
 | Realtime audio evals | Test the actual realtime voice agent under clean and degraded audio. | Yes | Model behavior, tool use, policy behavior, and evidence capture are inspectable. |
 
-The two layers are complementary. Scripted evals prove the application boundary. Realtime evals test whether the voice model behaves well inside that boundary.
+The two layers are complementary. Scripted evals prove the application boundary without model variability. Realtime evals test whether the voice model behaves well inside that boundary when the input is audio and the model has to choose text responses and tool calls.
 
 ## Scripted Safety Baseline
 
@@ -40,7 +40,7 @@ pnpm eval -- --mode scripted
 pnpm eval -- --pass-k 3
 ```
 
-This mode does not require OpenAI credentials.
+This mode does not require OpenAI credentials and does not call a model.
 
 It proves:
 
@@ -55,7 +55,7 @@ It proves:
 - payment follow-ups and kitchen deltas are idempotent,
 - audit logs are complete.
 
-It does not prove that the model chooses the right tools. It proves that if tools are called, the backend safety boundary is enforceable.
+It does not prove that the model chooses the right tools. It proves that if tools are called, the backend guardrails are enforceable without relying on prompt behavior, transcript text, or model cooperation.
 
 Reports:
 
@@ -109,6 +109,15 @@ The runner:
 9. scores observable behavior,
 10. writes reports, traces, and audio artifacts.
 
+Crawl and Walk are reviewer evidence for:
+
+- audio input generation and replay,
+- realtime model behavior,
+- model-requested tool use,
+- policy evidence produced by server tools,
+- transcript and tool evidence capture,
+- assistant text output and tool output.
+
 Realtime reports are written under:
 
 ```text
@@ -126,6 +135,15 @@ audio/clean_input.pcm
 audio/profile_input.wav
 audio/profile_input.pcm
 ```
+
+Checked-in sample artifacts are available for reviewers who cannot run realtime evals locally:
+
+```text
+docs/examples/realtime-crawl-sample-report.md
+docs/examples/realtime-crawl-results.json
+```
+
+These samples are illustrative source artifacts, not generated `reports/` output.
 
 ## Realtime Audio Replay Configuration
 
@@ -231,6 +249,20 @@ The target Run question is:
 Can the realtime agent complete a realistic operational task over multiple turns while preserving policy, state, confirmations, and audit evidence?
 ```
 
+## Current Realtime Scoring Limits
+
+Current Crawl and Walk evals score observable run health, perception transcript presence, turn output, tool selection, tool arguments, policy evidence, confirmation ordering, audit evidence, final state, and lightweight response expectations.
+
+They do not yet fully score:
+
+- assistant audio quality,
+- stereo `both.wav` conversation output,
+- overlap or interruption metrics,
+- barge-in timing,
+- full multi-turn Run simulations.
+
+Those are planned Run-era eval dimensions. Today, realtime Crawl and Walk reports should be read as audio-model, tool, policy, transcript, and evidence checks, not as full conversation-quality certification.
+
 ## Case Contracts
 
 Realtime cases are YAML contracts in:
@@ -264,6 +296,29 @@ Reports preserve raw scores and add a grouping layer:
 - Diagnostics: tool path similarity, tool argument validity, perception, turn taking, latency, conversation quality, and cost.
 
 Case pass/fail is based on the selected primary rewards plus diagnostics explicitly selected by `reward_basis`. Tool path similarity remains diagnostic by default and becomes reward-relevant only when `ACTION` is selected. Hard policy failures remain reward failures even if a case basis is narrower. Cost and latency are currently explicit unavailable diagnostics unless reliable metadata and thresholds are captured.
+
+## Why Action Matching Is Diagnostic
+
+MealPlan VoiceOps does not require the model to match one exact reference tool path unless a case opts into `ACTION` in `reward_basis`.
+
+Most cases score the operational outcome:
+
+- final state,
+- safety,
+- confirmation boundary,
+- communication,
+- evidence.
+
+Tool path similarity is still recorded because it helps reviewers understand whether the model took the expected route. By default, though, it is diagnostic evidence rather than the main reward.
+
+Some ordering is hard-gated because it is a safety invariant, not because it is a preferred reference path:
+
+- identity before private reads,
+- preview before confirmation,
+- confirmation before commit,
+- no kitchen delta before commit.
+
+Those boundaries protect operational state. A run can vary in harmless intermediate actions, but it cannot skip or reorder those safety gates.
 
 ## Scoring Contract
 
@@ -348,6 +403,7 @@ Current gating expectations:
 - `pnpm test` and `pnpm eval` should be stable local gates.
 - `pnpm eval:realtime` requires OpenAI API credits and should be treated as a credential-gated evidence run.
 - Crawl and Walk reports should be inspected when behavior changes.
+- Checked-in sample Crawl artifacts under `docs/examples/` are reviewer aids and are not CI gates.
 - Run evals are planned and should become the main multi-turn behavior proof once implemented.
 
 ## Known Limits
@@ -357,3 +413,4 @@ Current gating expectations:
 - Audio fixtures are generated/transformed locally and are not yet stable checked-in gates.
 - Out-of-band transcription is a debugging aid, not an authority layer.
 - Conversation-quality scoring is intentionally lightweight compared with tool, policy, audit, and state scoring.
+- Assistant audio quality, stereo conversation output, interruption metrics, barge-in timing, and full multi-turn Run simulations are not yet fully scored.

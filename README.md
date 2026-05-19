@@ -218,6 +218,8 @@ Realtime evals require server-side OpenAI credentials.
 
 Runtime defaults live in [`src/realtime/config/runtimeConfig.ts`](src/realtime/config/runtimeConfig.ts). Live browser audio settings are documented in [`docs/architecture.md`](docs/architecture.md). Realtime eval chunking, replay, and Walk noise profiles are documented in [`docs/eval-design.md`](docs/eval-design.md).
 
+For reviewers without realtime API credits, a checked-in Crawl sample is available as [`docs/examples/realtime-crawl-sample-report.md`](docs/examples/realtime-crawl-sample-report.md) with matching JSON at [`docs/examples/realtime-crawl-results.json`](docs/examples/realtime-crawl-results.json). It is illustrative source documentation, not generated `reports/` output.
+
 ---
 
 ## Status
@@ -261,4 +263,5 @@ Runtime defaults live in [`src/realtime/config/runtimeConfig.ts`](src/realtime/c
 - [`docs/architecture.md`](docs/architecture.md): architecture and runtime boundaries
 - [`docs/guardrails.md`](docs/guardrails.md): policies, ChangeSets, and confirmation rules
 - [`docs/eval-design.md`](docs/eval-design.md): scripted and realtime eval strategy
+- [`docs/examples/realtime-crawl-sample-report.md`](docs/examples/realtime-crawl-sample-report.md): checked-in realtime Crawl sample report
 - [`docs/demo-script.md`](docs/demo-script.md): browser demo walkthrough
