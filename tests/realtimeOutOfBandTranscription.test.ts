@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   OOB_TRANSCRIPTION_INSTRUCTIONS,
-  OOB_TRANSCRIPTION_INSTRUCTIONS_SOURCE_PATH
+  OOB_TRANSCRIPTION_INSTRUCTIONS_SOURCE_PATH,
+  runRealtimeOutOfBandTranscription
 } from "../src/realtime/config/outOfBandTranscription";
 import { runRealtimeAgentSmoke } from "../src/realtime/runner/runner";
 import {
@@ -16,6 +17,10 @@ import { writeRealtimeReports } from "../src/evals/realtime/reporting";
 import type { RealtimeCrawlScoring } from "../src/evals/realtime/scorerTypes";
 
 class FakeOobSession implements RealtimeSessionLike {
+  constructor(
+    private readonly oobMode: "success" | "throw" | "reject" | "circular_error" = "success"
+  ) {}
+
   readonly close = vi.fn();
   readonly connect = vi.fn(async () => undefined);
   readonly sendAudio = vi.fn((_audio: ArrayBuffer, options?: { commit?: boolean }) => {
@@ -40,6 +45,16 @@ class FakeOobSession implements RealtimeSessionLike {
       if (response?.metadata &&
         (response.metadata as Record<string, unknown>).purpose ===
           "oob_realtime_transcription") {
+        if (this.oobMode === "throw") {
+          throw new Error("synthetic OOB transport failure");
+        }
+        if (this.oobMode === "reject") {
+          return Promise.reject(new Error("synthetic async OOB transport failure")) as unknown as void;
+        }
+        if (this.oobMode === "circular_error") {
+          this.emitOobCircularError();
+          return;
+        }
         this.emitOobResponse();
         return;
       }
@@ -77,6 +92,16 @@ class FakeOobSession implements RealtimeSessionLike {
     this.emit("transport_event", {
       response: { id: "resp_oob" },
       type: "response.done"
+    });
+  }
+
+  private emitOobCircularError(): void {
+    const error: Record<string, unknown> = { code: "synthetic_oob_error" };
+    error.self = error;
+    error.retries = BigInt(1);
+    this.emit("transport_event", {
+      error,
+      type: "error"
     });
   }
 }
@@ -123,6 +148,58 @@ describe("Realtime out-of-band transcription diagnostics", () => {
         tools: []
       })
     );
+  });
+
+  it("keeps optional OOB request failures inside the diagnostic result", async () => {
+    const fakeSession = new FakeOobSession("throw");
+    const result = await runRealtimeAgentSmoke({
+      apiKey: "sk-test",
+      audio: new ArrayBuffer(800),
+      outOfBandTranscription: true,
+      runId: "run_oob_throw",
+      sessionFactory: () => fakeSession
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.out_of_band_transcription).toEqual({
+      reason: "synthetic OOB transport failure",
+      response_id: undefined,
+      status: "failed"
+    });
+  });
+
+  it("keeps optional async OOB request failures inside the diagnostic result", async () => {
+    const fakeSession = new FakeOobSession("reject");
+    const result = await runRealtimeAgentSmoke({
+      apiKey: "sk-test",
+      audio: new ArrayBuffer(800),
+      outOfBandTranscription: true,
+      runId: "run_oob_reject",
+      sessionFactory: () => fakeSession
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.out_of_band_transcription).toEqual({
+      reason: "synthetic async OOB transport failure",
+      response_id: undefined,
+      status: "failed"
+    });
+  });
+
+  it("safely reports non-JSON transport errors as failed diagnostics", async () => {
+    const fakeSession = new FakeOobSession("circular_error");
+    const result = await runRealtimeOutOfBandTranscription({
+      session: fakeSession,
+      timeoutMs: 50,
+      userAudioItemId: "item_user_audio"
+    });
+
+    expect(result).toMatchObject({
+      status: "failed"
+    });
+    expect(result.reason).toContain("synthetic_oob_error");
+    expect(result.reason).toContain("[Circular]");
+    expect(result.reason).toContain("\"retries\":\"1\"");
   });
 
   it("writes out-of-band realtime transcription diagnostics when present", () => {

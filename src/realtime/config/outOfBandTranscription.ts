@@ -52,7 +52,7 @@ export function runRealtimeOutOfBandTranscription(options: {
         finish({
           status: "failed",
           response_id: responseId,
-          reason: JSON.stringify(record.error ?? record)
+          reason: diagnosticReason(record.error ?? record)
         });
         return;
       }
@@ -88,7 +88,22 @@ export function runRealtimeOutOfBandTranscription(options: {
     if (options.userAudioItemId) {
       response.input = [{ id: options.userAudioItemId, type: "item_reference" }];
     }
-    requestResponse(response);
+    try {
+      const result = requestResponse(response) as unknown;
+      void Promise.resolve(result).catch((error: unknown) => {
+        finish({
+          status: "failed",
+          response_id: responseId,
+          reason: diagnosticReason(error)
+        });
+      });
+    } catch (error) {
+      finish({
+        status: "failed",
+        response_id: responseId,
+        reason: diagnosticReason(error)
+      });
+    }
 
     function finish(result: RealtimeOutOfBandTranscription): void {
       if (settled) return;
@@ -151,4 +166,22 @@ function nestedString(value: unknown, key: string): string | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function diagnosticReason(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+
+  const seen = new WeakSet<object>();
+  try {
+    return JSON.stringify(value, (_key, nested) => {
+      if (typeof nested === "bigint") return nested.toString();
+      if (typeof nested !== "object" || nested === null) return nested;
+      if (seen.has(nested)) return "[Circular]";
+      seen.add(nested);
+      return nested;
+    }) ?? "out_of_band_transcription_failed";
+  } catch {
+    return "out_of_band_transcription_failed";
+  }
 }
