@@ -1,7 +1,7 @@
 import { EMPTY_VOICE_CONSOLE_EVIDENCE, type EvidenceToolItem, type VoiceConsoleEvidenceState } from "../evidence/voiceConsoleEvidence";
 import { buildVoiceTranscriptState } from "../evidence/voiceConsoleTranscript";
 import type { EvidenceChangeSetDiffItem } from "../evidence/voiceConsoleStructuredEvidence";
-import { latestChangeSet, currentChangeSetBlocker } from "../state/voiceConsoleChangeSetStatus";
+import { visibleChangeSet, currentChangeSetBlocker } from "../state/voiceConsoleChangeSetStatus";
 import type { VoiceConsoleState } from "../state/voiceConsoleController";
 import { elapsedCallMs } from "../state/voiceConsoleTiming";
 import { buildConversationTimelineModel } from "../state/voiceConversationTimeline";
@@ -76,7 +76,7 @@ export function buildPrototypeLiveCallViewModel(options: {
   const evidence = options.evidence ?? EMPTY_VOICE_CONSOLE_EVIDENCE;
   const elapsedMs = elapsedCallMs(options.state.callTiming);
   const transcript = buildVoiceTranscriptState(evidence.transcript);
-  const changeSet = latestChangeSet(evidence.changeSets ?? []);
+  const changeSet = visibleChangeSet(evidence.changeSets ?? []);
   const diffs = (evidence.diffs ?? []).filter((diff) =>
     diff.changeSetId === changeSet?.changeSetId
   );
@@ -282,7 +282,7 @@ function actionBanner(
   customerStatus: LiveCallViewModel["customer"]["status"]
 ): LiveCallViewModel["actionBanner"] {
   const runningTool = [...evidence.tools].reverse().find((tool) => tool.status === "started");
-  const changeSet = latestChangeSet(evidence.changeSets ?? []);
+  const changeSet = visibleChangeSet(evidence.changeSets ?? []);
   const blocker = currentChangeSetBlocker(changeSet);
   const realtimeError = currentRealtimeError(state);
   if (realtimeError) {
@@ -311,7 +311,7 @@ function policySummary(
   hasChangeSet: boolean,
   customerStatus: LiveCallViewModel["customer"]["status"]
 ): LiveCallViewModel["policy"] {
-  const changeSet = latestChangeSet(evidence.changeSets ?? []);
+  const changeSet = visibleChangeSet(evidence.changeSets ?? []);
   const blocker = currentChangeSetBlocker(changeSet);
   if (blocker) return { statusText: `Blocked by ${blocker.policyId}`, subText: blocker.message };
   if (hasChangeSet && changeSetPreview(changeSet!, evidence.diffs ?? []).requiresConfirmation) {

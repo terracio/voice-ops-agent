@@ -8,10 +8,22 @@ export type CurrentChangeSetBlocker = Pick<
   "message" | "policyId" | "severity"
 >;
 
-export function latestChangeSet(
+const VISIBLE_CHANGE_SET_STATUSES = ["blocked", "previewed", "draft", "confirmed"];
+
+export function visibleChangeSet(
   changeSets: EvidenceChangeSetItem[]
 ): EvidenceChangeSetItem | undefined {
-  return changeSets.at(-1);
+  const latestById = new Map<string, EvidenceChangeSetItem>();
+  changeSets.forEach((changeSet) => {
+    latestById.set(changeSet.changeSetId, changeSet);
+  });
+
+  const latest = [...latestById.values()];
+  for (const status of VISIBLE_CHANGE_SET_STATUSES) {
+    const match = latest.filter((changeSet) => changeSet.status === status).at(-1);
+    if (match) return match;
+  }
+  return latest.at(-1);
 }
 
 export function currentChangeSetBlocker(
