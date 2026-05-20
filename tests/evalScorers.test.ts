@@ -115,6 +115,68 @@ describe("eval scorers", () => {
     expectFailedScore(scored, "hard_policy");
   });
 
+  it("fails when forbidden policies are only present in write-blocked audit details", () => {
+    const firstBlockedPolicy = PolicyId.STALE_STATE_VERSION;
+    const forbiddenPolicy = PolicyId.MEDICAL_RISK_ESCALATION_REQUIRED;
+    const base = passingResult();
+    const scored = scoreCase(
+      evalCaseFixture({
+        expected: {
+          ...evalCaseFixture().expected,
+          forbidden_policy_violations: [forbiddenPolicy]
+        }
+      }),
+      passingResult({
+        audit_events: [
+          ...base.audit_events,
+          {
+            actor: "policy",
+            change_set_id: "cs_001",
+            customer_id: "cus_001",
+            details: {
+              policy_ids: [firstBlockedPolicy, forbiddenPolicy],
+              policy_results: [{
+                message: "Current state version differs from the previewed ChangeSet.",
+                passed: false,
+                policy_id: firstBlockedPolicy,
+                severity: "block"
+              }, {
+                message: "Medical risk requires escalation.",
+                passed: false,
+                policy_id: forbiddenPolicy,
+                severity: "escalate"
+              }],
+              summary: "Commit blocked by policy validation."
+            },
+            event_id: "audit_write_blocked_forbidden_policy",
+            event_type: "write_blocked",
+            run_id: "run_scorer_fixture",
+            timestamp: "2026-05-11T10:03:05.000Z",
+            tool_name: "commit_change_set"
+          }
+        ],
+        tool_calls: base.tool_calls.map((call) =>
+          call.tool_name === "commit_change_set"
+            ? {
+              ...call,
+              output: {
+                error: {
+                  code: "COMMIT_BLOCKED",
+                  message: "Commit blocked by policy validation.",
+                  policy_id: firstBlockedPolicy
+                },
+                ok: false
+              },
+              status: "blocked"
+            }
+            : call
+        )
+      })
+    );
+
+    expectFailedScore(scored, "hard_policy");
+  });
+
   it("fails missing audit events and duplicate side-effect idempotency keys", () => {
     expectFailedScore(
       scoreCase(evalCaseFixture(), passingResult({ audit_events: [] })),

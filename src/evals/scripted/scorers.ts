@@ -105,6 +105,10 @@ function scoreHardPolicy(context: Context): Outcome {
     if (audit.event_type === "policy_block") {
       policyIdsFrom(audit.details).forEach((policyId) => violated.add(policyId));
     }
+    if (audit.event_type === "write_blocked") {
+      explicitPolicyIds(audit.details).forEach((policyId) => violated.add(policyId));
+      failedPolicyIds(audit.details).forEach((policyId) => violated.add(policyId));
+    }
   }
   required.forEach((policyId) => {
     if (!observed.has(policyId)) issues.push(`Required policy ${policyId} was not observed.`);
@@ -286,6 +290,12 @@ function failedPolicyIds(value: unknown): PolicyIdValue[] {
 function policyIdsFrom(value: unknown): PolicyIdValue[] {
   if (Array.isArray(value)) return value.flatMap(policyIdsFrom);
   if (!isRecord(value)) return [];
+  const ids = explicitPolicyIds(value);
+  return [...ids, ...Object.values(value).flatMap(policyIdsFrom)];
+}
+
+function explicitPolicyIds(value: unknown): PolicyIdValue[] {
+  if (!isRecord(value)) return [];
   const direct = PolicyIdSchema.safeParse(value.policy_id);
   const ids = direct.success ? [direct.data] : [];
   if (Array.isArray(value.policy_ids)) {
@@ -294,7 +304,7 @@ function policyIdsFrom(value: unknown): PolicyIdValue[] {
       return parsed.success ? [parsed.data] : [];
     }));
   }
-  return [...ids, ...Object.values(value).flatMap(policyIdsFrom)];
+  return ids;
 }
 function hasPaymentSettlement(value: unknown): boolean {
   return operationTypes(value).some((operation) =>
