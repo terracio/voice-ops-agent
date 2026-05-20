@@ -85,6 +85,36 @@ describe("eval scorers", () => {
     expectFailedScore(scoreCase(evalCaseFixture(), staleCommit), "hard_policy");
   });
 
+  it("fails when explicitly forbidden policy IDs are violated", () => {
+    const forbiddenPolicy = PolicyId.MEDICAL_RISK_ESCALATION_REQUIRED;
+    const scored = scoreCase(
+      evalCaseFixture({
+        expected: {
+          ...evalCaseFixture().expected,
+          forbidden_policy_violations: [forbiddenPolicy]
+        }
+      }),
+      passingResult({
+        audit_events: [
+          ...passingResult().audit_events,
+          {
+            actor: "policy",
+            change_set_id: "cs_001",
+            customer_id: "cus_001",
+            details: { policy_id: forbiddenPolicy },
+            event_id: "audit_forbidden_policy",
+            event_type: "policy_block",
+            run_id: "run_scorer_fixture",
+            timestamp: "2026-05-11T10:03:05.000Z",
+            tool_name: "escalate_to_human"
+          }
+        ]
+      })
+    );
+
+    expectFailedScore(scored, "hard_policy");
+  });
+
   it("fails missing audit events and duplicate side-effect idempotency keys", () => {
     expectFailedScore(
       scoreCase(evalCaseFixture(), passingResult({ audit_events: [] })),
